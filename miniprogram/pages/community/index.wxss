@@ -1,0 +1,211 @@
+.page {
+  min-height: 100vh;
+}
+
+/* 顶部三 tab */
+.top-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 84rpx;
+  background: #f4f6f8;
+}
+
+.tab {
+  position: relative;
+  font-size: 30rpx;
+  color: #8a9099;
+  padding: 0 28rpx;
+  line-height: 84rpx;
+}
+
+.tab.active {
+  color: #1f2329;
+  font-weight: 700;
+  font-size: 32rpx;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 12rpx;
+  transform: translateX(-50%);
+  width: 36rpx;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #067ef9;
+}
+
+.tab.region {
+  display: flex;
+  align-items: center;
+}
+
+.pin {
+  font-size: 24rpx;
+  margin-right: 4rpx;
+}
+
+/* 瀑布流 */
+.feed {
+  padding: 8rpx 8rpx 40rpx;
+}
+
+.loading {
+  padding: 120rpx 0;
+  text-align: center;
+  color: #8a9099;
+  font-size: 26rpx;
+}
+
+.empty {
+  padding: 140rpx 40rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 64rpx;
+  color: #d4d8dd;
+  margin-bottom: 16rpx;
+}
+
+.waterfall {
+  display: flex;
+  align-items: flex-start;
+}
+
+.col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 5rpx;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  margin-bottom: 10rpx;
+}
+
+.cover-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.cover {
+  width: 100%;
+  display: block;
+}
+
+.play-badge {
+  position: absolute;
+  right: 14rpx;
+  bottom: 14rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-body {
+  padding: 14rpx 16rpx 16rpx;
+}
+
+.card-title {
+  font-size: 27rpx;
+  font-weight: 500;
+  color: #1f2329;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.card-content-2 {
+  font-size: 27rpx;
+  color: #1f2329;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+
+.author {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow: hidden;
+}
+
+.a-avatar {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10rpx;
+}
+
+.a-name {
+  font-size: 23rpx;
+  color: #8a9099;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.like {
+  display: flex;
+  align-items: center;
+}
+
+.heart {
+  color: #ff5a79;
+  font-size: 26rpx;
+  margin-right: 6rpx;
+}
+
+.like-num {
+  font-size: 23rpx;
+  color: #8a9099;
+}
+
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: calc(40rpx + env(safe-area-inset-bottom));
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  background: #067ef9;
+  color: #fff;
+  font-size: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(6, 126, 249, 0.4);
+  z-index: 50;
+}

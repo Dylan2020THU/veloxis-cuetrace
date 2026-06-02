@@ -1,0 +1,131 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 8rpx;
+}
+
+.count {
+  font-size: 28rpx;
+  color: #8a9099;
+}
+
+.add-link {
+  font-size: 28rpx;
+  color: #067ef9;
+  font-weight: 500;
+}
+
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: #d4d8dd;
+  margin-bottom: 12rpx;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+}
+
+.m-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+
+.m-avatar.small {
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 28rpx;
+  margin-right: 16rpx;
+}
+
+.m-main {
+  flex: 1;
+}
+
+.m-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.arrow {
+  color: #c4c9ce;
+  font-size: 40rpx;
+}
+
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+
+.sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 36rpx 36rpx calc(36rpx + env(safe-area-inset-bottom));
+}
+
+.sheet-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 16rpx;
+}
+
+.sheet-tip {
+  margin-bottom: 24rpx;
+}
+
+.code-input {
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  padding: 22rpx 24rpx;
+  font-size: 30rpx;
+  margin-bottom: 24rpx;
+}
+
+.sheet-btn {
+  width: 100%;
+  height: 84rpx;
+  line-height: 84rpx;
+}
+
+.cand {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.cand:last-child {
+  border-bottom: none;
+}
+
+.cand-name {
+  flex: 1;
+  font-size: 30rpx;
+  color: #1f2329;
+}
+
+.cand-link {
+  font-size: 28rpx;
+  color: #067ef9;
+}

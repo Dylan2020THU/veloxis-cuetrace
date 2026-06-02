@@ -1,0 +1,97 @@
+.page {
+  min-height: 100vh;
+  background: #f4f6f8;
+  padding: 12rpx 24rpx 40rpx;
+}
+.loading {
+  text-align: center;
+  color: #9aa0a6;
+  padding: 40rpx 0;
+  font-size: 26rpx;
+}
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2329;
+  margin: 28rpx 4rpx 16rpx;
+}
+.empty {
+  text-align: center;
+  color: #9aa0a6;
+  padding: 40rpx 0;
+  font-size: 26rpx;
+}
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-bottom: 12rpx;
+}
+.badge {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+  color: #fff;
+}
+.badge.coach {
+  background: #067ef9;
+}
+.badge.table {
+  background: #16b777;
+}
+.badge.friend {
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+}
+.target {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+.price {
+  font-size: 24rpx;
+  color: #f5503e;
+  font-weight: 600;
+}
+.join {
+  font-size: 22rpx;
+  color: #9aa0a6;
+}
+.row {
+  display: flex;
+  font-size: 26rpx;
+  margin-top: 6rpx;
+}
+.row .lbl {
+  color: #9aa0a6;
+  width: 90rpx;
+}
+.row .val {
+  color: #1f2329;
+  flex: 1;
+}
+.note {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #4b5056;
+  background: #f7f8fa;
+  border-radius: 12rpx;
+  padding: 14rpx;
+}
+.cancel {
+  margin-top: 20rpx;
+  text-align: center;
+  border: 1rpx solid #e3e5e8;
+  color: #6b7075;
+  font-size: 26rpx;
+  padding: 14rpx 0;
+  border-radius: 36rpx;
+}

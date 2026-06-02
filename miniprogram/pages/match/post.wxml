@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="form">
+    <picker class="row" mode="selector" range="{{halls}}" range-key="name" value="{{hallIndex}}" bindchange="onHall">
+      <text class="lbl">球厅</text>
+      <text class="val">{{halls[hallIndex].name || '请选择'}} ›</text>
+    </picker>
+
+    <picker class="row" mode="selector" range="{{gameTypes}}" value="{{gameIndex}}" bindchange="onGame">
+      <text class="lbl">玩法</text>
+      <text class="val">{{gameTypes[gameIndex]}} ›</text>
+    </picker>
+
+    <picker class="row" mode="selector" range="{{dateOptions}}" value="{{dateIndex}}" bindchange="onDate">
+      <text class="lbl">日期</text>
+      <text class="val">{{dateOptions[dateIndex]}} ›</text>
+    </picker>
+
+    <picker class="row" mode="selector" range="{{timeOptions}}" value="{{timeIndex}}" bindchange="onTime">
+      <text class="lbl">时间</text>
+      <text class="val">{{timeOptions[timeIndex]}} ›</text>
+    </picker>
+
+    <view class="note-box">
+      <text class="lbl">备注</text>
+      <textarea
+        class="note-input"
+        placeholder="说点什么吧，例如水平、人数要求…"
+        value="{{note}}"
+        maxlength="100"
+        bindinput="onNote"
+      />
+    </view>
+  </view>
+
+  <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="submit">发布约球邀约</view>
+</view>

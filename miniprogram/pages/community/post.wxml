@@ -1,0 +1,41 @@
+<view class="page">
+  <view class="mode-switch">
+    <view class="mode {{mode === 'image' ? 'active' : ''}}" data-mode="image" bindtap="switchMode">图文</view>
+    <view class="mode {{mode === 'video' ? 'active' : ''}}" data-mode="video" bindtap="switchMode">视频</view>
+  </view>
+
+  <view class="card">
+    <input class="title-input" placeholder="填写标题会更受欢迎哦" value="{{title}}" bindinput="onTitleInput" maxlength="30" />
+    <textarea class="content-input" placeholder="分享你的训练心得、技巧、打卡..." value="{{content}}" bindinput="onContentInput" maxlength="500" />
+
+    <!-- 图文模式 -->
+    <view wx:if="{{mode === 'image'}}" class="media-grid">
+      <view class="media-item" wx:for="{{images}}" wx:key="*this">
+        <image class="media-img" src="{{item}}" mode="aspectFill"></image>
+        <view class="media-del" data-index="{{index}}" catchtap="removeImage">×</view>
+      </view>
+      <view wx:if="{{images.length < 9}}" class="media-add" bindtap="chooseImages">
+        <text class="add-plus">+</text>
+        <text class="add-text">添加图片</text>
+      </view>
+    </view>
+
+    <!-- 视频模式 -->
+    <view wx:else class="video-area">
+      <view wx:if="{{video}}" class="video-item">
+        <video class="video-preview" src="{{video}}" poster="{{videoCover}}"></video>
+        <view class="media-del" catchtap="removeVideo">×</view>
+      </view>
+      <view wx:else class="media-add big" bindtap="chooseVideo">
+        <text class="add-plus">+</text>
+        <text class="add-text">添加视频</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="submit-bar">
+    <button class="btn-primary submit-btn" disabled="{{submitting}}" bindtap="submit">
+      {{ submitting ? '发布中...' : '发布' }}
+    </button>
+  </view>
+</view>

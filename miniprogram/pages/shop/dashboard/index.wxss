@@ -1,0 +1,137 @@
+.loading {
+  padding: 80rpx 0;
+  text-align: center;
+  color: #8a9099;
+  font-size: 26rpx;
+}
+
+.edit-tip {
+  margin: 8rpx 0 24rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.field:last-of-type {
+  border-bottom: none;
+}
+
+.field-label {
+  font-size: 30rpx;
+  color: #1f2329;
+  flex: 0 0 180rpx;
+}
+
+.field-input {
+  flex: 1;
+  font-size: 30rpx;
+  text-align: right;
+}
+
+.field-value {
+  font-size: 30rpx;
+  color: #1f2329;
+  text-align: right;
+}
+
+.arrow {
+  color: #c4c9ce;
+  font-size: 36rpx;
+  margin-left: 8rpx;
+}
+
+.save-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  margin-top: 24rpx;
+}
+
+.hero {
+  background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
+  padding: 48rpx 40rpx 40rpx;
+  color: #fff;
+}
+
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.hero-sub {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 8rpx;
+}
+
+.stats {
+  display: flex;
+  margin-top: 36rpx;
+}
+
+.stat {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  opacity: 0.85;
+  margin-top: 6rpx;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.entry:last-child {
+  border-bottom: none;
+}
+
+.entry-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 32rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+
+.entry-main {
+  flex: 1;
+}
+
+.entry-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.row-label {
+  font-size: 30rpx;
+  color: #1f2329;
+}

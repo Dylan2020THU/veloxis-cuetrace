@@ -1,0 +1,50 @@
+.page {
+  min-height: 100vh;
+  background: #f4f6f8;
+  padding: 24rpx;
+}
+.form {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 0;
+  border-bottom: 1rpx solid #f0f1f3;
+  font-size: 30rpx;
+}
+.row .lbl {
+  color: #6b7075;
+}
+.row .val {
+  color: #1f2329;
+}
+.note-box {
+  padding: 24rpx 0;
+}
+.note-box .lbl {
+  color: #6b7075;
+  font-size: 30rpx;
+}
+.note-input {
+  margin-top: 16rpx;
+  width: 100%;
+  min-height: 140rpx;
+  font-size: 28rpx;
+  color: #1f2329;
+}
+.submit {
+  margin-top: 40rpx;
+  text-align: center;
+  background: #067ef9;
+  color: #fff;
+  font-size: 32rpx;
+  padding: 26rpx 0;
+  border-radius: 44rpx;
+}
+.submit.disabled {
+  opacity: 0.6;
+}

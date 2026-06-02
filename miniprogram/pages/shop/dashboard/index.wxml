@@ -1,0 +1,73 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <!-- 店铺资料设置 -->
+  <view wx:elif="{{editing}}" class="card">
+    <view class="section-title">店铺资料</view>
+    <view class="muted edit-tip">设置店铺名称与所属台球厅</view>
+    <view class="field">
+      <text class="field-label">店铺名称</text>
+      <input class="field-input" placeholder="如：大川激流·旗舰店" value="{{shopName}}" bindinput="onNameInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">所属台球厅</text>
+      <picker mode="selector" range="{{hallNames}}" value="{{hallIndex}}" bindchange="onHallChange">
+        <view class="field-value">
+          {{ hallNames.length ? hallNames[hallIndex] : '暂无可选' }}
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+    </view>
+    <button class="btn-primary save-btn" disabled="{{submitting}}" bindtap="saveShop">
+      {{ submitting ? '保存中...' : '保存店铺资料' }}
+    </button>
+  </view>
+
+  <!-- 已设置：概览 + 入口 -->
+  <block wx:else>
+    <view class="hero">
+      <view class="hero-title">{{shop.name}}</view>
+      <view class="hero-sub">所属台球厅：{{shop.hallName}}</view>
+      <view class="stats">
+        <view class="stat">
+          <view class="stat-num">{{coachCount}}</view>
+          <view class="stat-label">在管教练</view>
+        </view>
+        <view class="stat">
+          <view class="stat-num">{{memberCount}}</view>
+          <view class="stat-label">本店会员</view>
+        </view>
+        <view class="stat">
+          <view class="stat-num">{{totalHoursText}}</view>
+          <view class="stat-label">总训练(h)</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="entry" bindtap="goCoaches">
+        <view class="entry-icon">教</view>
+        <view class="entry-main">
+          <view class="entry-title">教练管理</view>
+          <view class="muted">统一管理本店台球教练</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="entry" bindtap="goMembers">
+        <view class="entry-icon">会</view>
+        <view class="entry-main">
+          <view class="entry-title">会员训练统计</view>
+          <view class="muted">查看打卡天数与训练时长</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="row" bindtap="startEdit">
+        <text class="row-label">编辑店铺资料</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </block>
+</view>

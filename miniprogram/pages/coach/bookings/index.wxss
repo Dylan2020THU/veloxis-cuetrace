@@ -1,0 +1,88 @@
+.page {
+  min-height: 100vh;
+  background: #f4f6f8;
+  padding: 24rpx;
+}
+.loading {
+  text-align: center;
+  color: #9aa0a6;
+  padding: 40rpx 0;
+  font-size: 26rpx;
+}
+.summary {
+  font-size: 26rpx;
+  color: #6b7075;
+  margin: 4rpx 4rpx 20rpx;
+}
+.empty {
+  text-align: center;
+  color: #9aa0a6;
+  padding: 100rpx 40rpx;
+  font-size: 26rpx;
+}
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: #067ef9;
+  color: #fff;
+  font-size: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.who {
+  flex: 1;
+  margin-left: 16rpx;
+  display: flex;
+  flex-direction: column;
+}
+.who .name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+.who .sub {
+  font-size: 22rpx;
+  color: #9aa0a6;
+  margin-top: 4rpx;
+}
+.price {
+  font-size: 26rpx;
+  color: #f5503e;
+  font-weight: 600;
+}
+.row {
+  display: flex;
+  font-size: 26rpx;
+  margin-top: 6rpx;
+}
+.row .lbl {
+  color: #9aa0a6;
+  width: 90rpx;
+}
+.row .val {
+  color: #1f2329;
+  flex: 1;
+}
+.note {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #4b5056;
+  background: #f7f8fa;
+  border-radius: 12rpx;
+  padding: 14rpx;
+}

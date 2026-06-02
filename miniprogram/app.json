@@ -1,0 +1,64 @@
+{
+  "pages": [
+    "pages/checkin/index",
+    "pages/training/add",
+    "pages/profile/index",
+    "pages/coach/profile/index",
+    "pages/coach/members/index",
+    "pages/coach/member/index",
+    "pages/coach/bookings/index",
+    "pages/shop/dashboard/index",
+    "pages/shop/coaches/index",
+    "pages/shop/members/index",
+    "pages/community/index",
+    "pages/community/detail",
+    "pages/community/post",
+    "pages/match/index",
+    "pages/match/post",
+    "pages/match/mine"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#067EF9",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "大川激流",
+    "backgroundColor": "#F4F6F8",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#9aa0a6",
+    "selectedColor": "#067EF9",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/checkin/index",
+        "text": "打卡"
+      },
+      {
+        "pagePath": "pages/community/index",
+        "text": "社区"
+      },
+      {
+        "pagePath": "pages/match/index",
+        "text": "约球"
+      },
+      {
+        "pagePath": "pages/training/add",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于展示你所在地区的台球动态"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation"],
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

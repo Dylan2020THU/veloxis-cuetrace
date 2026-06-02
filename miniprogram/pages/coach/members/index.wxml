@@ -1,0 +1,58 @@
+<view class="page">
+  <view class="header">
+    <text class="count">已绑定 {{members.length}} 名学员</text>
+    <view class="add-link" bindtap="openAdd">+ 添加学员</view>
+  </view>
+
+  <view wx:if="{{members.length === 0}}" class="empty card">
+    <view class="empty-icon">○</view>
+    <view class="muted">还没有绑定学员，点击右上角添加</view>
+  </view>
+
+  <view wx:else class="list">
+    <view
+      class="member card"
+      wx:for="{{members}}"
+      wx:key="openid"
+      data-openid="{{item.openid}}"
+      data-nickname="{{item.nickname}}"
+      bindtap="viewMember"
+    >
+      <view class="m-avatar">{{item.nickname[0]}}</view>
+      <view class="m-main">
+        <view class="m-name">{{item.nickname}}</view>
+        <view class="muted">点击查看训练数据</view>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+</view>
+
+<!-- 添加学员弹层 -->
+<view wx:if="{{showAdd}}" class="mask" bindtap="closeAdd">
+  <view class="sheet" catchtap="">
+    <view class="sheet-title">添加学员</view>
+
+    <block wx:if="{{cloudReady}}">
+      <view class="muted sheet-tip">输入会员编码（会员的用户标识）进行绑定</view>
+      <input class="code-input" placeholder="会员编码" value="{{memberCode}}" bindinput="onCodeInput" />
+      <button class="btn-primary sheet-btn" bindtap="linkByCode">绑定</button>
+    </block>
+
+    <block wx:else>
+      <view class="muted sheet-tip">选择一名演示会员进行绑定</view>
+      <view wx:if="{{linkable.length === 0}}" class="muted">已无可绑定的演示会员</view>
+      <view
+        class="cand"
+        wx:for="{{linkable}}"
+        wx:key="openid"
+        data-openid="{{item.openid}}"
+        bindtap="linkDemo"
+      >
+        <view class="m-avatar small">{{item.nickname[0]}}</view>
+        <text class="cand-name">{{item.nickname}}</text>
+        <text class="cand-link">绑定</text>
+      </view>
+    </block>
+  </view>
+</view>

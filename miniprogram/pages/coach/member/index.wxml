@@ -1,0 +1,50 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-name">{{nickname}}</view>
+    <view class="hero-sub">学员训练概览（教练只读视图）</view>
+    <view class="stats">
+      <view class="stat">
+        <view class="stat-num">{{totalDays}}</view>
+        <view class="stat-label">累计打卡天</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{totalHoursText}}</view>
+        <view class="stat-label">累计时长(h)</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{streak}}</view>
+        <view class="stat-label">连续打卡天</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">训练热力图</view>
+    <view class="muted year-tip">近一年 · 单日时长越长颜色越深</view>
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <heatmap wx:else stats="{{stats}}" bind:select="onSelectDay"></heatmap>
+  </view>
+
+  <view class="card">
+    <view class="detail-head">
+      <view class="section-title">{{selectedLabel || '当日'}}训练明细</view>
+      <view wx:if="{{selectedTotalText}}" class="detail-total">总时长 {{selectedTotalText}}</view>
+    </view>
+
+    <view wx:if="{{detailList.length === 0}}" class="empty">
+      <view class="empty-icon">○</view>
+      <view class="muted">这一天没有训练记录</view>
+    </view>
+
+    <view wx:else class="detail-list">
+      <view class="detail-item" wx:for="{{detailList}}" wx:key="_id">
+        <view class="dot"></view>
+        <view class="detail-main">
+          <view class="hall">{{item.hallName || '未知台球厅'}}</view>
+          <view class="muted">{{item.startTime}} 开始</view>
+        </view>
+        <view class="duration">{{item.durationText}}</view>
+      </view>
+    </view>
+  </view>
+</view>

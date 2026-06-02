@@ -1,0 +1,103 @@
+.page {
+  padding-bottom: 180rpx;
+}
+
+.form-tip {
+  margin: 8rpx 0 24rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.field-label {
+  font-size: 30rpx;
+  color: #1f2329;
+  flex: 0 0 140rpx;
+}
+
+.field-value {
+  font-size: 30rpx;
+  color: #1f2329;
+  text-align: right;
+}
+
+.arrow {
+  color: #c4c9ce;
+  margin-left: 8rpx;
+}
+
+.duration-input {
+  display: flex;
+  align-items: center;
+}
+
+.num-input {
+  width: 96rpx;
+  height: 64rpx;
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  text-align: center;
+  font-size: 30rpx;
+  margin: 0 8rpx;
+}
+
+.unit {
+  font-size: 26rpx;
+  color: #8a9099;
+  margin-right: 12rpx;
+}
+
+.tips-card {
+  padding-bottom: 16rpx;
+}
+
+.tip-row {
+  display: flex;
+  align-items: center;
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  color: #1f2329;
+}
+
+.tip-cell {
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 6rpx;
+  margin-right: 16rpx;
+}
+
+.tip-cell.l1 {
+  background: rgba(6, 126, 249, 0.35);
+}
+
+.tip-cell.l2 {
+  background: rgba(6, 126, 249, 0.65);
+}
+
+.tip-cell.l3 {
+  background: rgba(6, 126, 249, 1);
+}
+
+.submit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.submit-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+}

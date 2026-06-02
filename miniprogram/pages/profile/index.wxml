@@ -1,0 +1,73 @@
+<view class="page">
+  <view class="profile-head">
+    <view class="avatar">{{nickname[0]}}</view>
+    <view class="name">{{nickname}}</view>
+    <view class="role">大川激流 · {{roleLabel}}</view>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <text class="row-label">运行模式</text>
+      <text class="row-value">{{ cloudReady ? '云开发' : '本地演示数据' }}</text>
+    </view>
+    <view class="row">
+      <text class="row-label">用户标识</text>
+      <text class="row-value ellipsis">{{openid}}</text>
+    </view>
+    <view class="row">
+      <text class="row-label">当前身份</text>
+      <view class="row-value switch-line" bindtap="switchRole">
+        <text class="role-tag {{ role !== 'member' ? 'active' : '' }}">{{roleLabel}}</text>
+        <text class="switch-text">点击切换</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 教练工作台：仅教练身份可见，会员看不到教练界面 -->
+  <view wx:if="{{isCoach}}" class="card">
+    <view class="section-title">教练工作台</view>
+    <view class="entry" bindtap="goCoachProfile">
+      <text class="entry-title">我的教练资料</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="entry" bindtap="goCoachMembers">
+      <text class="entry-title">我的学员</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="entry" bindtap="goCoachBookings">
+      <text class="entry-title">谁约了我</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 店家工作台：仅店家身份可见 -->
+  <view wx:elif="{{isShop}}" class="card">
+    <view class="section-title">店家工作台</view>
+    <view class="entry" bindtap="goShopDashboard">
+      <text class="entry-title">店铺管理台</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 会员身份：引导成为教练 / 店家 -->
+  <view wx:else class="card">
+    <view class="section-title">开通更多身份</view>
+    <view class="muted become-tip">教练可接收学员看数据；店家可管理教练与会员统计</view>
+    <view class="become-actions">
+      <button class="btn-primary become-btn" bindtap="goCoachProfile">成为教练</button>
+      <button class="ghost-btn become-btn" bindtap="goShopDashboard">成为店家</button>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="muted">功能路线图</view>
+    <view class="plan-row done">会员端 · 训练打卡可视化</view>
+    <view class="plan-row done">教练端 · 资料认证 / 时段 / 收费 / 学员数据</view>
+    <view class="plan-row done">店家端 · 教练管理 / 会员训练统计（本期）</view>
+    <view class="plan-row">台球社区 · 视频图文发帖</view>
+  </view>
+
+  <view wx:if="{{!cloudReady}}" class="card">
+    <button class="reset-btn" bindtap="resetMock">重置演示数据</button>
+  </view>
+</view>

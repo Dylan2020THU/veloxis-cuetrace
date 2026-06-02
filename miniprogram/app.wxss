@@ -1,0 +1,46 @@
+/* 大川激流 全局样式 */
+page {
+  --brand: #067EF9;
+  --brand-1: rgba(6, 126, 249, 0.35);
+  --brand-2: rgba(6, 126, 249, 0.65);
+  --brand-3: rgba(6, 126, 249, 1);
+  --empty: #ebedf0;
+  --bg: #f4f6f8;
+  --text: #1f2329;
+  --text-weak: #8a9099;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--text-weak);
+  font-size: 24rpx;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.btn-primary[disabled] {
+  background: #b7d6ff;
+  color: #fff;
+}

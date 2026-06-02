@@ -1,0 +1,147 @@
+.profile-head {
+  background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
+  color: #fff;
+  padding: 60rpx 40rpx;
+  text-align: center;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  line-height: 120rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 56rpx;
+  margin: 0 auto 16rpx;
+}
+
+.name {
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.role {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 6rpx;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row-label {
+  font-size: 28rpx;
+  color: #1f2329;
+}
+
+.row-value {
+  font-size: 28rpx;
+  color: #8a9099;
+  max-width: 60%;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-row {
+  font-size: 28rpx;
+  color: #1f2329;
+  margin-top: 20rpx;
+}
+
+.reset-btn {
+  background: #f4f6f8;
+  color: #067ef9;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+}
+
+.switch-line {
+  display: flex;
+  align-items: center;
+}
+
+.role-tag {
+  background: #eef1f4;
+  color: #8a9099;
+  font-size: 24rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+}
+
+.role-tag.active {
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+}
+
+.switch-text {
+  font-size: 24rpx;
+  color: #067ef9;
+  margin-left: 16rpx;
+}
+
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.entry:last-child {
+  border-bottom: none;
+}
+
+.entry-title {
+  font-size: 30rpx;
+  color: #1f2329;
+}
+
+.arrow {
+  color: #c4c9ce;
+  font-size: 36rpx;
+}
+
+.become-tip {
+  margin: 8rpx 0 24rpx;
+}
+
+.become-actions {
+  display: flex;
+}
+
+.become-btn {
+  flex: 1;
+  height: 84rpx;
+  line-height: 84rpx;
+  margin: 0 8rpx;
+}
+
+.ghost-btn {
+  background: rgba(6, 126, 249, 0.1);
+  color: #067ef9;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.plan-row.done {
+  color: #1f2329;
+}
+
+.plan-row.done::before {
+  content: '✓ ';
+  color: #067ef9;
+}

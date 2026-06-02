@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="summary card">
+    <view class="sum-item">
+      <view class="sum-num">{{members.length}}</view>
+      <view class="muted">本店会员</view>
+    </view>
+    <view class="sum-item">
+      <view class="sum-num">{{totalDays}}</view>
+      <view class="muted">累计打卡天</view>
+    </view>
+    <view class="sum-item">
+      <view class="sum-num">{{totalHoursText}}</view>
+      <view class="muted">累计时长(h)</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view wx:elif="{{members.length === 0}}" class="empty card">
+    <view class="empty-icon">○</view>
+    <view class="muted">本店暂无会员训练记录</view>
+  </view>
+
+  <view wx:else class="card">
+    <view class="table-head">
+      <text class="th name">会员</text>
+      <text class="th">打卡天数</text>
+      <text class="th">训练时长</text>
+    </view>
+    <view class="trow" wx:for="{{members}}" wx:key="openid">
+      <view class="td name">
+        <view class="m-avatar">{{item.nickname[0]}}</view>
+        <text class="m-name">{{item.nickname}}</text>
+      </view>
+      <text class="td days">{{item.checkinDays}} 天</text>
+      <text class="td hours">{{item.hoursText}} h</text>
+    </view>
+  </view>
+</view>

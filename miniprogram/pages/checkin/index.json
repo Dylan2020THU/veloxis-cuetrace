@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "训练打卡",
+  "usingComponents": {
+    "heatmap": "/components/heatmap/index"
+  }
+}

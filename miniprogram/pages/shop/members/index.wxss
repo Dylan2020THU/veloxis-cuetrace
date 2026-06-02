@@ -1,0 +1,99 @@
+.summary {
+  display: flex;
+}
+
+.sum-item {
+  flex: 1;
+  text-align: center;
+}
+
+.sum-num {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #067ef9;
+  line-height: 1.2;
+}
+
+.loading {
+  padding: 80rpx 0;
+  text-align: center;
+  color: #8a9099;
+  font-size: 26rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: #d4d8dd;
+  margin-bottom: 12rpx;
+}
+
+.table-head {
+  display: flex;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.th {
+  flex: 1;
+  font-size: 24rpx;
+  color: #8a9099;
+  text-align: center;
+}
+
+.th.name,
+.td.name {
+  flex: 1.4;
+  text-align: left;
+}
+
+.trow {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.trow:last-child {
+  border-bottom: none;
+}
+
+.td {
+  flex: 1;
+  font-size: 28rpx;
+  text-align: center;
+  color: #1f2329;
+}
+
+.td.name {
+  display: flex;
+  align-items: center;
+}
+
+.m-avatar {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.m-name {
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.td.hours {
+  color: #067ef9;
+  font-weight: 600;
+}

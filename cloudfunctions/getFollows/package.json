@@ -1,0 +1,9 @@
+{
+  "name": "getFollows",
+  "version": "1.0.0",
+  "description": "大川激流 - 关注列表",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

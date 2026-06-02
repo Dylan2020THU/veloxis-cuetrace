@@ -1,0 +1,109 @@
+.hero {
+  background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
+  padding: 48rpx 40rpx 40rpx;
+  color: #fff;
+}
+
+.hero-name {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.hero-sub {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 8rpx;
+}
+
+.stats {
+  display: flex;
+  margin-top: 36rpx;
+}
+
+.stat {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  opacity: 0.85;
+  margin-top: 6rpx;
+}
+
+.year-tip {
+  margin: 8rpx 0 28rpx;
+}
+
+.loading {
+  padding: 60rpx 0;
+  text-align: center;
+  color: #8a9099;
+  font-size: 26rpx;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.detail-total {
+  font-size: 24rpx;
+  color: #067ef9;
+  font-weight: 500;
+}
+
+.empty {
+  padding: 50rpx 0;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: #d4d8dd;
+  margin-bottom: 12rpx;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f2f4;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #067ef9;
+  margin-right: 20rpx;
+  flex: 0 0 14rpx;
+}
+
+.detail-main {
+  flex: 1;
+}
+
+.hall {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1f2329;
+}
+
+.duration {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #067ef9;
+}

@@ -1,0 +1,9 @@
+{
+  "name": "getHeatmap",
+  "version": "1.0.0",
+  "description": "大川激流 - 聚合每日训练统计",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "学员训练数据",
+  "usingComponents": {
+    "heatmap": "/components/heatmap/index"
+  }
+}
