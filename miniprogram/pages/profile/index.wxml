@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page theme-{{theme}}">
   <view class="profile-head">
     <view class="avatar">{{nickname[0]}}</view>
     <view class="name">{{nickname}}</view>
@@ -18,6 +18,13 @@
       <text class="row-label">当前身份</text>
       <view class="row-value switch-line" bindtap="switchRole">
         <text class="role-tag {{ role !== 'member' ? 'active' : '' }}">{{roleLabel}}</text>
+        <text class="switch-text">点击切换</text>
+      </view>
+    </view>
+    <view class="row" bindtap="switchTheme">
+      <text class="row-label">背景模式</text>
+      <view class="row-value switch-line">
+        <text class="theme-val">{{themeModeLabel}}</text>
         <text class="switch-text">点击切换</text>
       </view>
     </view>
@@ -63,11 +70,15 @@
     <view class="muted">功能路线图</view>
     <view class="plan-row done">会员端 · 训练打卡可视化</view>
     <view class="plan-row done">教练端 · 资料认证 / 时段 / 收费 / 学员数据</view>
-    <view class="plan-row done">店家端 · 教练管理 / 会员训练统计（本期）</view>
+    <view class="plan-row done">店家端 · 教练名单 / 会员训练统计（本期）</view>
     <view class="plan-row">台球社区 · 视频图文发帖</view>
   </view>
 
   <view wx:if="{{!cloudReady}}" class="card">
     <button class="reset-btn" bindtap="resetMock">重置演示数据</button>
+  </view>
+
+  <view class="card">
+    <button class="logout-btn" bindtap="logout">退出账号</button>
   </view>
 </view>

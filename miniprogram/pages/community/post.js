@@ -1,6 +1,7 @@
 const data = require('../../services/data');
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     mode: 'image', // image | video
     title: '',

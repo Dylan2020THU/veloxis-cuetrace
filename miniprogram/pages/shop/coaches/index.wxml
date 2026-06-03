@@ -1,6 +1,6 @@
-<view class="page">
+<view class="page theme-{{theme}}">
   <view class="header">
-    <text class="count">在管教练 {{coaches.length}} 名</text>
+    <text class="count">本店教练 {{coaches.length}} 名</text>
     <view class="add-link" bindtap="openAdd">+ 添加教练</view>
   </view>
 

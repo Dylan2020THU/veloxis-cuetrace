@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page theme-{{theme}}">
   <view class="header">
     <text class="count">已绑定 {{members.length}} 名学员</text>
     <view class="add-link" bindtap="openAdd">+ 添加学员</view>
@@ -11,17 +11,20 @@
 
   <view wx:else class="list">
     <view
-      class="member card"
+      class="member card {{item.training ? 'training' : ''}}"
       wx:for="{{members}}"
       wx:key="openid"
       data-openid="{{item.openid}}"
       data-nickname="{{item.nickname}}"
       bindtap="viewMember"
     >
-      <view class="m-avatar">{{item.nickname[0]}}</view>
+      <view class="m-avatar-wrap">
+        <view class="m-avatar">{{item.nickname[0]}}</view>
+        <view wx:if="{{item.online}}" class="online-dot"></view>
+      </view>
       <view class="m-main">
         <view class="m-name">{{item.nickname}}</view>
-        <view class="muted">点击查看训练数据</view>
+        <view class="muted">{{item.training ? '在练 · 点击查看训练数据' : '点击查看训练数据'}}</view>
       </view>
       <text class="arrow">›</text>
     </view>

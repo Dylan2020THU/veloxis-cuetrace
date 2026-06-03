@@ -3,6 +3,7 @@ const data = require('../../../services/data');
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 Page({
+  behaviors: [require('../../../utils/themeBehavior')],
   data: {
     weekdays: WEEKDAYS,
     avatar: '',

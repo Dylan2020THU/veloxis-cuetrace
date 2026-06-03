@@ -1,9 +1,0 @@
-{
-  "name": "linkMember",
-  "version": "1.0.0",
-  "description": "大川激流 - 教练绑定会员",
-  "main": "index.js",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3"
-  }
-}

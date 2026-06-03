@@ -1,6 +1,16 @@
 const data = require('../../../services/data');
 
+// 简单确定性 hash：用于演示阶段稳定地生成学员的「在练 / 在线」状态
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 Page({
+  behaviors: [require('../../../utils/themeBehavior')],
   data: {
     members: [],
     linkable: [],
@@ -10,12 +20,26 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     this.setData({ cloudReady: getApp().globalData.cloudReady });
     this.loadMembers();
   },
 
   loadMembers() {
-    data.getMyMembers().then((members) => this.setData({ members }));
+    data.getMyMembers().then((members) => {
+      // TODO: training（是否在练）/ online（是否在线）应由真实业务数据提供。
+      // 当前为演示阶段：用 openid 确定性派生，便于查看底色与绿点效果。
+      const list = (members || []).map((m) => {
+        const h = hashCode(m.openid || '');
+        return Object.assign({}, m, {
+          training: h % 3 !== 0,
+          online: h % 2 === 0
+        });
+      });
+      this.setData({ members: list });
+    });
   },
 
   openAdd() {

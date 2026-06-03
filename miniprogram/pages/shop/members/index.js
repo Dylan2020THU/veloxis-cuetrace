@@ -2,6 +2,7 @@ const data = require('../../../services/data');
 const { formatDuration } = require('../../../utils/color');
 
 Page({
+  behaviors: [require('../../../utils/themeBehavior')],
   data: {
     members: [],
     loading: true,

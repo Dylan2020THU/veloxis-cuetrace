@@ -3,6 +3,7 @@ const { today, addDays, toKey } = require('../../utils/date');
 const { formatDuration } = require('../../utils/color');
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     stats: [],
     totalDays: 0,
@@ -20,6 +21,9 @@ Page({
 
   // 从其它页面（如新增记录）返回时刷新
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     if (!this.data.loading) {
       this.loadHeatmap();
     }

@@ -14,6 +14,7 @@ function timeAgo(ts) {
 }
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     postId: '',
     post: null,

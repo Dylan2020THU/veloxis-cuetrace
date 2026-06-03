@@ -36,7 +36,7 @@ const DEMO_MEMBERS = [
   { openid: 'member_sun', nickname: '孙一鸣', avatar: '' }
 ];
 
-// 演示用教练（供店家"教练管理"添加）
+// 演示用教练（供店家"教练名单"添加）
 const DEMO_COACHES = [
   {
     openid: 'coach_lin',

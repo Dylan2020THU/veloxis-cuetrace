@@ -1,3 +1,8 @@
+/* 底部留白：避免最后一张卡片被固定底栏遮挡 */
+.page {
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
 .profile-head {
   background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
   color: #fff;
@@ -65,6 +70,14 @@
   background: #f4f6f8;
   color: #067ef9;
   font-size: 28rpx;
+  border-radius: 12rpx;
+}
+
+.logout-btn {
+  background: rgba(229, 69, 69, 0.1);
+  color: #e54545;
+  font-size: 30rpx;
+  font-weight: 500;
   border-radius: 12rpx;
 }
 

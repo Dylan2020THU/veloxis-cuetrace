@@ -17,6 +17,7 @@ function buildDateOptions() {
 }
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     halls: [],
     hallIndex: 0,

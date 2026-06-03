@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/login/index",
     "pages/checkin/index",
     "pages/training/add",
     "pages/profile/index",
@@ -25,6 +26,7 @@
     "backgroundTextStyle": "light"
   },
   "tabBar": {
+    "custom": true,
     "color": "#9aa0a6",
     "selectedColor": "#067EF9",
     "backgroundColor": "#ffffff",
@@ -45,6 +47,10 @@
       {
         "pagePath": "pages/training/add",
         "text": "记录"
+      },
+      {
+        "pagePath": "pages/coach/members/index",
+        "text": "我的学员"
       },
       {
         "pagePath": "pages/profile/index",

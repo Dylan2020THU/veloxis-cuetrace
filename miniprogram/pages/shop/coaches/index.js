@@ -1,6 +1,7 @@
 const data = require('../../../services/data');
 
 Page({
+  behaviors: [require('../../../utils/themeBehavior')],
   data: {
     coaches: [],
     linkable: [],

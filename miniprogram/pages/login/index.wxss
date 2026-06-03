@@ -1,0 +1,238 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.login-wrap {
+  padding: 80rpx 48rpx 60rpx;
+}
+
+/* 品牌区 */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 56rpx;
+}
+.brand-logo {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 28rpx;
+  background: var(--brand);
+  color: #fff;
+  font-size: 60rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 28rpx rgba(6, 126, 249, 0.3);
+}
+.brand-name {
+  margin-top: 24rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+.brand-sub {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+
+/* 身份选择：纵向排列的全宽 AI 海报卡 */
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+  margin-bottom: 48rpx;
+}
+.role-poster {
+  position: relative;
+  width: 100%;
+  height: 240rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  border: 2rpx solid var(--border);
+  box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.12);
+  transition: all 0.25s ease;
+}
+.role-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* 左→右渐隐遮罩，保证左侧文字清晰 */
+.role-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(8, 10, 16, 0.78) 0%, rgba(8, 10, 16, 0.32) 45%, rgba(8, 10, 16, 0) 75%);
+}
+.role-info {
+  position: absolute;
+  left: 36rpx;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.role-label {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 4rpx;
+  text-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.5);
+}
+.role-desc {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.5);
+}
+
+/* 选中态：电光蓝描边 + 外发光 + 右上角对勾 */
+.role-poster.active {
+  border-color: var(--brand-3);
+  box-shadow: 0 0 0 4rpx rgba(6, 126, 249, 0.35), 0 10rpx 32rpx rgba(6, 126, 249, 0.4);
+  transform: translateY(-2rpx);
+}
+.role-check {
+  position: absolute;
+  right: 24rpx;
+  top: 24rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255, 255, 255, 0.6);
+  background: rgba(8, 10, 16, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.role-poster.active .role-check {
+  border-color: var(--brand-3);
+  background: var(--brand-3);
+}
+.role-check-dot {
+  width: 20rpx;
+  height: 12rpx;
+  border-left: 4rpx solid #fff;
+  border-bottom: 4rpx solid #fff;
+  transform: rotate(-45deg) translate(2rpx, -2rpx);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.role-poster.active .role-check-dot {
+  opacity: 1;
+}
+
+/* 第一步：下一步按钮 */
+.next-btn {
+  margin-top: 8rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 46rpx;
+}
+
+/* 第二步：顶部返回 + 当前身份 */
+.step2-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
+}
+.back {
+  font-size: 30rpx;
+  color: var(--brand);
+  font-weight: 500;
+}
+.cur-role {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+
+/* 登录表单卡片：玻璃拟态 + 电光蓝顶部光晕 */
+.login-card {
+  position: relative;
+  background: var(--card-bg);
+  border: 2rpx solid var(--border);
+  border-radius: 28rpx;
+  padding: 44rpx 32rpx 48rpx;
+  box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6rpx;
+  background: linear-gradient(90deg, rgba(6, 126, 249, 0) 0%, var(--brand-3) 50%, rgba(6, 126, 249, 0) 100%);
+}
+
+.seg {
+  display: flex;
+  background: var(--bg-elev);
+  border-radius: 16rpx;
+  padding: 6rpx;
+  margin-bottom: 36rpx;
+}
+.seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 26rpx;
+  color: var(--text-sub);
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+.seg-item.active {
+  background: var(--card-bg);
+  color: var(--brand);
+  font-weight: 600;
+  box-shadow: 0 2rpx 10rpx rgba(6, 126, 249, 0.18);
+}
+
+/* 圆角填充式输入框 */
+.field {
+  display: flex;
+  align-items: center;
+  height: 92rpx;
+  margin-bottom: 24rpx;
+  padding: 0 28rpx;
+  background: var(--bg-elev);
+  border: 2rpx solid var(--border);
+  border-radius: 18rpx;
+}
+.input {
+  flex: 1;
+  font-size: 30rpx;
+  color: var(--text);
+}
+.placeholder {
+  color: var(--text-weak);
+}
+
+.field-code .input {
+  margin-right: 24rpx;
+}
+.code-btn {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: var(--brand);
+  padding: 12rpx 24rpx;
+  border: 2rpx solid var(--brand);
+  border-radius: 12rpx;
+}
+.code-btn.disabled {
+  color: var(--text-weak);
+  border-color: var(--border);
+}
+
+.login-btn {
+  margin-top: 48rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 46rpx;
+  box-shadow: 0 10rpx 28rpx rgba(6, 126, 249, 0.35);
+}

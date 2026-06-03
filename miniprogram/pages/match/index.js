@@ -23,6 +23,7 @@ function buildDateOptions() {
 const TIME_OPTIONS = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '21:00'];
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     tabs: TABS,
     active: 'friend',
@@ -43,6 +44,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     this.loadAll();
   },
 

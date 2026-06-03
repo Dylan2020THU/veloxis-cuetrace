@@ -21,7 +21,7 @@
   </view>
 </template>
 
-<view class="page">
+<view class="page theme-{{theme}}">
   <!-- 顶部三 tab：关注 / 发现 / 地区(城市) -->
   <view class="top-tabs">
     <view class="tab {{tab === 'follow' ? 'active' : ''}}" data-tab="follow" bindtap="switchTab">关注</view>

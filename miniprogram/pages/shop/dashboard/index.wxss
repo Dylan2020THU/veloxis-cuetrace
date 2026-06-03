@@ -1,60 +1,19 @@
+.page {
+  padding-bottom: 40rpx;
+}
+
 .loading {
-  padding: 80rpx 0;
+  padding: 120rpx 0;
   text-align: center;
   color: #8a9099;
-  font-size: 26rpx;
+  font-size: 28rpx;
 }
 
-.edit-tip {
-  margin: 8rpx 0 24rpx;
-}
-
-.field {
-  display: flex;
-  align-items: center;
-  padding: 28rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
-}
-
-.field:last-of-type {
-  border-bottom: none;
-}
-
-.field-label {
-  font-size: 30rpx;
-  color: #1f2329;
-  flex: 0 0 180rpx;
-}
-
-.field-input {
-  flex: 1;
-  font-size: 30rpx;
-  text-align: right;
-}
-
-.field-value {
-  font-size: 30rpx;
-  color: #1f2329;
-  text-align: right;
-}
-
-.arrow {
-  color: #c4c9ce;
-  font-size: 36rpx;
-  margin-left: 8rpx;
-}
-
-.save-btn {
-  width: 100%;
-  height: 88rpx;
-  line-height: 88rpx;
-  margin-top: 24rpx;
-}
-
+/* ============ 顶部概览 ============ */
 .hero {
   background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
-  padding: 48rpx 40rpx 40rpx;
   color: #fff;
+  padding: 56rpx 40rpx 44rpx;
 }
 
 .hero-title {
@@ -63,38 +22,63 @@
 }
 
 .hero-sub {
-  font-size: 24rpx;
-  opacity: 0.85;
-  margin-top: 8rpx;
+  font-size: 26rpx;
+  opacity: 0.88;
+  margin-top: 10rpx;
 }
 
 .stats {
   display: flex;
   margin-top: 36rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 20rpx;
+  padding: 28rpx 0;
 }
 
 .stat {
   flex: 1;
   text-align: center;
+  position: relative;
+}
+
+.stat::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 20%;
+  height: 60%;
+  width: 1rpx;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.stat:last-child::after {
+  display: none;
 }
 
 .stat-num {
-  font-size: 48rpx;
+  font-size: 46rpx;
   font-weight: 700;
   line-height: 1.1;
+  color: #fff;
 }
 
 .stat-label {
-  font-size: 22rpx;
+  font-size: 24rpx;
   opacity: 0.85;
-  margin-top: 6rpx;
+  margin-top: 10rpx;
 }
 
+/* 暗色下统计数字仍处于蓝色 hero 上，保持亮色 */
+.theme-dark .stat-num {
+  color: #fff;
+}
+
+/* ============ 功能入口 ============ */
 .entry {
   display: flex;
   align-items: center;
-  padding: 28rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .entry:last-child {
@@ -107,24 +91,34 @@
   border-radius: 20rpx;
   background: rgba(6, 126, 249, 0.12);
   color: #067ef9;
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 24rpx;
+  flex: 0 0 80rpx;
 }
 
 .entry-main {
   flex: 1;
+  min-width: 0;
 }
 
 .entry-title {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 600;
   color: #1f2329;
+  margin-bottom: 6rpx;
 }
 
+.arrow {
+  color: #c4c9ce;
+  font-size: 40rpx;
+  margin-left: 12rpx;
+}
+
+/* ============ 编辑店铺资料行 ============ */
 .row {
   display: flex;
   align-items: center;
@@ -134,4 +128,52 @@
 .row-label {
   font-size: 30rpx;
   color: #1f2329;
+}
+
+.theme-dark .row-label {
+  color: var(--text);
+}
+
+/* ============ 设置表单 ============ */
+.edit-tip {
+  margin: 8rpx 0 28rpx;
+}
+
+.field {
+  margin-bottom: 28rpx;
+}
+
+.field-label {
+  display: block;
+  font-size: 26rpx;
+  color: #8a9099;
+  margin-bottom: 14rpx;
+}
+
+.field-input,
+.field-value {
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  padding: 22rpx 24rpx;
+  font-size: 30rpx;
+  color: #1f2329;
+}
+
+.field-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-dark .field-input,
+.theme-dark .field-value {
+  background: var(--bg-elev);
+  color: var(--text);
+}
+
+.save-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  margin-top: 16rpx;
 }

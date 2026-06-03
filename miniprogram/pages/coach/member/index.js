@@ -3,6 +3,7 @@ const { today, addDays, toKey } = require('../../../utils/date');
 const { formatDuration } = require('../../../utils/color');
 
 Page({
+  behaviors: [require('../../../utils/themeBehavior')],
   data: {
     targetOpenid: '',
     nickname: '',

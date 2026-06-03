@@ -2,6 +2,7 @@ const data = require('../../services/data');
 const { today, toKey } = require('../../utils/date');
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     halls: [],
     hallNames: [],
@@ -21,6 +22,12 @@ Page({
         hallNames: halls.map((h) => h.name)
       });
     });
+  },
+
+  onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
   },
 
   onHallChange(e) {

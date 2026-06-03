@@ -2,8 +2,11 @@ const mock = require('../../utils/mock');
 const data = require('../../services/data');
 
 const ROLE_LABEL = { member: '会员', coach: '教练', shop: '店家' };
+const THEME_LABEL = { light: '白天模式', dark: '夜间模式', system: '跟随系统' };
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
+
   data: {
     nickname: '大川会员',
     cloudReady: false,
@@ -13,10 +16,15 @@ Page({
     isCoach: false,
     isShop: false,
     hasCoachProfile: false,
-    hasShopProfile: false
+    hasShopProfile: false,
+    themeMode: 'system',
+    themeModeLabel: '跟随系统'
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     const app = getApp();
     const role = mock.getRole();
     this.setData({
@@ -25,10 +33,25 @@ Page({
       role,
       roleLabel: ROLE_LABEL[role] || '会员',
       isCoach: role === 'coach',
-      isShop: role === 'shop'
+      isShop: role === 'shop',
+      themeMode: app.globalData.themeMode,
+      themeModeLabel: THEME_LABEL[app.globalData.themeMode] || '跟随系统'
     });
     data.getCoachProfile().then((p) => this.setData({ hasCoachProfile: !!p }));
     data.getShopProfile().then((p) => this.setData({ hasShopProfile: !!p }));
+  },
+
+  switchTheme() {
+    const modes = ['light', 'dark', 'system'];
+    wx.showActionSheet({
+      itemList: ['白天模式', '夜间模式', '跟随系统'],
+      success: (res) => {
+        const mode = modes[res.tapIndex];
+        const app = getApp();
+        app.setThemeMode(mode);
+        this.setData({ themeMode: mode, themeModeLabel: THEME_LABEL[mode] });
+      }
+    });
   },
 
   goCoachProfile() {
@@ -36,7 +59,7 @@ Page({
   },
 
   goCoachMembers() {
-    wx.navigateTo({ url: '/pages/coach/members/index' });
+    wx.switchTab({ url: '/pages/coach/members/index' });
   },
 
   goCoachBookings() {
@@ -76,7 +99,29 @@ Page({
         isCoach: next === 'coach',
         isShop: next === 'shop'
       });
+      if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+        this.getTabBar().refresh();
+      }
       wx.showToast({ title: `已切换为${ROLE_LABEL[next]}`, icon: 'none' });
+    });
+  },
+
+  logout() {
+    wx.showModal({
+      title: '退出账号',
+      content: '确定要退出当前账号吗？',
+      confirmText: '退出',
+      confirmColor: '#e54545',
+      success: (res) => {
+        if (!res.confirm) return;
+        const app = getApp();
+        if (app && app.globalData) app.globalData.openid = '';
+        // 清除登录身份，避免冷启动自动恢复上次身份
+        try {
+          wx.removeStorageSync('dc_role');
+        } catch (e) {}
+        wx.reLaunch({ url: '/pages/login/index' });
+      }
     });
   },
 

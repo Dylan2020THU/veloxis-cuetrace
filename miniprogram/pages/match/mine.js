@@ -1,6 +1,7 @@
 const data = require('../../services/data.js');
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     loading: true,
     bookings: [],

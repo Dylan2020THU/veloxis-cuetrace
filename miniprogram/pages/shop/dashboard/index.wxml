@@ -1,12 +1,12 @@
-<view class="page">
+<view class="page theme-{{theme}}">
   <view wx:if="{{loading}}" class="loading">加载中...</view>
 
-  <!-- 店铺资料设置 -->
+  <!-- 球厅资料设置 -->
   <view wx:elif="{{editing}}" class="card">
-    <view class="section-title">店铺资料</view>
-    <view class="muted edit-tip">设置店铺名称与所属台球厅</view>
+    <view class="section-title">球厅资料</view>
+    <view class="muted edit-tip">设置球厅名称与所属台球厅</view>
     <view class="field">
-      <text class="field-label">店铺名称</text>
+      <text class="field-label">球厅名称</text>
       <input class="field-input" placeholder="如：大川激流·旗舰店" value="{{shopName}}" bindinput="onNameInput" />
     </view>
     <view class="field">
@@ -19,7 +19,7 @@
       </picker>
     </view>
     <button class="btn-primary save-btn" disabled="{{submitting}}" bindtap="saveShop">
-      {{ submitting ? '保存中...' : '保存店铺资料' }}
+      {{ submitting ? '保存中...' : '保存球厅资料' }}
     </button>
   </view>
 
@@ -31,7 +31,7 @@
       <view class="stats">
         <view class="stat">
           <view class="stat-num">{{coachCount}}</view>
-          <view class="stat-label">在管教练</view>
+          <view class="stat-label">本店教练</view>
         </view>
         <view class="stat">
           <view class="stat-num">{{memberCount}}</view>
@@ -48,7 +48,7 @@
       <view class="entry" bindtap="goCoaches">
         <view class="entry-icon">教</view>
         <view class="entry-main">
-          <view class="entry-title">教练管理</view>
+          <view class="entry-title">教练名单</view>
           <view class="muted">统一管理本店台球教练</view>
         </view>
         <text class="arrow">›</text>
@@ -65,7 +65,7 @@
 
     <view class="card">
       <view class="row" bindtap="startEdit">
-        <text class="row-label">编辑店铺资料</text>
+        <text class="row-label">编辑球厅资料</text>
         <text class="arrow">›</text>
       </view>
     </view>

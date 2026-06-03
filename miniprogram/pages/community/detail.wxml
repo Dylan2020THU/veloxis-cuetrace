@@ -2,7 +2,7 @@
 
 <view wx:elif="{{!post}}" class="loading">动态不存在或已删除</view>
 
-<view wx:else class="page">
+<view wx:else class="page theme-{{theme}}">
   <!-- 媒体区 -->
   <view wx:if="{{post.type === 'video' && post.video}}" class="media">
     <video class="video" src="{{post.video}}" poster="{{post.cover}}" controls></video>

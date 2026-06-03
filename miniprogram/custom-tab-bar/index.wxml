@@ -1,0 +1,12 @@
+<view class="tab-bar {{theme==='dark'?'dark':''}}">
+  <view
+    class="tab-item {{activePath == item.path ? 'active' : ''}}"
+    wx:for="{{list}}"
+    wx:key="path"
+    data-path="{{item.path}}"
+    bindtap="onTap"
+  >
+    <view class="tab-icon" style="-webkit-mask-image:url('{{item.icon}}');mask-image:url('{{item.icon}}');"></view>
+    <view class="tab-text">{{item.text}}</view>
+  </view>
+</view>

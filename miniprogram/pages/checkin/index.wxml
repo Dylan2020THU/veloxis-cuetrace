@@ -1,7 +1,7 @@
-<view class="page">
+<view class="page theme-{{theme}}">
   <view class="hero">
-    <view class="hero-title">大川激流 · 训练打卡</view>
-    <view class="hero-sub">坚持训练，点亮每一天的大川蓝</view>
+    <view class="hero-title">训练印记打卡</view>
+    <view class="hero-sub">未有知而不行者，知而不行是未知</view>
     <view class="stats">
       <view class="stat">
         <view class="stat-num">{{totalDays}}</view>
@@ -19,7 +19,7 @@
   </view>
 
   <view class="card">
-    <view class="section-title">训练热力图</view>
+    <view class="section-title">个人印记图</view>
     <view class="muted year-tip">近一年 · 单日时长越长颜色越深</view>
     <view wx:if="{{loading}}" class="loading">加载中...</view>
     <heatmap wx:else stats="{{stats}}" bind:select="onSelectDay"></heatmap>
@@ -33,7 +33,7 @@
 
     <view wx:if="{{detailList.length === 0}}" class="empty">
       <view class="empty-icon">○</view>
-      <view class="muted">这一天还没有训练记录</view>
+      <view class="muted">你在休息而你的对手在训练，凭什么赢的是你？</view>
     </view>
 
     <view wx:else class="detail-list">

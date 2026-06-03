@@ -1,6 +1,7 @@
 const data = require('../../services/data');
 
 Page({
+  behaviors: [require('../../utils/themeBehavior')],
   data: {
     tab: 'discover', // discover | follow | region
     city: '北京', // 地区 tab 显示的城市名
@@ -21,6 +22,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     this.loadFeed();
   },
 
