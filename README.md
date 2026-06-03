@@ -1,124 +1,155 @@
-# 大川激流 · 台球训练数据智能管理系统（里程碑 1-4）
+# Veloxis · Billiards Training Data Management System (Milestones 1-5)
 
-微信小程序端的台球训练数据管理系统。已实现**第一代会员端**（GitHub 风格打卡热力图 + 训练明细）、**教练端**（资料认证 / 可约时段 / 收费标准 / 绑定学员看数据）、**店家端**（统一管理教练 / 本店会员训练统计）与**台球社区**（视频/图文发帖、动态流、点赞、评论，类小红书）。基于微信云开发；在未配置云环境时自动回退到内置 mock 数据，可直接在开发者工具中演示。
+A WeChat Mini Program for managing billiards training data. It already ships the **first-generation member side** (GitHub-style check-in heatmap + training details), the **coach side** (profile verification / bookable time slots / pricing / view bound students' data / lesson booking management), the **shop side** (manage coaches / member training statistics), the **billiards community** (video & image posts, feed, likes, comments, follows — Xiaohongshu-style), and **match social** (find a partner / book a coach / book a table). It also includes a **login identity selector**, a **custom bottom tab bar** that renders dynamically by role, and a **dark theme**. Built on WeChat Cloud Development; when no cloud environment is configured it automatically falls back to built-in mock data, so it can be demoed directly in the DevTools.
 
-品牌色「大川蓝」：`#067EF9`（RGB 6,126,249）。
+Brand color "Veloxis Blue": `#067EF9` (RGB 6,126,249).
 
-## 功能一览
+## Feature Overview
 
-### 里程碑 1 · 会员端
+### Login & UI Framework
 
-- 训练打卡热力图：53 周 × 7 天网格，类 GitHub contributions
-  - 当天训练次数 ≥ 1 即点亮格子
-  - 按当日训练总时长分 3 个颜色深度：0-3h（浅）/ 3-8h（中）/ 8h+（深），均为大川蓝深浅
-- 点击格子：顶部 tooltip 显示「今日训练总时长」，下方明细栏列出当天每条记录（台球厅 + 时长），同一天多家分别成行
-- 训练记录录入；顶部汇总：累计打卡天数 / 累计时长 / 连续打卡天数
+- Login identity selector: member / coach / shop entry points; after login, users land on the workspace matching their role
+- Custom bottom tab bar (`custom-tab-bar`): renders tabs dynamically per role (Player: Check-in / Community / Match / Records / Profile; Coach: Check-in / Community / Records / My Students / Profile), with line-style outline icons and active highlight (Veloxis Blue)
+- Dark theme: unified switching via a global `themeBehavior`; nav bar, cards, and icons adapt to the theme
 
-### 里程碑 2 · 教练端
+### Milestone 1 · Member Side
 
-- 身份切换：「我的」页可在会员 / 教练身份间切换；**会员身份看不到教练工作台**（界面隔离）
-- 教练资料：昵称、球龄、教龄、个人照片、资格证书（多图）、一句话介绍
-- 可预约时段（按星期 + 起止时间，可增删）与收费标准（X 元/分钟）
-- 师生绑定：教练绑定会员后，可进入「学员训练数据」只读查看该会员的热力图与明细；
-  云函数侧基于 `coach_member_links` 做**授权校验**，无绑定关系无法查看（会员也无法反向查看教练界面）
+- Training check-in heatmap: 53-week × 7-day grid, GitHub contributions style
+  - A cell lights up when daily training count ≥ 1
+  - Three color depths by total daily duration: 0-3h (light) / 3-8h (medium) / 8h+ (dark), all in shades of Veloxis Blue
+- Tap a cell: a tooltip on top shows "today's total training duration", and the details panel below lists each record for that day (venue + duration); multiple venues on the same day appear on separate rows
+- Training record entry; top summary: total check-in days / total duration / consecutive check-in days
 
-### 里程碑 3 · 店家端
+### Milestone 2 · Coach Side
 
-- 三身份切换（会员 / 教练 / 店家），各身份工作台相互隔离
-- 店铺资料：店铺名称 + 所属台球厅；工作台概览（在管教练数 / 本店会员数 / 总训练时长）
-- 教练名单：统一管理本店台球教练（添加 / 移除 / 查看教练资料）
-- 会员训练统计：按店铺所属台球厅，统计每位会员的**打卡天数**与**训练时长**（去重日期计天数、累计分钟计时长），按时长降序展示
+- Identity switching: the "Profile" page can switch between member / coach roles; **members cannot see the coach workspace** (UI isolation)
+- Coach profile: nickname, playing years, coaching years, personal photo, certificates (multiple images), and a one-line intro
+- Bookable time slots (by weekday + start/end time, add/remove) and pricing (X yuan/minute)
+- Coach-student binding: after a coach binds a member, they can open "Student Training Data" to view that member's heatmap and details (read-only);
+  the cloud function enforces **authorization checks** based on `coach_member_links` — viewing is denied without a binding (members also cannot reverse-view the coach UI)
 
-### 里程碑 4 · 台球社区（类小红书）
+### Milestone 3 · Shop Side
 
-- 动态流：双列瀑布流，封面图自适应高度，视频帖带播放角标；支持下拉刷新
-- 发帖：图文（最多 9 图）/ 视频两种形式，含标题与正文；底部「＋」浮动按钮发起
-- 帖子详情：图片轮播（点击大图预览）/ 视频播放、作者与正文、**点赞**切换、**评论**列表与即时发表
-- 数据：`posts` / `post_likes` / `post_comments` 三集合，点赞按用户去重、评论与帖子计数同步
+- Three-role switching (member / coach / shop), with each workspace fully isolated
+- Shop profile: shop name + affiliated billiards hall; workspace overview (managed coach count / member count / total training duration)
+- Coach roster: centrally manage the shop's coaches (add / remove / view coach profile)
+- Member training statistics: by the shop's affiliated hall, count each member's **check-in days** and **training duration** (distinct dates for days, accumulated minutes for duration), sorted by duration descending
 
-## 目录结构
+### Milestone 4 · Billiards Community (Xiaohongshu-style)
+
+- Feed: two-column waterfall layout, cover images with adaptive height, video posts carry a play badge; supports pull-to-refresh
+- Posting: image (up to 9 images) / video forms, with title and body; triggered by the floating "+" button at the bottom
+- Post detail: image carousel (tap for full-screen preview) / video playback, author and body, **like** toggle, **comment** list and instant posting
+- Data: `posts` / `post_likes` / `post_comments` collections; likes deduped per user, comments and post counts kept in sync
+- Follow: follow / unfollow a post's author (coach); `user_follows` collection deduped per user
+
+### Milestone 5 · Match Social
+
+- The Match page has three sections: **Find a Partner / Book a Coach / Book a Table**
+- Find a Partner: publish a match invitation (venue, time, game type, note); other players can **sign up to join**, with sign-ups deduped per user and join counts kept in sync
+- Book a Coach: pick a date (next 7 days) and time slot to book a coaching lesson, priced by the coach's `yuan/minute`
+- Book a Table: book a table at a specific hall
+- My Matches: view "invitations I started / ones I joined / my bookings" and cancel them
+- Coach lesson management (`pages/coach/bookings`): coaches view bookings initiated by students
+
+## Directory Structure
 
 ```
 veloxis-cuetrace/
 ├── miniprogram/
 │   ├── app.js / app.json / app.wxss
-│   ├── components/heatmap/     # 热力图组件（会员/教练页面复用）
-│   ├── pages/checkin/          # 会员打卡热力图 + 明细（首页）
-│   ├── pages/training/         # 新增训练记录
-│   ├── pages/profile/          # 我的（身份切换 / 教练入口）
-│   ├── pages/coach/profile/    # 教练资料编辑
-│   ├── pages/coach/members/    # 我的学员（绑定 / 列表）
-│   ├── pages/coach/member/     # 查看某学员训练数据（只读）
-│   ├── pages/shop/dashboard/   # 店家工作台（店铺设置 / 概览 / 入口）
-│   ├── pages/shop/coaches/     # 教练名单（添加 / 移除）
-│   ├── pages/shop/members/     # 本店会员训练统计
-│   ├── pages/community/index   # 社区动态流（双列瀑布流）
-│   ├── pages/community/detail  # 帖子详情（图/视频 + 点赞 + 评论）
-│   ├── pages/community/post    # 发布动态（图文 / 视频）
-│   ├── services/data.js        # 数据服务层（云开发 / mock 自动切换）
-│   └── utils/                  # date / color / mock
+│   ├── custom-tab-bar/         # Custom bottom tab bar (dynamic by role + icons)
+│   ├── components/heatmap/     # Heatmap component (reused by member/coach pages)
+│   ├── pages/login/            # Login identity selector (member / coach / shop)
+│   ├── pages/checkin/          # Member check-in heatmap + details (home)
+│   ├── pages/training/         # Add training record
+│   ├── pages/profile/          # Profile (role switch / coach entry)
+│   ├── pages/coach/profile/    # Edit coach profile
+│   ├── pages/coach/members/    # My students (bind / list)
+│   ├── pages/coach/member/     # View a student's training data (read-only)
+│   ├── pages/coach/bookings/   # Coach lesson management (view student bookings)
+│   ├── pages/shop/dashboard/   # Shop workspace (shop settings / overview / entries)
+│   ├── pages/shop/coaches/     # Coach roster (add / remove)
+│   ├── pages/shop/members/     # Member training statistics
+│   ├── pages/community/index   # Community feed (two-column waterfall)
+│   ├── pages/community/detail  # Post detail (image/video + likes + comments + follow)
+│   ├── pages/community/post    # Publish a post (image / video)
+│   ├── pages/match/index       # Match (find partner / book coach / book table)
+│   ├── pages/match/post        # Publish a match invitation
+│   ├── pages/match/mine        # My matches (started / joined / bookings)
+│   ├── services/data.js        # Data service layer (auto switch cloud / mock)
+│   └── utils/                  # date / color / mock / themeBehavior
 ├── cloudfunctions/             # login / getHalls / getHeatmap / getDayDetail / addTraining
 │                               # + saveCoachProfile / getCoachProfile / linkMember / getMyMembers
 │                               # + saveShopProfile / getShopProfile / getShopCoaches
 │                               # + getLinkableCoaches / addShopCoach / removeShopCoach / getShopMembers
 │                               # + createPost / getFeed / getPostDetail / toggleLike / addComment
+│                               # + getFollows / toggleFollow / getCoaches
+│                               # + getMatchPosts / createMatchPost / joinMatch / cancelJoin / cancelMatch
+│                               # + getMyMatches / getMyJoins
+│                               # + createBooking / cancelBooking / getCoachBookings / getMyBookings
 ├── project.config.json
 └── README.md
 ```
 
-## 运行方式
+## How to Run
 
-### 方式 A：本地演示（无需云环境，开箱即用）
+### Option A: Local demo (no cloud environment, works out of the box)
 
-1. 用微信开发者工具「导入项目」，选择本目录。
-2. AppID 可使用「测试号」或你的小程序 AppID（`project.config.json` 默认 `touristappid`）。
-3. 直接编译运行。`miniprogram/app.js` 中 `cloudEnv` 为空时，系统使用内置 mock 数据（首次启动自动播种约 300 天的演示训练记录）。
-4. 「我的」页可点击「重置演示数据」重新生成。
+1. In WeChat DevTools, choose "Import Project" and select this directory.
+2. The AppID can be a "test account" or your own Mini Program AppID (`project.config.json` defaults to `touristappid`).
+3. Compile and run directly. When `cloudEnv` in `miniprogram/app.js` is empty, the system uses built-in mock data (about 300 days of demo training records are seeded on first launch).
+4. On the "Profile" page you can tap "Reset Demo Data" to regenerate it.
 
-### 方式 B：接入微信云开发
+### Option B: Connect WeChat Cloud Development
 
-1. 在开发者工具中开通「云开发」，获得环境 ID。
-2. 修改 `miniprogram/app.js`：
+1. Enable "Cloud Development" in DevTools and obtain an environment ID.
+2. Edit `miniprogram/app.js`:
 
 ```js
 globalData: {
   cloudReady: false,
-  cloudEnv: '你的云开发环境ID',
+  cloudEnv: 'your-cloud-env-id',
   ...
 }
 ```
 
-3. 依次右键 `cloudfunctions/` 下每个函数目录 →「上传并部署：云端安装依赖」。
-4. 在云数据库中创建集合：`users`、`halls`、`training_sessions`、`coaches`、`coach_member_links`、`shops`、`shop_coach_links`、`posts`、`post_likes`、`post_comments`，并给 `halls` 录入若干台球厅、`training_sessions` 录入测试数据（或在小程序内通过「记录训练」写入）。
+3. Right-click each function directory under `cloudfunctions/` → "Upload and Deploy: Install Dependencies in Cloud".
+4. Create these collections in the cloud database: `users`, `halls`, `training_sessions`, `coaches`, `coach_member_links`, `shops`, `shop_coach_links`, `posts`, `post_likes`, `post_comments`, `user_follows`, `matches`, `match_joins`, `bookings`; populate `halls` with some billiards halls and `training_sessions` with test data (or write it in-app via "Record Training").
 
-> 教练端绑定会员 / 店家端添加教练：mock 模式下从演示候选中选择；云端模式下输入对方编码（openid）绑定。
+> Coach binding a member / shop adding a coach: in mock mode you pick from demo candidates; in cloud mode you bind by entering the other party's code (openid).
 
-## 数据模型（云数据库集合）
+## Data Model (Cloud Database Collections)
 
-- `users`：`_openid`、`role`(member/coach/shop)、`nickname`、`avatar`
-- `halls`：`name`、`address`
-- `training_sessions`：`_openid`、`hallId`、`hallName`、`date`(YYYY-MM-DD)、`startTime`、`durationMinutes`
-- `coaches`：`_openid`、`nickname`、`playYears`(球龄)、`coachYears`(教龄)、`avatar`、`certificates`(图片数组)、`intro`、`availability`(可约时段数组)、`pricePerMinute`
-- `coach_member_links`：`coachOpenid`、`memberOpenid`、`status`、`createdAt`
-- `shops`：`_openid`、`name`、`hallId`、`hallName`
-- `shop_coach_links`：`shopOpenid`、`coachOpenid`、`status`、`createdAt`
-- `posts`：`_openid`、`authorName`、`authorAvatar`、`type`(image/video)、`title`、`content`、`images`(数组)、`video`、`cover`、`likeCount`、`commentCount`、`createdAt`
-- `post_likes`：`_openid`、`postId`、`createdAt`
-- `post_comments`：`_openid`、`postId`、`content`、`authorName`、`authorAvatar`、`createdAt`
+- `users`: `_openid`, `role`(member/coach/shop), `nickname`, `avatar`
+- `halls`: `name`, `address`
+- `training_sessions`: `_openid`, `hallId`, `hallName`, `date`(YYYY-MM-DD), `startTime`, `durationMinutes`
+- `coaches`: `_openid`, `nickname`, `playYears`, `coachYears`, `avatar`, `certificates`(image array), `intro`, `availability`(time-slot array), `pricePerMinute`
+- `coach_member_links`: `coachOpenid`, `memberOpenid`, `status`, `createdAt`
+- `shops`: `_openid`, `name`, `hallId`, `hallName`
+- `shop_coach_links`: `shopOpenid`, `coachOpenid`, `status`, `createdAt`
+- `posts`: `_openid`, `authorName`, `authorAvatar`, `type`(image/video), `title`, `content`, `images`(array), `video`, `cover`, `likeCount`, `commentCount`, `createdAt`
+- `post_likes`: `_openid`, `postId`, `createdAt`
+- `post_comments`: `_openid`, `postId`, `content`, `authorName`, `authorAvatar`, `createdAt`
+- `user_follows`: `_openid`, `authorOpenid`, `createdAt` (follow relations, deduped per user)
+- `matches`: `_openid`, `authorName`, `hallId`, `hallName`, `datetime`, `gameType`, `note`, `joinCount`, `status`(open), `createdAt`
+- `match_joins`: `_openid`, `matchId`, `authorName`, `hallName`, `datetime`, `gameType`, `createdAt` (sign-up records)
+- `bookings`: `_openid`, `bookerName`, `type`(coach/table), `targetId`, `targetName`, `hallName`, `datetime`, `note`, `price`, `status`(pending), `createdAt`
 
-颜色分级规则（`utils/color.js` 与 `cloudfunctions/getHeatmap` 保持一致）：
+Color grading rules (`utils/color.js` and `cloudfunctions/getHeatmap` stay consistent):
 
-| 等级 | 当日总时长 | 颜色 |
+| Level | Daily total duration | Color |
 | --- | --- | --- |
-| 0 | 无训练 | `#EBEDF0` |
-| 1 | 0–3 小时 | `rgba(6,126,249,0.35)` |
-| 2 | 3–8 小时 | `rgba(6,126,249,0.65)` |
-| 3 | 8 小时以上 | `rgba(6,126,249,1)` |
+| 0 | No training | `#EBEDF0` |
+| 1 | 0–3 hours | `rgba(6,126,249,0.35)` |
+| 2 | 3–8 hours | `rgba(6,126,249,0.65)` |
+| 3 | Over 8 hours | `rgba(6,126,249,1)` |
 
-## 后续路线图
+## Roadmap
 
-- 里程碑 1：会员端打卡可视化（已完成）
-- 里程碑 2：教练端（资料/资格认证、可约时段、收费标准、绑定会员看数据）（已完成）
-- 里程碑 3：店家端（教练名单、本店会员打卡与时长统计）（已完成）
-- 里程碑 4：台球社区（视频/图文发帖、动态流、点赞、评论）（已完成）
-- 里程碑 5（第二代）：摄像头单人训练 / 双人 PK 数据采集与分析
+- Milestone 1: Member-side check-in visualization (done)
+- Milestone 2: Coach side (profile/certification, bookable slots, pricing, view bound members' data) (done)
+- Milestone 3: Shop side (coach roster, member check-in and duration statistics) (done)
+- Milestone 4: Billiards community (video/image posts, feed, likes, comments, follows) (done)
+- Milestone 5: Match social (find partner / book coach / book table, sign-ups and bookings, coach lesson management) (done)
+- Milestone 6 (second generation): Camera-based solo training / 1v1 PK data capture and analysis
