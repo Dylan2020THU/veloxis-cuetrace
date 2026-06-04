@@ -234,3 +234,21 @@
   border-radius: 36rpx 0 36rpx 0;
   box-shadow: 0 10rpx 28rpx rgba(6, 126, 249, 0.35);
 }
+
+/* 登录 / 注册 切换链接 */
+.alt-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28rpx;
+}
+.alt-text {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+.alt-link {
+  font-size: 26rpx;
+  color: var(--brand);
+  font-weight: 600;
+  margin-left: 6rpx;
+}

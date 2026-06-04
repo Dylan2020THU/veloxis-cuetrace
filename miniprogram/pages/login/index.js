@@ -10,6 +10,9 @@ const ROLES = [
 
 const PHONE_RE = /^1\d{10}$/;
 
+// 本地注册账号存储（演示阶段）
+const ACCOUNTS_KEY = 'dc_accounts';
+
 // 各身份登录后的落地首页
 const HOME_BY_ROLE = {
   member: '/pages/checkin/index',
@@ -29,6 +32,8 @@ Page({
     roleLabel: '球员',
     // 登录步骤：1 = 选择身份，2 = 填写账号
     step: 1,
+    // 第二步的模式：login = 登录，register = 注册
+    mode: 'login',
     // 登录方式：password = 账号密码，sms = 手机验证码
     loginType: 'password',
     account: '',
@@ -36,7 +41,11 @@ Page({
     phone: '',
     code: '',
     counting: false,
-    countdown: 60
+    countdown: 60,
+    // 注册表单
+    regAccount: '',
+    regPassword: '',
+    regConfirm: ''
   },
 
   selectRole(e) {
@@ -52,7 +61,58 @@ Page({
 
   // 第二步 → 第一步（重选身份）
   goPrev() {
-    this.setData({ step: 1 });
+    this.setData({ step: 1, mode: 'login' });
+  },
+
+  // 切换到注册态
+  goRegister() {
+    this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '' });
+  },
+
+  // 注册态 → 返回登录态
+  backToLogin() {
+    this.setData({ mode: 'login' });
+  },
+
+  // 注册（演示阶段：本地校验并保存账号，成功后返回登录态）
+  register() {
+    const account = (this.data.regAccount || '').trim();
+    const { regPassword, regConfirm, role } = this.data;
+    if (!account) {
+      return wx.showToast({ title: '请输入账号', icon: 'none' });
+    }
+    if (!regPassword || regPassword.length < 6) {
+      return wx.showToast({ title: '密码至少 6 位', icon: 'none' });
+    }
+    if (regPassword !== regConfirm) {
+      return wx.showToast({ title: '两次密码不一致', icon: 'none' });
+    }
+
+    let accounts = [];
+    try {
+      accounts = wx.getStorageSync(ACCOUNTS_KEY) || [];
+    } catch (e) {
+      accounts = [];
+    }
+    if (accounts.some((a) => a.account === account && a.role === role)) {
+      return wx.showToast({ title: '该账号已注册', icon: 'none' });
+    }
+    accounts.push({ role, account, password: regPassword, createdAt: Date.now() });
+    try {
+      wx.setStorageSync(ACCOUNTS_KEY, accounts);
+    } catch (e) {}
+
+    wx.showToast({ title: '注册成功，请登录', icon: 'none' });
+    // 返回登录态并回填账号，方便直接登录
+    this.setData({
+      mode: 'login',
+      loginType: 'password',
+      account,
+      password: '',
+      regAccount: '',
+      regPassword: '',
+      regConfirm: ''
+    });
   },
 
   switchType(e) {

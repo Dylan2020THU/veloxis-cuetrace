@@ -4,7 +4,7 @@
       <image class="brand-logo" src="/images/login/logo-cuetrace.jpeg" mode="aspectFit"></image>
       <view class="brand-name">强化印记·台球</view>
       <view class="brand-slogan">每一次挥杆，都值得被记录</view>
-      <view class="brand-sub">{{ step === 1 ? '请选择登录身份' : '使用「' + roleLabel + '」身份登录' }}</view>
+      <view class="brand-sub">{{ step === 1 ? '请选择登录身份' : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
     </view>
 
     <!-- 第一步：身份选择（球员 / 教练 / 店主，全宽 AI 海报卡） -->
@@ -40,6 +40,7 @@
       </view>
 
       <view class="login-card">
+      <block wx:if="{{mode==='login'}}">
       <!-- 登录方式切换 -->
       <view class="seg">
         <view
@@ -111,6 +112,55 @@
       </block>
 
       <button class="btn-primary login-btn" bindtap="submit">登录</button>
+
+      <view class="alt-line">
+        <text class="alt-text">还没有账号？</text>
+        <text class="alt-link" bindtap="goRegister">注册账号</text>
+      </view>
+      </block>
+
+      <!-- 注册态 -->
+      <block wx:else>
+        <view class="field">
+          <input
+            class="input"
+            placeholder="请输入账号"
+            placeholder-class="placeholder"
+            data-field="regAccount"
+            value="{{regAccount}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请设置密码（至少 6 位）"
+            placeholder-class="placeholder"
+            data-field="regPassword"
+            value="{{regPassword}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请再次输入密码"
+            placeholder-class="placeholder"
+            data-field="regConfirm"
+            value="{{regConfirm}}"
+            bindinput="onInput"
+          />
+        </view>
+
+        <button class="btn-primary login-btn" bindtap="register">注册</button>
+
+        <view class="alt-line">
+          <text class="alt-text">已有账号？</text>
+          <text class="alt-link" bindtap="backToLogin">返回登录</text>
+        </view>
+      </block>
       </view>
     </block>
   </view>
