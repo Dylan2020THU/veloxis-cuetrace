@@ -1,5 +1,14 @@
 const data = require('../../../services/data');
 
+// 简单确定性 hash：演示阶段稳定生成教练的「在店 / 在线」状态
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 Page({
   behaviors: [require('../../../utils/themeBehavior')],
   data: {
@@ -16,7 +25,24 @@ Page({
   },
 
   loadCoaches() {
-    data.getShopCoaches().then((coaches) => this.setData({ coaches }));
+    data.getShopCoaches().then((coaches) => {
+      // TODO: online（是否在店/在线）应由真实业务数据提供。
+      // 当前为演示阶段：用 openid 确定性派生，便于查看绿点效果。
+      const list = (coaches || []).map((c) =>
+        Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 })
+      );
+      this.setData({ coaches: list });
+    });
+  },
+
+  // 点击教练，查看其给哪些球员上过课
+  viewCoach(e) {
+    const { openid, nickname } = e.currentTarget.dataset;
+    wx.navigateTo({
+      url: `/pages/shop/coach-students/index?openid=${encodeURIComponent(
+        openid
+      )}&nickname=${encodeURIComponent(nickname)}`
+    });
   },
 
   openAdd() {

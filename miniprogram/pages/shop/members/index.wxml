@@ -28,8 +28,16 @@
       <text class="th">训练时长</text>
     </view>
     <view class="trow" wx:for="{{members}}" wx:key="openid">
-      <view class="td name">
-        <view class="m-avatar">{{item.nickname[0]}}</view>
+      <view
+        class="td name"
+        data-openid="{{item.openid}}"
+        data-nickname="{{item.nickname}}"
+        bindtap="viewMember"
+      >
+        <view class="m-avatar-wrap">
+          <view class="m-avatar">{{item.nickname[0]}}</view>
+          <view wx:if="{{item.online}}" class="online-dot"></view>
+        </view>
         <text class="m-name">{{item.nickname}}</text>
       </view>
       <text class="td days">{{item.checkinDays}} 天</text>

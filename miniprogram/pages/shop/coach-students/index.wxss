@@ -1,0 +1,69 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 8rpx;
+}
+
+.count {
+  font-size: 28rpx;
+  color: #8a9099;
+}
+
+.loading {
+  text-align: center;
+  color: #8a9099;
+  padding: 60rpx 0;
+  font-size: 28rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: #d4d8dd;
+  margin-bottom: 12rpx;
+}
+
+.student {
+  display: flex;
+  align-items: center;
+}
+
+.s-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+  flex: 0 0 88rpx;
+  overflow: hidden;
+}
+
+.s-avatar-img {
+  width: 88rpx;
+  height: 88rpx;
+}
+
+.s-main {
+  flex: 1;
+}
+
+.s-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.arrow {
+  color: #c4c9ce;
+  font-size: 40rpx;
+}

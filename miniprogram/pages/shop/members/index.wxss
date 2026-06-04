@@ -75,6 +75,23 @@
   align-items: center;
 }
 
+.m-avatar-wrap {
+  position: relative;
+  margin-right: 16rpx;
+}
+
+/* 在线绿点：头像框右下角（与教练端「我的学员」一致，适配 60rpx 小头像） */
+.online-dot {
+  position: absolute;
+  right: -2rpx;
+  bottom: -2rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #21c45d;
+  border: 3rpx solid #ffffff;
+}
+
 .m-avatar {
   width: 60rpx;
   height: 60rpx;
@@ -85,12 +102,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16rpx;
 }
 
 .m-name {
   font-size: 30rpx;
   font-weight: 500;
+  color: #067ef9;
 }
 
 .td.hours {

@@ -10,6 +10,7 @@
     "pages/coach/bookings/index",
     "pages/shop/dashboard/index",
     "pages/shop/coaches/index",
+    "pages/shop/coach-students/index",
     "pages/shop/members/index",
     "pages/community/index",
     "pages/community/detail",

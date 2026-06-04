@@ -1,0 +1,33 @@
+<view class="page theme-{{theme}}">
+  <view class="header">
+    <text class="count">{{coachName}} 共带过 {{students.length}} 名学员</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <view wx:elif="{{students.length === 0}}" class="empty card">
+    <view class="empty-icon">○</view>
+    <view class="muted">该教练暂无上课学员记录</view>
+  </view>
+
+  <view wx:else class="list">
+    <view
+      class="student card"
+      wx:for="{{students}}"
+      wx:key="openid"
+      data-openid="{{item.openid}}"
+      data-nickname="{{item.nickname}}"
+      bindtap="viewStudent"
+    >
+      <view class="s-avatar">
+        <image wx:if="{{item.avatar}}" class="s-avatar-img" src="{{item.avatar}}" mode="aspectFill"></image>
+        <text wx:else>{{item.nickname[0]}}</text>
+      </view>
+      <view class="s-main">
+        <view class="s-name">{{item.nickname}}</view>
+        <view class="muted">点击查看训练数据</view>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+</view>

@@ -56,7 +56,7 @@
       <view class="entry" bindtap="goMembers">
         <view class="entry-icon">会</view>
         <view class="entry-main">
-          <view class="entry-title">会员训练统计</view>
+          <view class="entry-title">会员名单</view>
           <view class="muted">查看打卡天数与训练时长</view>
         </view>
         <text class="arrow">›</text>

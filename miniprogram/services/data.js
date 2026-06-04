@@ -262,6 +262,16 @@ function removeShopCoach(coachOpenid) {
   return Promise.resolve({ ok: true });
 }
 
+// 某位教练给哪些球员上过课：返回会员列表 [{ openid, nickname, avatar }]
+function getCoachStudents(coachOpenid) {
+  if (cloudReady()) {
+    return callCloud('getCoachStudents', { coachOpenid }).then(
+      (r) => (r && r.students) || []
+    );
+  }
+  return Promise.resolve(mock.coachStudents(coachOpenid));
+}
+
 // 本店会员训练统计：{ openid, nickname, checkinDays, totalMinutes }
 function getShopMembers() {
   if (cloudReady()) {
@@ -749,6 +759,7 @@ module.exports = {
   getLinkableCoaches,
   addShopCoach,
   removeShopCoach,
+  getCoachStudents,
   getShopMembers,
   uploadImage,
   uploadFile,

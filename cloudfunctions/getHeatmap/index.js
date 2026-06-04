@@ -12,17 +12,32 @@ function levelFromMinutes(totalMinutes) {
   return 3;
 }
 
-// 校验：当 targetOpenid 与本人不同（教练查看会员）时，必须存在有效的师生绑定
+// 店家是否可查看某会员：本店管理的教练中，有人给该会员上过课即可
+async function shopCanViewMember(shopOpenid, memberOpenid) {
+  const shopCoaches = await db
+    .collection('shop_coach_links')
+    .where({ shopOpenid, status: 'active' })
+    .get();
+  const coachOpenids = shopCoaches.data.map((l) => l.coachOpenid);
+  if (!coachOpenids.length) return false;
+  const taught = await db
+    .collection('coach_member_links')
+    .where({ coachOpenid: _.in(coachOpenids), memberOpenid, status: 'active' })
+    .get();
+  return taught.data.length > 0;
+}
+
+// 校验：当 targetOpenid 与本人不同时，需满足以下任一授权：
+// 1) 教练查看自己绑定的会员；2) 店家查看本店教练上过课的会员
 async function resolveTargetOpenid(myOpenid, targetOpenid) {
   if (!targetOpenid || targetOpenid === myOpenid) return myOpenid;
   const link = await db
     .collection('coach_member_links')
     .where({ coachOpenid: myOpenid, memberOpenid: targetOpenid, status: 'active' })
     .get();
-  if (!link.data.length) {
-    throw new Error('无权查看该会员数据');
-  }
-  return targetOpenid;
+  if (link.data.length) return targetOpenid;
+  if (await shopCanViewMember(myOpenid, targetOpenid)) return targetOpenid;
+  throw new Error('无权查看该会员数据');
 }
 
 // 聚合用户在 [startKey, endKey] 区间内每一天的训练统计。

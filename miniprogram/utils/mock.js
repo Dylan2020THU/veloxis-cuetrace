@@ -394,6 +394,27 @@ function ensureSeeded() {
   } catch (e) {}
 }
 
+// 简单确定性 hash：用于演示阶段稳定派生「教练-学员」关系
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+// 演示阶段：确定性地为某位教练派生「给哪些球员上过课」。
+// 真实业务应由训练/课程记录聚合得到，此处仅为演示稳定输出。
+function coachStudents(coachOpenid) {
+  const members = readArray(KEY_MEMBERS);
+  if (!members.length) return [];
+  const picked = members.filter(
+    (m) => hashCode(`${coachOpenid}|${m.openid}`) % 3 !== 0
+  );
+  // 至少返回一名，避免空列表
+  return picked.length ? picked : [members[hashCode(coachOpenid) % members.length]];
+}
+
 // 角色：member / coach（演示态下本地可自由切换）
 function getRole() {
   return readObject(KEY_ROLE, 'member');
@@ -428,6 +449,7 @@ module.exports = {
   writeArray,
   readObject,
   writeObject,
+  coachStudents,
   getRole,
   setRole,
   ensureSeeded

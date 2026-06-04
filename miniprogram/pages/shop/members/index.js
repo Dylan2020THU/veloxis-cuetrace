@@ -1,6 +1,15 @@
 const data = require('../../../services/data');
 const { formatDuration } = require('../../../utils/color');
 
+// 简单确定性 hash：演示阶段稳定生成会员的「在线」状态
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
 Page({
   behaviors: [require('../../../utils/themeBehavior')],
   data: {
@@ -26,7 +35,9 @@ Page({
           totalMinutes += m.totalMinutes || 0;
           return Object.assign({}, m, {
             durationText: formatDuration(m.totalMinutes),
-            hoursText: (m.totalMinutes / 60).toFixed(1)
+            hoursText: (m.totalMinutes / 60).toFixed(1),
+            // TODO: online（是否在线）应由真实业务数据提供；演示阶段用 openid 确定性派生
+            online: hashCode(m.openid || '') % 2 === 0
           });
         });
         this.setData({
@@ -40,5 +51,15 @@ Page({
         console.error('加载会员统计失败', err);
         this.setData({ loading: false });
       });
+  },
+
+  // 点击会员名字，跳转至该会员的训练打卡页面
+  viewMember(e) {
+    const { openid, nickname } = e.currentTarget.dataset;
+    wx.navigateTo({
+      url: `/pages/coach/member/index?openid=${encodeURIComponent(
+        openid
+      )}&nickname=${encodeURIComponent(nickname)}`
+    });
   }
 });

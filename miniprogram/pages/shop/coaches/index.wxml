@@ -10,10 +10,20 @@
   </view>
 
   <view wx:else class="list">
-    <view class="coach card" wx:for="{{coaches}}" wx:key="openid">
-      <view class="c-avatar">
-        <image wx:if="{{item.avatar}}" class="c-avatar-img" src="{{item.avatar}}" mode="aspectFill"></image>
-        <text wx:else>{{item.nickname[0]}}</text>
+    <view
+      class="coach card"
+      wx:for="{{coaches}}"
+      wx:key="openid"
+      data-openid="{{item.openid}}"
+      data-nickname="{{item.nickname}}"
+      bindtap="viewCoach"
+    >
+      <view class="c-avatar-wrap">
+        <view class="c-avatar">
+          <image wx:if="{{item.avatar}}" class="c-avatar-img" src="{{item.avatar}}" mode="aspectFill"></image>
+          <text wx:else>{{item.nickname[0]}}</text>
+        </view>
+        <view wx:if="{{item.online}}" class="online-dot"></view>
       </view>
       <view class="c-main">
         <view class="c-name">{{item.nickname}}</view>
