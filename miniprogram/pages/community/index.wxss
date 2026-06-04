@@ -36,7 +36,7 @@
   transform: translateX(-50%);
   width: 36rpx;
   height: 6rpx;
-  border-radius: 3rpx;
+  border-radius: 1rpx;
   background: #067ef9;
 }
 
@@ -47,12 +47,12 @@
 
 .pin {
   font-size: 24rpx;
-  margin-right: 4rpx;
+  margin-right: 1rpx;
 }
 
 /* 瀑布流 */
 .feed {
-  padding: 8rpx 8rpx 40rpx;
+  padding: 4rpx 4rpx 40rpx;
 }
 
 .loading {
@@ -82,14 +82,16 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0 5rpx;
+  padding: 0 3rpx;
 }
 
 .card {
   background: #fff;
   border-radius: 16rpx;
   overflow: hidden;
-  margin-bottom: 10rpx;
+  padding: 0;
+  margin: 0 0 10rpx;
+  box-shadow: none;
 }
 
 .cover-wrap {
@@ -166,7 +168,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 10rpx;
+  margin-right: 1rpx;
 }
 
 .a-name {
