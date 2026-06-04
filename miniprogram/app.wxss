@@ -130,10 +130,21 @@ page {
   font-size: 24rpx;
 }
 
+/* 原生 button 文字垂直居中兜底：消除默认 2.55em 大行高导致的文字偏下 */
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
 .btn-primary {
   background: var(--brand);
   color: #fff;
-  border-radius: 16rpx;
+  border-radius: 36rpx 0 36rpx 0;
   font-size: 30rpx;
   font-weight: 500;
 }

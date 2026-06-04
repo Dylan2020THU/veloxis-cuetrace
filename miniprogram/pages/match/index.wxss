@@ -153,7 +153,7 @@
   color: #fff;
   font-size: 28rpx;
   padding: 18rpx 0;
-  border-radius: 40rpx;
+  border-radius: 36rpx 0 36rpx 0;
 }
 
 /* 约教练 / 约球桌卡片 */
@@ -205,7 +205,7 @@
   color: #fff;
   font-size: 26rpx;
   padding: 14rpx 32rpx;
-  border-radius: 36rpx;
+  border-radius: 36rpx 0 36rpx 0;
 }
 
 /* 悬浮发布 */
@@ -219,8 +219,10 @@
   background: #067ef9;
   color: #fff;
   font-size: 56rpx;
-  line-height: 92rpx;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   box-shadow: 0 8rpx 24rpx rgba(6, 126, 249, 0.4);
   z-index: 20;
 }
@@ -270,7 +272,7 @@
   flex: 1;
   text-align: center;
   padding: 22rpx 0;
-  border-radius: 44rpx;
+  border-radius: 36rpx 0 36rpx 0;
   font-size: 30rpx;
 }
 .btn.ghost {

@@ -19,7 +19,7 @@
   </view>
 
   <view class="card">
-    <view class="section-title">个人印记图</view>
+    <view class="section-title">个人训练印记图</view>
     <view class="muted year-tip">近一年 · 单日时长越长颜色越深</view>
     <view wx:if="{{loading}}" class="loading">加载中...</view>
     <heatmap wx:else stats="{{stats}}" bind:select="onSelectDay"></heatmap>
@@ -33,7 +33,8 @@
 
     <view wx:if="{{detailList.length === 0}}" class="empty">
       <view class="empty-icon">○</view>
-      <view class="muted">你在休息而你的对手在训练，凭什么赢的是你？</view>
+      <view class="muted">你在休息，而你的对手在训练，凭什么赢的是你？</view>
+      <view class="muted">（今日未训练）</view>
     </view>
 
     <view wx:else class="detail-list">

@@ -43,7 +43,7 @@
   color: #fff;
   font-size: 32rpx;
   padding: 26rpx 0;
-  border-radius: 44rpx;
+  border-radius: 36rpx 0 36rpx 0;
 }
 .submit.disabled {
   opacity: 0.6;

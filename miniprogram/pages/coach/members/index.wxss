@@ -137,7 +137,6 @@
 .sheet-btn {
   width: 100%;
   height: 84rpx;
-  line-height: 84rpx;
 }
 
 .cand {

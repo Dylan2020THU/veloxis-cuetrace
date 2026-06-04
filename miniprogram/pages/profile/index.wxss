@@ -69,8 +69,12 @@
 .reset-btn {
   background: #f4f6f8;
   color: #067ef9;
-  font-size: 28rpx;
-  border-radius: 12rpx;
+  font-size: 30rpx;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx 0 36rpx 0;
 }
 
 .logout-btn {
@@ -78,7 +82,11 @@
   color: #e54545;
   font-size: 30rpx;
   font-weight: 500;
-  border-radius: 12rpx;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx 0 36rpx 0;
 }
 
 .switch-line {
@@ -138,14 +146,16 @@
 .become-btn {
   flex: 1;
   height: 84rpx;
-  line-height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0 8rpx;
 }
 
 .ghost-btn {
   background: rgba(6, 126, 249, 0.1);
   color: #067ef9;
-  border-radius: 16rpx;
+  border-radius: 36rpx 0 36rpx 0;
   font-size: 30rpx;
   font-weight: 500;
 }

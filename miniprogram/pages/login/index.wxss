@@ -129,8 +129,7 @@
 .next-btn {
   margin-top: 8rpx;
   height: 92rpx;
-  line-height: 92rpx;
-  border-radius: 46rpx;
+  border-radius: 36rpx 0 36rpx 0;
 }
 
 /* 第二步：顶部返回 + 当前身份 */
@@ -222,7 +221,7 @@
   color: var(--brand);
   padding: 12rpx 24rpx;
   border: 2rpx solid var(--brand);
-  border-radius: 12rpx;
+  border-radius: 36rpx 0 36rpx 0;
 }
 .code-btn.disabled {
   color: var(--text-weak);
@@ -232,7 +231,6 @@
 .login-btn {
   margin-top: 48rpx;
   height: 92rpx;
-  line-height: 92rpx;
-  border-radius: 46rpx;
+  border-radius: 36rpx 0 36rpx 0;
   box-shadow: 0 10rpx 28rpx rgba(6, 126, 249, 0.35);
 }
