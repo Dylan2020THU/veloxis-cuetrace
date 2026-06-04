@@ -69,5 +69,9 @@
         <text class="arrow">›</text>
       </view>
     </view>
+
+    <view class="card">
+      <button class="logout-btn" bindtap="logout">退出账号</button>
+    </view>
   </block>
 </view>

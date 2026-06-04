@@ -19,6 +19,8 @@ Page({
   },
 
   onShow() {
+    // 店主端首页为根页面，隐藏左上角默认的「返回首页」胶囊，保持左上角干净
+    if (wx.hideHomeButton) wx.hideHomeButton();
     this.load();
   },
 
@@ -110,5 +112,23 @@ Page({
 
   goMembers() {
     wx.navigateTo({ url: '/pages/shop/members/index' });
+  },
+
+  logout() {
+    wx.showModal({
+      title: '退出账号',
+      content: '确定要退出当前账号吗？',
+      confirmText: '退出',
+      confirmColor: '#e54545',
+      success: (res) => {
+        if (!res.confirm) return;
+        const app = getApp();
+        if (app && app.globalData) app.globalData.openid = '';
+        try {
+          wx.removeStorageSync('dc_role');
+        } catch (e) {}
+        wx.reLaunch({ url: '/pages/login/index' });
+      }
+    });
   }
 });

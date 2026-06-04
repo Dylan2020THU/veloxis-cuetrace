@@ -176,3 +176,15 @@
   height: 88rpx;
   margin-top: 16rpx;
 }
+
+.logout-btn {
+  background: rgba(229, 69, 69, 0.1);
+  color: #e54545;
+  font-size: 30rpx;
+  font-weight: 500;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx 0 36rpx 0;
+}
