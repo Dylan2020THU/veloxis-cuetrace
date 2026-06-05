@@ -24,16 +24,16 @@ const KEY_JOINS = 'dc_match_joins';
 const MOCK_OPENID = 'local-demo-user';
 
 const DEFAULT_HALLS = [
-  { _id: 'hall_01', name: '大川激流·旗舰店', address: '城市中心广场 3F' },
-  { _id: 'hall_02', name: '大川激流·滨江店', address: '滨江路 88 号' },
-  { _id: 'hall_03', name: '星河台球俱乐部', address: '高新区软件园' }
+  { _id: 'hall_01', name: '大川激流·旗舰店', address: '城市中心广场 3F', cover: '/images/halls/hall-01.png' },
+  { _id: 'hall_02', name: '大川激流·滨江店', address: '滨江路 88 号', cover: '/images/halls/hall-02.png' },
+  { _id: 'hall_03', name: '星河台球俱乐部', address: '高新区软件园', cover: '/images/halls/hall-03.png' }
 ];
 
 // 演示用会员（供教练绑定与查看其训练数据）
 const DEMO_MEMBERS = [
-  { openid: 'member_zhao', nickname: '赵晓川', avatar: '' },
-  { openid: 'member_qian', nickname: '钱多多', avatar: '' },
-  { openid: 'member_sun', nickname: '孙一鸣', avatar: '' }
+  { openid: 'member_zhao', nickname: '赵晓川', avatar: '/images/avatars/avatar-zhao.png' },
+  { openid: 'member_qian', nickname: '钱多多', avatar: '/images/avatars/avatar-qian.png' },
+  { openid: 'member_sun', nickname: '孙一鸣', avatar: '/images/avatars/avatar-sun.png' }
 ];
 
 // 演示用教练（供店家"教练名单"添加）
@@ -45,7 +45,7 @@ const DEMO_COACHES = [
     coachYears: 8,
     pricePerMinute: 4,
     intro: '前省队队员，专攻斯诺克',
-    avatar: '',
+    avatar: '/images/avatars/avatar-coach-lin.png',
     certificates: [],
     availability: []
   },
@@ -56,7 +56,7 @@ const DEMO_COACHES = [
     coachYears: 4,
     pricePerMinute: 3,
     intro: '中式八球实战派，擅长基础纠错',
-    avatar: '',
+    avatar: '/images/avatars/avatar-coach-wang.png',
     certificates: [],
     availability: []
   },
@@ -67,11 +67,25 @@ const DEMO_COACHES = [
     coachYears: 12,
     pricePerMinute: 5,
     intro: '青少年培训专家，耐心细致',
-    avatar: '',
+    avatar: '/images/avatars/avatar-coach-chen.png',
     certificates: [],
     availability: []
   }
 ];
+
+// 演示用：openid → 人像头像路径，供社区、店家会员、约球记录等多处复用
+const AVATAR_BY_OPENID = {
+  member_zhao: '/images/avatars/avatar-zhao.png',
+  member_qian: '/images/avatars/avatar-qian.png',
+  member_sun: '/images/avatars/avatar-sun.png',
+  coach_lin: '/images/avatars/avatar-coach-lin.png',
+  coach_wang: '/images/avatars/avatar-coach-wang.png',
+  coach_chen: '/images/avatars/avatar-coach-chen.png'
+};
+
+function avatarFor(openid) {
+  return AVATAR_BY_OPENID[openid] || '';
+}
 
 function readArray(key) {
   try {
@@ -228,7 +242,7 @@ function generatePosts() {
     _id: `mock_p_${i}`,
     _openid: p.openid,
     authorName: p.authorName,
-    authorAvatar: '',
+    authorAvatar: avatarFor(p.openid),
     type: p.type,
     title: p.title,
     content: p.content,
@@ -250,6 +264,7 @@ function generateMatches() {
     {
       openid: 'member_zhao',
       authorName: '赵晓川',
+      avatar: '/images/avatars/avatar-zhao.png',
       hallId: 'hall_01',
       hallName: '大川激流·旗舰店',
       datetime: '今晚 20:00',
@@ -260,6 +275,7 @@ function generateMatches() {
     {
       openid: 'member_qian',
       authorName: '钱多多',
+      avatar: '/images/avatars/avatar-qian.png',
       hallId: 'hall_02',
       hallName: '大川激流·滨江店',
       datetime: '周六 14:00',
@@ -270,6 +286,7 @@ function generateMatches() {
     {
       openid: 'member_sun',
       authorName: '孙一鸣',
+      avatar: '/images/avatars/avatar-sun.png',
       hallId: 'hall_03',
       hallName: '星河台球俱乐部',
       datetime: '周日 10:00',
@@ -282,6 +299,7 @@ function generateMatches() {
     _id: `mock_m_${i}`,
     _openid: m.openid,
     authorName: m.authorName,
+    avatar: m.avatar || '',
     hallId: m.hallId,
     hallName: m.hallName,
     datetime: m.datetime,
@@ -302,6 +320,7 @@ function generateBookings() {
       _id: 'mock_b_seed_1',
       _openid: 'member_zhao',
       bookerName: '赵晓川',
+      bookerAvatar: avatarFor('member_zhao'),
       type: 'coach',
       targetId: MOCK_OPENID,
       targetName: '我',
@@ -316,6 +335,7 @@ function generateBookings() {
       _id: 'mock_b_seed_2',
       _openid: 'member_qian',
       bookerName: '钱多多',
+      bookerAvatar: avatarFor('member_qian'),
       type: 'coach',
       targetId: MOCK_OPENID,
       targetName: '我',
@@ -450,6 +470,7 @@ module.exports = {
   readObject,
   writeObject,
   coachStudents,
+  avatarFor,
   getRole,
   setRole,
   ensureSeeded

@@ -45,6 +45,8 @@
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
   background: rgba(6, 126, 249, 0.12);
   color: #067ef9;
   font-size: 30rpx;
@@ -52,6 +54,10 @@
   align-items: center;
   justify-content: center;
   margin-right: 18rpx;
+}
+image.a-avatar,
+image.c-avatar {
+  background: #f0f1f3;
 }
 
 .a-info {
@@ -130,6 +136,7 @@
   width: 60rpx;
   height: 60rpx;
   border-radius: 50%;
+  overflow: hidden;
   background: #eef1f4;
   color: #8a9099;
   font-size: 26rpx;

@@ -19,7 +19,8 @@
       bindtap="viewMember"
     >
       <view class="m-avatar-wrap">
-        <view class="m-avatar">{{item.nickname[0]}}</view>
+        <image wx:if="{{item.avatar}}" class="m-avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+        <view wx:else class="m-avatar">{{item.nickname[0]}}</view>
         <view wx:if="{{item.online}}" class="online-dot"></view>
       </view>
       <view class="m-main">
@@ -52,7 +53,8 @@
         data-openid="{{item.openid}}"
         bindtap="linkDemo"
       >
-        <view class="m-avatar small">{{item.nickname[0]}}</view>
+        <image wx:if="{{item.avatar}}" class="m-avatar small" src="{{item.avatar}}" mode="aspectFill"></image>
+        <view wx:else class="m-avatar small">{{item.nickname[0]}}</view>
         <text class="cand-name">{{item.nickname}}</text>
         <text class="cand-link">绑定</text>
       </view>

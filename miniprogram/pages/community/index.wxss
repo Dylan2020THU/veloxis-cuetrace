@@ -162,6 +162,8 @@
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
   background: rgba(6, 126, 249, 0.12);
   color: #067ef9;
   font-size: 22rpx;
@@ -169,6 +171,9 @@
   align-items: center;
   justify-content: center;
   margin-right: 1rpx;
+}
+image.a-avatar {
+  background: #f0f1f3;
 }
 
 .a-name {

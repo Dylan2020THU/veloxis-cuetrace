@@ -96,12 +96,17 @@
   width: 60rpx;
   height: 60rpx;
   border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
   background: rgba(6, 126, 249, 0.12);
   color: #067ef9;
   font-size: 26rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+image.m-avatar {
+  background: #f0f1f3;
 }
 
 .m-name {

@@ -7,7 +7,8 @@
 
   <view wx:for="{{bookings}}" wx:key="_id" class="card">
     <view class="card-head">
-      <view class="avatar">{{item.bookerName[0]}}</view>
+      <image wx:if="{{item.bookerAvatar}}" class="avatar" src="{{item.bookerAvatar}}" mode="aspectFill"></image>
+      <view wx:else class="avatar">{{item.bookerName[0]}}</view>
       <view class="who">
         <text class="name">{{item.bookerName}}</text>
         <text class="sub">预约了你的教学</text>

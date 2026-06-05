@@ -82,12 +82,18 @@
   width: 64rpx;
   height: 64rpx;
   border-radius: 50%;
+  overflow: hidden;
   background: #067ef9;
   color: #fff;
   font-size: 30rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+/* 人像图片头像 */
+image.avatar {
+  background: #f0f1f3;
 }
 .avatar.big {
   width: 96rpx;
@@ -167,8 +173,22 @@
   flex: 1;
   margin-left: 16rpx;
 }
-.table-info {
-  margin-left: 0;
+
+/* 约球桌门店头像框：圆角正方形 */
+.table-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+  background: #f0f1f3;
+}
+.table-avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #067ef9;
+  color: #fff;
+  font-size: 40rpx;
 }
 .name-line {
   display: flex;

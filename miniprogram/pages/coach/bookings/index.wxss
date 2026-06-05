@@ -36,6 +36,7 @@
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
+  overflow: hidden;
   background: #067ef9;
   color: #fff;
   font-size: 32rpx;
@@ -43,6 +44,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+image.avatar {
+  background: #f0f1f3;
 }
 .who {
   flex: 1;

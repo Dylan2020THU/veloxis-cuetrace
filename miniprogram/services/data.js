@@ -292,6 +292,7 @@ function getShopMembers() {
     .map((openid) => ({
       openid,
       nickname: mockNickname(openid),
+      avatar: mock.avatarFor(openid),
       checkinDays: Object.keys(agg[openid].days).length,
       totalMinutes: agg[openid].totalMinutes
     }))

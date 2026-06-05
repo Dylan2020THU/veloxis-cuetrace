@@ -21,7 +21,8 @@
 
   <view class="content-card">
     <view class="author-row">
-      <view class="a-avatar">{{post.authorName[0]}}</view>
+      <image wx:if="{{post.authorAvatar}}" class="a-avatar" src="{{post.authorAvatar}}" mode="aspectFill"></image>
+      <view wx:else class="a-avatar">{{post.authorName[0]}}</view>
       <view class="a-info">
         <view class="a-name">{{post.authorName}}</view>
         <view class="a-time">{{post.timeText}}{{ post.region ? ' · ' + post.region : '' }}</view>
@@ -42,7 +43,8 @@
     <view class="comments-title">评论 {{comments.length}}</view>
     <view wx:if="{{comments.length === 0}}" class="muted no-comment">还没有评论，来说两句</view>
     <view class="comment" wx:for="{{comments}}" wx:key="_id">
-      <view class="c-avatar">{{item.authorName[0]}}</view>
+      <image wx:if="{{item.authorAvatar}}" class="c-avatar" src="{{item.authorAvatar}}" mode="aspectFill"></image>
+      <view wx:else class="c-avatar">{{item.authorName[0]}}</view>
       <view class="c-main">
         <view class="c-name">{{item.authorName}}</view>
         <view class="c-text">{{item.content}}</view>

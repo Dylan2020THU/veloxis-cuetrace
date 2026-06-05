@@ -69,12 +69,18 @@
   width: 88rpx;
   height: 88rpx;
   border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
   background: rgba(6, 126, 249, 0.12);
   color: #067ef9;
   font-size: 36rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* 人像图片头像 */
+image.m-avatar {
+  background: #f0f1f3;
 }
 
 .m-avatar.small {

@@ -26,7 +26,8 @@
     <view wx:if="{{!loading && !matches.length}}" class="empty">还没有约球邀约，快来发布一条吧～</view>
     <view wx:for="{{matches}}" wx:key="_id" class="card match">
       <view class="match-head">
-        <view class="avatar">{{item.authorName[0]}}</view>
+        <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+        <view wx:else class="avatar">{{item.authorName[0]}}</view>
         <view class="match-meta">
           <text class="name">{{item.authorName}}</text>
           <text class="tag">{{item.gameType}}</text>
@@ -44,7 +45,8 @@
   <view wx:if="{{active === 'coach'}}" class="list">
     <view wx:if="{{!loading && !coaches.length}}" class="empty">暂无可预约教练</view>
     <view wx:for="{{coaches}}" wx:key="openid" class="card coach">
-      <view class="avatar big">{{item.nickname[0]}}</view>
+      <image wx:if="{{item.avatar}}" class="avatar big" src="{{item.avatar}}" mode="aspectFill"></image>
+      <view wx:else class="avatar big">{{item.nickname[0]}}</view>
       <view class="coach-info">
         <view class="name-line">
           <text class="name">{{item.nickname}}</text>
@@ -61,6 +63,8 @@
   <view wx:if="{{active === 'table'}}" class="list">
     <view wx:if="{{!loading && !tables.length}}" class="empty">暂无可预约球桌</view>
     <view wx:for="{{tables}}" wx:key="_id" class="card table">
+      <image wx:if="{{item.cover}}" class="table-avatar" src="{{item.cover}}" mode="aspectFill"></image>
+      <view wx:else class="table-avatar placeholder">{{item.name[0]}}</view>
       <view class="table-info">
         <view class="name-line">
           <text class="name">{{item.name}}</text>

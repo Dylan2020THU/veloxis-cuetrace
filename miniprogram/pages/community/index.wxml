@@ -9,7 +9,8 @@
       <view wx:else class="card-content-2">{{item.content}}</view>
       <view class="card-foot">
         <view class="author">
-          <view class="a-avatar">{{item.authorName[0]}}</view>
+          <image wx:if="{{item.authorAvatar}}" class="a-avatar" src="{{item.authorAvatar}}" mode="aspectFill"></image>
+          <view wx:else class="a-avatar">{{item.authorName[0]}}</view>
           <text class="a-name">{{item.authorName}}</text>
         </view>
         <view class="like">
