@@ -31,11 +31,16 @@
         <view class="match-meta">
           <text class="name">{{item.authorName}}</text>
           <text class="tag">{{item.gameType}}</text>
+          <text class="tag green" wx:if="{{item.level}}">{{item.level}}</text>
         </view>
         <view class="join-num">{{item.joinCount}} 人已报名</view>
       </view>
       <view class="row"><text class="lbl">球厅</text><text class="val">{{item.hallName}}</text></view>
       <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
+      <view class="badges" wx:if="{{item.gender || item.age}}">
+        <text class="badge" wx:if="{{item.gender}}">{{item.gender}}</text>
+        <text class="badge" wx:if="{{item.age}}">{{item.age}}</text>
+      </view>
       <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
       <view class="join-btn" data-id="{{item._id}}" bindtap="joinMatch">我要报名</view>
     </view>
@@ -68,12 +73,13 @@
       <view class="table-info">
         <view class="name-line">
           <text class="name">{{item.name}}</text>
-          <text class="price">{{item.pricePerHour}} 元/小时</text>
+          <text class="price red" wx:if="{{item.minPricePerHour > 0}}">{{item.minPricePerHour}}元/小时起</text>
+          <text class="price" wx:else>暂无报价</text>
         </view>
         <view class="sub">{{item.address}}</view>
         <view class="sub light">共 {{item.tableCount}} 张球桌可预约</view>
       </view>
-      <view class="book-btn" data-index="{{index}}" bindtap="openTableBooking">预约</view>
+      <view class="book-btn" data-index="{{index}}" bindtap="openTableBooking">选择</view>
     </view>
   </view>
 
@@ -84,18 +90,24 @@
 <!-- 预约弹窗 -->
 <view wx:if="{{booking}}" class="mask" bindtap="closeBooking">
   <view class="sheet" catchtap="noop">
-    <view class="sheet-title">预约{{booking.type === 'coach' ? '教练' : '球桌'}}</view>
-    <view class="sheet-row"><text class="lbl">对象</text><text class="val">{{booking.targetName}}</text></view>
-    <view class="sheet-row"><text class="lbl">价格</text><text class="val">{{booking.priceLabel}}</text></view>
+    <view class="sheet-title">选择{{booking.type === 'coach' ? '教练' : '球桌'}}</view>
+    <view class="sheet-row"><text class="lbl">球厅：</text><text class="val">{{booking.targetName}}</text></view>
+    <picker wx:if="{{booking.tableTypeOptions && booking.tableTypeOptions.length}}" class="sheet-row pick" mode="selector" range="{{booking.tableTypeOptions}}" range-key="name" value="{{booking.tableTypeIndex || 0}}" bindchange="onTableTypeChange">
+      <text class="lbl">桌型：</text><text class="val">{{booking.tableTypeOptions[booking.tableTypeIndex || 0].name}} ›</text>
+    </picker>
+    <view class="sheet-row" wx:if="{{booking.type === 'table'}}">
+      <text class="lbl">价格：</text>
+      <text class="val highlight">{{booking.priceLabel}}</text>
+    </view>
     <picker class="sheet-row pick" mode="selector" range="{{dateOptions}}" value="{{dateIndex}}" bindchange="onDateChange">
-      <text class="lbl">日期</text><text class="val">{{dateOptions[dateIndex]}} ›</text>
+      <text class="lbl">日期：</text><text class="val">{{dateOptions[dateIndex]}} ›</text>
     </picker>
     <picker class="sheet-row pick" mode="selector" range="{{timeOptions}}" value="{{timeIndex}}" bindchange="onTimeChange">
-      <text class="lbl">时间</text><text class="val">{{timeOptions[timeIndex]}} ›</text>
+      <text class="lbl">时间：</text><text class="val">{{timeOptions[timeIndex]}} ›</text>
     </picker>
     <view class="sheet-actions">
       <view class="btn ghost" bindtap="closeBooking">取消</view>
-      <view class="btn primary" bindtap="confirmBooking">确认预约</view>
+      <view class="btn primary" bindtap="confirmBooking">确认{{booking.type === 'table' ? '预约' : '预约'}}</view>
     </view>
   </view>
 </view>

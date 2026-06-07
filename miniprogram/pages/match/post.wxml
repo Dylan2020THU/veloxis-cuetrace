@@ -1,30 +1,45 @@
 <view class="page theme-{{theme}}">
   <view class="form">
     <picker class="row" mode="selector" range="{{halls}}" range-key="name" value="{{hallIndex}}" bindchange="onHall">
-      <text class="lbl">球厅</text>
+      <text class="lbl">球厅：</text>
       <text class="val">{{halls[hallIndex].name || '请选择'}} ›</text>
     </picker>
 
     <picker class="row" mode="selector" range="{{gameTypes}}" value="{{gameIndex}}" bindchange="onGame">
-      <text class="lbl">玩法</text>
+      <text class="lbl">玩法：</text>
       <text class="val">{{gameTypes[gameIndex]}} ›</text>
     </picker>
 
+    <picker class="row" mode="selector" range="{{levels}}" value="{{levelIndex}}" bindchange="onLevel">
+      <text class="lbl">档位：</text>
+      <text class="val">{{levels[levelIndex]}} ›</text>
+    </picker>
+
+    <picker class="row" mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGender">
+      <text class="lbl">性别：</text>
+      <text class="val">{{genderOptions[genderIndex]}} ›</text>
+    </picker>
+
+    <picker class="row" mode="selector" range="{{ageOptions}}" value="{{ageIndex}}" bindchange="onAge">
+      <text class="lbl">年龄：</text>
+      <text class="val">{{ageOptions[ageIndex]}} ›</text>
+    </picker>
+
     <picker class="row" mode="selector" range="{{dateOptions}}" value="{{dateIndex}}" bindchange="onDate">
-      <text class="lbl">日期</text>
+      <text class="lbl">日期：</text>
       <text class="val">{{dateOptions[dateIndex]}} ›</text>
     </picker>
 
     <picker class="row" mode="selector" range="{{timeOptions}}" value="{{timeIndex}}" bindchange="onTime">
-      <text class="lbl">时间</text>
+      <text class="lbl">时间：</text>
       <text class="val">{{timeOptions[timeIndex]}} ›</text>
     </picker>
 
     <view class="note-box">
-      <text class="lbl">备注</text>
+      <text class="lbl">备注：</text>
       <textarea
         class="note-input"
-        placeholder="说点什么吧，例如水平、人数要求…"
+        placeholder="撂下一些狠话，以及其他你想说的。"
         value="{{note}}"
         maxlength="100"
         bindinput="onNote"
@@ -32,5 +47,5 @@
     </view>
   </view>
 
-  <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="submit">发布约球邀约</view>
+  <view class="submit {{submitting ? 'disabled' : ''}}" bindtap="submit">发布邀约</view>
 </view>

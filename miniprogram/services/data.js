@@ -21,17 +21,53 @@ function initData() {
   }
 }
 
-// 登录，返回 openid
-function login() {
+function applyUserResult(r) {
+  const app = getApp();
+  if (!app || !app.globalData || !r) return;
+  if (r.openid) app.globalData.openid = r.openid;
+  if (r.role) {
+    mock.setRole(r.role);
+    app.globalData.role = r.role;
+  }
+  if (r.nickname !== undefined || r.avatar !== undefined) {
+    app.globalData.userProfile = {
+      openid: r.openid || app.globalData.openid,
+      role: r.role || app.globalData.role,
+      nickname: r.nickname || '',
+      avatar: r.avatar || ''
+    };
+  }
+}
+
+// 登录，返回 openid。role 可选：登录页选定身份，传入时写入云端 users 集合。
+function login(role) {
   if (cloudReady()) {
-    return callCloud('login', {}).then((r) => {
-      const openid = (r && r.openid) || '';
-      getApp().globalData.openid = openid;
-      return openid;
+    return callCloud('login', role ? { role } : {}).then((r) => {
+      applyUserResult(r);
+      return (r && r.openid) || '';
     });
   }
   getApp().globalData.openid = mock.MOCK_OPENID;
   return Promise.resolve(mock.MOCK_OPENID);
+}
+
+// 读取当前用户在云数据库 users 集合中的资料
+function getUserProfile() {
+  if (cloudReady()) {
+    return callCloud('getUserProfile', {}).then((r) => {
+      const user = (r && r.user) || null;
+      if (user) applyUserResult(user);
+      return user;
+    });
+  }
+  const user = {
+    openid: mock.MOCK_OPENID,
+    role: mock.getRole(),
+    nickname: '大川会员',
+    avatar: ''
+  };
+  applyUserResult(user);
+  return Promise.resolve(user);
 }
 
 function getHalls() {
@@ -114,6 +150,12 @@ function setRole(role) {
   mock.setRole(role);
   const app = getApp();
   if (app && app.globalData) app.globalData.role = role;
+  if (cloudReady()) {
+    return callCloud('login', { role }).then((r) => {
+      applyUserResult(r);
+      return (r && r.role) || role;
+    });
+  }
   return Promise.resolve(role);
 }
 
@@ -124,6 +166,39 @@ function getCoachProfile() {
     return callCloud('getCoachProfile', {}).then((r) => (r && r.profile) || null);
   }
   return Promise.resolve(mock.readObject(mock.KEY_COACH, null));
+}
+
+function getCoachProfileByOpenid(openid) {
+  if (!openid) return Promise.resolve(null);
+  if (cloudReady()) {
+    return callCloud('getCoachProfile', { targetOpenid: openid }).then((r) => (r && r.profile) || null);
+  }
+  const p = mock.readObject(mock.KEY_COACH, null);
+  return Promise.resolve(p && p._openid === openid ? p : null);
+}
+
+function getMemberProfileByOpenid(openid) {
+  if (!openid) return Promise.resolve(null);
+  if (cloudReady()) {
+    return callCloud('getMemberProfile', { targetOpenid: openid }).then((r) => (r && r.member) || null);
+  }
+  const members = mock.readArray(mock.KEY_MEMBERS);
+  return Promise.resolve(members.find((m) => m.openid === openid) || null);
+}
+
+function getMemberCheckinsByOpenid(openid) {
+  if (!openid) return Promise.resolve([]);
+  if (cloudReady()) {
+    return callCloud('getMemberCheckins', { targetOpenid: openid }).then((r) => (r && r.checkins) || []);
+  }
+  return Promise.resolve([]);
+}
+
+function getMemberCheckins() {
+  if (cloudReady()) {
+    return callCloud('getMemberCheckins', {}).then((r) => (r && r.checkins) || []);
+  }
+  return Promise.resolve([]);
 }
 
 function saveCoachProfile(profile) {
@@ -197,19 +272,73 @@ function getShopProfile() {
   return Promise.resolve(mock.readObject(mock.KEY_SHOP, null));
 }
 
-function saveShopProfile({ name, hallId, hallName }) {
+function saveShopProfile({ name, hallId, hallName, tableTypes }) {
   if (cloudReady()) {
-    return callCloud('saveShopProfile', { name, hallId, hallName }).then((r) => {
+    return callCloud('saveShopProfile', { name, hallId, hallName, tableTypes }).then((r) => {
       mock.setRole('shop');
       return r;
     });
   }
-  mock.writeObject(
-    mock.KEY_SHOP,
-    Object.assign({ _openid: mock.MOCK_OPENID }, { name, hallId, hallName })
-  );
+  const existing = mock.readObject(mock.KEY_SHOP, null) || {};
+  const updated = Object.assign({}, existing, {
+    _openid: mock.MOCK_OPENID,
+    name: name !== undefined ? name : existing.name,
+    hallId: hallId !== undefined ? hallId : existing.hallId,
+    hallName: hallName !== undefined ? hallName : existing.hallName,
+    tableTypes: Array.isArray(tableTypes) ? tableTypes : existing.tableTypes
+  });
+  mock.writeObject(mock.KEY_SHOP, updated);
   mock.setRole('shop');
   return Promise.resolve({ ok: true });
+}
+
+// ============ 球台状态（开桌/结账） ============
+
+function getSessions() {
+  if (cloudReady()) {
+    return callCloud('getSessions', {}).then((r) => (r && r.sessions) || []);
+  }
+  return Promise.resolve(mock.readArray(mock.KEY_SESSIONS));
+}
+
+function createSession({ tableId }) {
+  if (cloudReady()) {
+    return callCloud('createSession', { tableId });
+  }
+  const sessions = mock.readArray(mock.KEY_SESSIONS);
+  sessions.push({
+    _id: `mock_s_${Date.now()}`,
+    _openid: mock.MOCK_OPENID,
+    tableId,
+    status: 'active',
+    startedAt: Date.now(),
+    createdAt: Date.now()
+  });
+  mock.writeArray(mock.KEY_SESSIONS, sessions);
+  return Promise.resolve({ ok: true });
+}
+
+function closeSession({ sessionId }) {
+  if (cloudReady()) {
+    return callCloud('closeSession', { sessionId });
+  }
+  const sessions = mock.readArray(mock.KEY_SESSIONS);
+  const idx = sessions.findIndex((s) => s._id === sessionId);
+  if (idx !== -1) {
+    sessions[idx].status = 'closed';
+    sessions[idx].closedAt = Date.now();
+    mock.writeArray(mock.KEY_SESSIONS, sessions);
+  }
+  return Promise.resolve({ ok: true });
+}
+
+// ============ 球员列表（按 openid 查昵称/头像，供 hall-status 渲染） ============
+
+function getMembers() {
+  if (cloudReady()) {
+    return callCloud('getMembers', {}).then((r) => (r && r.members) || []);
+  }
+  return Promise.resolve(mock.readArray(mock.KEY_MEMBERS));
 }
 
 // 本店已管理的教练列表
@@ -322,6 +451,14 @@ function uploadFile(tempFilePath, dir) {
 // ============ 社区 ============
 
 function getCurrentUserInfo() {
+  const app = getApp();
+  const profile = app && app.globalData && app.globalData.userProfile;
+  if (profile && (profile.nickname || profile.avatar)) {
+    return {
+      authorName: profile.nickname || '大川会员',
+      authorAvatar: profile.avatar || ''
+    };
+  }
   return { authorName: '大川会员', authorAvatar: '' };
 }
 
@@ -428,7 +565,7 @@ function getMatchPosts() {
   return Promise.resolve(matches);
 }
 
-function createMatchPost({ hallId, hallName, datetime, gameType, note }) {
+function createMatchPost({ hallId, hallName, datetime, gameType, note, level, gender, age }) {
   const info = getCurrentUserInfo();
   if (cloudReady()) {
     return callCloud('createMatchPost', {
@@ -437,6 +574,9 @@ function createMatchPost({ hallId, hallName, datetime, gameType, note }) {
       datetime,
       gameType,
       note,
+      level,
+      gender,
+      age,
       authorName: info.authorName
     });
   }
@@ -450,6 +590,9 @@ function createMatchPost({ hallId, hallName, datetime, gameType, note }) {
     hallName: hallName || '',
     datetime: datetime || '',
     gameType: gameType || '',
+    level: level || '',
+    gender: gender || '',
+    age: age || '',
     note: note || '',
     joinCount: 0,
     status: 'open',
@@ -543,17 +686,28 @@ function getBookableCoaches() {
 }
 
 // 约球桌：可预约球桌（按台球厅）。合成桌位数量与每小时价格用于演示。
+// 优先取该球厅店主的 tableTypes（{name, pricePerHour} 对象数组），否则用 halls 默认值。
 function getBookableTables() {
   const synth = {
-    hall_01: { tableCount: 12, pricePerHour: 60 },
-    hall_02: { tableCount: 8, pricePerHour: 50 },
-    hall_03: { tableCount: 6, pricePerHour: 45 }
+    hall_01: { tableCount: 12 },
+    hall_02: { tableCount: 8 },
+    hall_03: { tableCount: 6 }
   };
-  return getHalls().then((halls) =>
-    halls.map((h) =>
-      Object.assign({}, h, synth[h._id] || { tableCount: 8, pricePerHour: 50 })
-    )
-  );
+  const defaultTypes = [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }];
+  const fallbackHalls = [
+    { _id: 'hall_01', name: '大川激流·旗舰店', address: '城市中心广场 3F', cover: '' },
+    { _id: 'hall_02', name: '大川激流·滨江店', address: '滨江路 88 号', cover: '' },
+    { _id: 'hall_03', name: '星河台球俱乐部', address: '高新区软件园', cover: '' }
+  ];
+  return Promise.all([getHalls(), getShopProfile()]).then(([halls, shop]) => {
+    const hallsToUse = halls.length ? halls : fallbackHalls;
+    const shopTableTypes = (shop && shop.tableTypes && shop.tableTypes.length) ? shop.tableTypes : defaultTypes;
+    return hallsToUse.map((h) => {
+      const base = synth[h._id] || { tableCount: 8 };
+      const hallShopTableTypes = (h.tableTypes && h.tableTypes.length) ? h.tableTypes : shopTableTypes;
+      return Object.assign({}, h, base, { tableTypes: hallShopTableTypes });
+    });
+  });
 }
 
 // 我的预约（约教练 / 约球桌），按时间倒序
@@ -601,7 +755,7 @@ function cancelMatch(id) {
 }
 
 // 创建预约（约教练 / 约球桌）
-function createBooking({ type, targetId, targetName, hallName, datetime, note, price }) {
+function createBooking({ type, targetId, targetName, hallName, datetime, note, price, tableType }) {
   const info = getCurrentUserInfo();
   if (cloudReady()) {
     return callCloud('createBooking', {
@@ -612,6 +766,7 @@ function createBooking({ type, targetId, targetName, hallName, datetime, note, p
       datetime,
       note,
       price,
+      tableType: tableType || '',
       bookerName: info.authorName
     });
   }
@@ -628,6 +783,7 @@ function createBooking({ type, targetId, targetName, hallName, datetime, note, p
     datetime: datetime || '',
     note: note || '',
     price: price || 0,
+    tableType: tableType || '',
     status: 'pending',
     createdAt: Date.now()
   });
@@ -743,6 +899,7 @@ function addComment(postId, content) {
 module.exports = {
   initData,
   login,
+  getUserProfile,
   getHalls,
   getHeatmap,
   getDayDetail,
@@ -750,12 +907,20 @@ module.exports = {
   getRole,
   setRole,
   getCoachProfile,
+  getCoachProfileByOpenid,
+  getMemberProfileByOpenid,
+  getMemberCheckins,
+  getMemberCheckinsByOpenid,
   saveCoachProfile,
   getMyMembers,
   getLinkableMembers,
   linkMember,
   getShopProfile,
   saveShopProfile,
+  getSessions,
+  createSession,
+  closeSession,
+  getMembers,
   getShopCoaches,
   getLinkableCoaches,
   addShopCoach,

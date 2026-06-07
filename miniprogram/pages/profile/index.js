@@ -27,6 +27,7 @@ Page({
     }
     const app = getApp();
     const role = mock.getRole();
+    const profile = app.globalData.userProfile;
     this.setData({
       cloudReady: app.globalData.cloudReady,
       openid: app.globalData.openid || mock.MOCK_OPENID,
@@ -34,8 +35,20 @@ Page({
       roleLabel: ROLE_LABEL[role] || '会员',
       isCoach: role === 'coach',
       isShop: role === 'shop',
+      nickname: (profile && profile.nickname) || '大川会员',
       themeMode: app.globalData.themeMode,
       themeModeLabel: THEME_LABEL[app.globalData.themeMode] || '跟随系统'
+    });
+    data.getUserProfile().then((user) => {
+      if (!user) return;
+      const nextRole = user.role || role;
+      this.setData({
+        nickname: user.nickname || '大川会员',
+        role: nextRole,
+        roleLabel: ROLE_LABEL[nextRole] || '会员',
+        isCoach: nextRole === 'coach',
+        isShop: nextRole === 'shop'
+      });
     });
     data.getCoachProfile().then((p) => this.setData({ hasCoachProfile: !!p }));
     data.getShopProfile().then((p) => this.setData({ hasShopProfile: !!p }));
@@ -92,17 +105,18 @@ Page({
       this.promptCreate('成为店家', '尚未设置店铺资料，是否前往设置？', () => this.goShopDashboard());
       return;
     }
-    data.setRole(next).then(() => {
+    data.setRole(next).then((savedRole) => {
+      const role = savedRole || next;
       this.setData({
-        role: next,
-        roleLabel: ROLE_LABEL[next],
-        isCoach: next === 'coach',
-        isShop: next === 'shop'
+        role,
+        roleLabel: ROLE_LABEL[role],
+        isCoach: role === 'coach',
+        isShop: role === 'shop'
       });
       if (typeof this.getTabBar === 'function' && this.getTabBar()) {
         this.getTabBar().refresh();
       }
-      wx.showToast({ title: `已切换为${ROLE_LABEL[next]}`, icon: 'none' });
+      wx.showToast({ title: `已切换为${ROLE_LABEL[role]}`, icon: 'none' });
     });
   },
 
@@ -115,7 +129,10 @@ Page({
       success: (res) => {
         if (!res.confirm) return;
         const app = getApp();
-        if (app && app.globalData) app.globalData.openid = '';
+        if (app && app.globalData) {
+          app.globalData.openid = '';
+          app.globalData.userProfile = null;
+        }
         // 清除登录身份，避免冷启动自动恢复上次身份
         try {
           wx.removeStorageSync('dc_role');

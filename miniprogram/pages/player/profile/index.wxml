@@ -1,0 +1,70 @@
+<view class="page theme-{{theme}}">
+  <!-- 顶部导航栏（小程序默认导航栏 + 返回按钮） -->
+  <view class="nav-bar">
+    <view class="nav-back" bindtap="onBack">
+      <text class="back-icon">‹</text>
+      <text class="back-text">返回球厅态势</text>
+    </view>
+  </view>
+
+  <!-- 头部信息 -->
+  <view class="hero" style="--brand:{{isCoach ? '#e67e22' : '#067EF9'}}">
+    <view class="avatar-wrap">
+      <image wx:if="{{avatar}}" class="avatar" src="{{avatar}}" mode="aspectFill" />
+      <view wx:else class="avatar-ph">{{nickname ? nickname[0] : '?'}}</view>
+    </view>
+    <view class="hero-name">{{nickname || '未知球员'}}</view>
+    <view class="hero-badge {{isCoach ? 'coach' : 'member'}}">
+      {{isCoach ? '教练' : '会员'}}
+    </view>
+  </view>
+
+  <!-- 教练视图 -->
+  <view wx:if="{{isCoach}}" class="content">
+    <view class="card">
+      <view class="card-title">教练简介</view>
+      <view class="info-row" wx:if="{{coachYears}}">
+        <text class="info-label">教龄</text>
+        <text class="info-value">{{coachYears}} 年</text>
+      </view>
+      <view class="info-row" wx:if="{{pricePerMinute}}">
+        <text class="info-label">收费标准</text>
+        <text class="info-value accent">{{pricePerMinute}} 元/分钟</text>
+      </view>
+      <view class="intro-text" wx:if="{{intro}}">{{intro}}</view>
+      <view class="muted" wx:if="{{!coachYears && !pricePerMinute && !intro}}">暂无教练信息</view>
+    </view>
+
+    <view class="card" wx:if="{{certificates.length > 0}}">
+      <view class="card-title">资格证书</view>
+      <view class="cert-grid">
+        <image class="cert-img" src="{{item}}" mode="aspectFill" wx:for="{{certificates}}" wx:key="*this" />
+      </view>
+    </view>
+  </view>
+
+  <!-- 会员视图 -->
+  <view wx:else class="content">
+    <view class="card">
+      <view class="card-title">训练概览</view>
+      <view wx:if="{{loading}}" class="loading">加载中...</view>
+      <view wx:else>
+        <view class="stats-row">
+          <view class="stat-item">
+            <view class="stat-num">{{totalDays}}</view>
+            <view class="stat-label">累计打卡天</view>
+          </view>
+          <view class="stat-item">
+            <view class="stat-num">{{totalHoursText}}</view>
+            <view class="stat-label">累计时长(h)</view>
+          </view>
+          <view class="stat-item">
+            <view class="stat-num">{{streak}}</view>
+            <view class="stat-label">连续打卡天</view>
+          </view>
+        </view>
+        <view class="muted" wx:if="{{totalDays === 0 && !loading}}">暂无训练记录</view>
+      </view>
+    </view>
+  </view>
+</view>

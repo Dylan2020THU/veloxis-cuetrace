@@ -14,7 +14,10 @@ exports.main = async (event) => {
     certificates,
     intro,
     availability,
-    pricePerMinute
+    pricePerMinute,
+    hallId,
+    hallName,
+    coachId
   } = event;
 
   const profile = {
@@ -26,6 +29,9 @@ exports.main = async (event) => {
     intro: intro || '',
     availability: Array.isArray(availability) ? availability : [],
     pricePerMinute: Number(pricePerMinute) || 0,
+    hallId: hallId || '',
+    hallName: hallName || '',
+    coachId: coachId || '',
     updatedAt: db.serverDate()
   };
 
@@ -41,10 +47,15 @@ exports.main = async (event) => {
   try {
     const users = db.collection('users');
     const u = await users.where({ _openid: OPENID }).get();
+    const userPatch = { role: 'coach', updatedAt: db.serverDate() };
+    if (nickname) userPatch.nickname = nickname;
+    if (avatar) userPatch.avatar = avatar;
     if (u.data.length) {
-      await users.doc(u.data[0]._id).update({ data: { role: 'coach' } });
+      await users.doc(u.data[0]._id).update({ data: userPatch });
     } else {
-      await users.add({ data: { _openid: OPENID, role: 'coach' } });
+      await users.add({
+        data: Object.assign({ _openid: OPENID, nickname: nickname || '', avatar: avatar || '' }, userPatch)
+      });
     }
   } catch (err) {
     console.error('update user role failed', err);

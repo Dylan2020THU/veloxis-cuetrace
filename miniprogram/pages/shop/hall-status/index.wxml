@@ -1,0 +1,142 @@
+<view class="page theme-{{theme}}">
+  <view class="page-header">
+    <text class="page-title">球厅态势</text>
+    <text class="refresh-btn" bindtap="loadData">刷新</text>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-group">
+      <text class="filter-label">品牌</text>
+      <view class="filter-chips">
+        <view
+          class="filter-chip {{filters.brand === '' ? 'active' : ''}}"
+          data-type="brand"
+          data-value=""
+          bindtap="filterByBrand"
+        >全部</view>
+        <view
+          class="filter-chip {{filters.brand === item ? 'active' : ''}}"
+          wx:for="{{brandOptions}}"
+          wx:key="item"
+          data-type="brand"
+          data-value="{{item}}"
+          bindtap="filterByBrand"
+        >{{item}}</view>
+      </view>
+    </view>
+    <view class="filter-group">
+      <text class="filter-label">状态</text>
+      <view class="filter-chips">
+        <view
+          class="filter-chip {{filters.status === '' ? 'active' : ''}}"
+          data-type="status"
+          data-value=""
+          bindtap="filterByStatus"
+        >全部</view>
+        <view
+          class="filter-chip {{filters.status === 'idle' ? 'active' : ''}}"
+          data-type="status"
+          data-value="idle"
+          bindtap="filterByStatus"
+        >空闲</view>
+        <view
+          class="filter-chip {{filters.status === 'occupied' ? 'active' : ''}}"
+          data-type="status"
+          data-value="occupied"
+          bindtap="filterByStatus"
+        >使用中</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计栏 -->
+  <view class="stats-bar">
+    <text class="stats-text">共 {{filteredTables.length}} 张桌</text>
+    <text class="stats-text occupied-count">使用中 {{occupiedCount}} 张</text>
+  </view>
+
+  <view wx:if="{{filteredTables.length === 0}}" class="empty-state">
+    <text class="empty-text">暂无球台信息\n请先在「桌型管理」中添加桌型</text>
+  </view>
+
+  <view wx:else class="table-grid">
+    <view
+      class="table-card {{item.status === 'occupied' ? 'occupied' : ''}}"
+      wx:for="{{filteredTables}}"
+      wx:key="tableId"
+      style="--card-color:{{item.bgColor}}"
+    >
+      <!-- 书签式品牌色顶条 -->
+      <view class="bookmark-strip" style="background:{{item.bgColor}}"></view>
+
+      <!-- 卡片内容区 -->
+      <view class="table-card-inner">
+        <!-- 球台名称 + 桌型品牌 + 空闲/使用中状态 -->
+        <view class="card-header">
+          <view class="table-info">
+            <text class="table-name">{{item.tableName}}</text>
+            <text class="table-brand">{{item.tableTypeName}}</text>
+          </view>
+          <view class="status-badge {{item.status}}">
+            <view class="status-dot"></view>
+            <text class="status-text" wx:if="{{item.status === 'occupied'}}">使用中</text>
+            <text class="status-text" wx:else>空闲</text>
+          </view>
+        </view>
+
+        <!-- 球员区域 -->
+        <view class="players-zone">
+          <block wx:if="{{item.status === 'occupied'}}">
+            <view class="player-row"
+              wx:for="{{item.players}}"
+              wx:for-item="player"
+              wx:key="openid"
+              data-openid="{{player.openid}}"
+              data-nickname="{{player.nickname}}"
+              data-iscoach="{{player.isCoach ? 1 : 0}}"
+              bindtap="goPlayerProfile"
+            >
+              <view class="player-avatar-wrap">
+                <image wx:if="{{player.avatar}}" class="player-avatar" src="{{player.avatar}}" mode="aspectFill" />
+                <view wx:else class="player-avatar-placeholder">{{player.nickname ? player.nickname[0] : '?'}}</view>
+              </view>
+              <view class="player-info">
+                <text class="player-name">{{player.nickname || (player.isCoach ? '教练' : '球员')}}{{player.isCoach ? '（教练）' : ''}}</text>
+                <text wx:if="{{player.isCoach && player.joinedAt}}" class="coach-time">{{player.teachText || ''}}</text>
+              </view>
+            </view>
+            <view wx:if="{{item.players.length < 2}}" class="waiting-hint">等待另一人加入...</view>
+          </block>
+          <view wx:else class="idle-hint">空闲中</view>
+        </view>
+
+        <!-- 收费标准栏 -->
+        <view class="table-price-bar">
+          <text class="price-bar-text">{{item.pricePerHour}}元/小时</text>
+        </view>
+
+        <!-- 已开桌时长 -->
+        <view class="table-elapsed" wx:if="{{item.status === 'occupied'}}">
+          <text class="elapsed-text">{{item.elapsedText || ('已开桌 ' + formatDuration(item.elapsedMs))}}</text>
+        </view>
+
+        <!-- 当前收入 -->
+        <view class="table-revenue" wx:if="{{item.status === 'occupied' && item.revenueText}}">
+          <text class="revenue-text">{{item.revenueText}}</text>
+        </view>
+
+        <!-- 操作按钮 -->
+        <view class="card-action">
+          <view
+            class="action-btn {{item.status === 'occupied' ? 'btn-end' : 'btn-use'}}"
+            data-idx="{{index}}"
+            bindtap="toggleTable"
+          >
+            {{item.status === 'occupied' ? '结束使用' : '使用'}}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

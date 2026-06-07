@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
   background: #f4f6f8;
-  padding-bottom: 40rpx;
+  padding-bottom: 180rpx; /* 让出 tabBar 高度 + FAB 底部空间 */
 }
 
 /* 顶部栏 */
@@ -127,6 +127,10 @@ image.avatar {
   padding: 4rpx 14rpx;
   border-radius: 20rpx;
 }
+.tag.green {
+  color: #00b578;
+  background: rgba(0, 181, 120, 0.1);
+}
 .join-num {
   font-size: 22rpx;
   color: #9aa0a6;
@@ -151,6 +155,19 @@ image.avatar {
   background: #f7f8fa;
   border-radius: 12rpx;
   padding: 16rpx;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+.badge {
+  font-size: 22rpx;
+  color: #9aa0a6;
+  background: #f2f3f5;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
 }
 .join-btn {
   margin-top: 20rpx;
@@ -232,7 +249,7 @@ image.avatar {
 .fab {
   position: fixed;
   right: 40rpx;
-  bottom: 60rpx;
+  bottom: 180rpx;
   width: 96rpx;
   height: 96rpx;
   border-radius: 50%;
@@ -244,7 +261,7 @@ image.avatar {
   justify-content: center;
   line-height: 1;
   box-shadow: 0 8rpx 24rpx rgba(6, 126, 249, 0.4);
-  z-index: 20;
+  z-index: 9999;
 }
 
 /* 预约弹窗 */
@@ -279,9 +296,18 @@ image.avatar {
 }
 .sheet-row .lbl {
   color: #6b7075;
+  min-width: 140rpx;
+  flex-shrink: 0;
 }
 .sheet-row .val {
   color: #1f2329;
+  flex: 1;
+  text-align: right;
+}
+.sheet-row .val.highlight {
+  color: #f5503e;
+  font-weight: 600;
+  font-size: 30rpx;
 }
 .sheet-actions {
   display: flex;

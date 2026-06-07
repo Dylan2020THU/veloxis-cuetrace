@@ -4,20 +4,21 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
 // 保存（创建或更新）当前用户的店铺资料，并将其角色标记为 shop
+// 支持部分字段更新：name/hallId/hallName/tableTypes 任选其一均可传入
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
-  const { name, hallId, hallName } = event;
+  const { name, hallId, hallName, tableTypes } = event;
 
-  if (!name || !hallId) {
-    return { ok: false, msg: '缺少店铺名称或所属台球厅' };
+  const profile = {};
+  if (name !== undefined) profile.name = name;
+  if (hallId !== undefined) profile.hallId = hallId;
+  if (hallName !== undefined) profile.hallName = hallName;
+  if (tableTypes !== undefined) profile.tableTypes = Array.isArray(tableTypes) ? tableTypes : [];
+
+  if (Object.keys(profile).length === 0) {
+    return { ok: false, msg: '没有任何字段需要更新' };
   }
-
-  const profile = {
-    name,
-    hallId,
-    hallName: hallName || '',
-    updatedAt: db.serverDate()
-  };
+  profile.updatedAt = db.serverDate();
 
   const shops = db.collection('shops');
   const existing = await shops.where({ _openid: OPENID }).get();
@@ -30,10 +31,14 @@ exports.main = async (event) => {
   try {
     const users = db.collection('users');
     const u = await users.where({ _openid: OPENID }).get();
+    const userPatch = { role: 'shop', updatedAt: db.serverDate() };
+    if (name) userPatch.nickname = name;
     if (u.data.length) {
-      await users.doc(u.data[0]._id).update({ data: { role: 'shop' } });
+      await users.doc(u.data[0]._id).update({ data: userPatch });
     } else {
-      await users.add({ data: { _openid: OPENID, role: 'shop' } });
+      await users.add({
+        data: Object.assign({ _openid: OPENID, nickname: name || '', avatar: '' }, userPatch)
+      });
     }
   } catch (err) {
     console.error('update user role failed', err);

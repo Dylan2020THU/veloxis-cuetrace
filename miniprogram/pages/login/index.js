@@ -3,9 +3,9 @@ const mock = require('../../utils/mock');
 
 // 三种登录身份，顺序即页面从上至下的展示顺序
 const ROLES = [
-  { key: 'member', label: '球员', desc: '记录训练 · 追踪成长', img: '/images/login/login-member.png' },
-  { key: 'coach', label: '教练', desc: '管理学员 · 排课带教', img: '/images/login/login-coach.png' },
-  { key: 'shop', label: '店主', desc: '门店经营 · 数据看板', img: '/images/login/login-shop.png' }
+  { key: 'member', label: '球员', desc: '记录训练 · 追踪成长', img: '/images/login/login-member.webp' },
+  { key: 'coach', label: '教练', desc: '管理学员 · 排课带教', img: '/images/login/login-coach.webp' },
+  { key: 'shop', label: '店主', desc: '门店经营 · 数据看板', img: '/images/login/login-shop.webp' }
 ];
 
 const PHONE_RE = /^1\d{10}$/;
@@ -28,6 +28,7 @@ Page({
 
   data: {
     roles: ROLES,
+    cloudReady: false,
     role: 'member',
     roleLabel: '球员',
     // 登录步骤：1 = 选择身份，2 = 填写账号
@@ -48,15 +49,58 @@ Page({
     regConfirm: ''
   },
 
+  onLoad() {
+    const app = getApp();
+    const cloudReady = !!(app && app.globalData && app.globalData.cloudReady);
+    this.setData({ cloudReady });
+    const ready = (app && app.sessionReady) || Promise.resolve();
+    ready.then(() => {
+      if (!cloudReady || !app.globalData.openid) return;
+      let role = 'member';
+      try {
+        role = wx.getStorageSync('dc_role') || app.globalData.role || 'member';
+      } catch (e) {}
+      this.goHome(role);
+    });
+  },
+
+  goHome(role) {
+    const url = HOME_BY_ROLE[role] || HOME_BY_ROLE.member;
+    if (TAB_HOMES.indexOf(url) !== -1) {
+      wx.switchTab({ url });
+    } else {
+      wx.reLaunch({ url });
+    }
+  },
+
   selectRole(e) {
     const role = e.currentTarget.dataset.role;
     const found = ROLES.find((r) => r.key === role);
     this.setData({ role, roleLabel: found ? found.label : '' });
   },
 
-  // 第一步 → 第二步
+  // 第一步 → 第二步（云端模式直接微信登录，跳过演示账号表单）
   goNext() {
+    if (this.data.cloudReady) {
+      this.doLogin(this.data.role);
+      return;
+    }
     this.setData({ step: 2 });
+  },
+
+  doLogin(role) {
+    wx.showLoading({ title: '登录中', mask: true });
+    data
+      .login(role)
+      .then(() => data.getUserProfile())
+      .then(() => {
+        wx.hideLoading();
+        this.goHome(role);
+      })
+      .catch(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      });
   },
 
   // 第二步 → 第一步（重选身份）
@@ -146,36 +190,25 @@ Page({
   },
 
   submit() {
-    const { loginType, role } = this.data;
-    if (loginType === 'password') {
-      if (!(this.data.account || '').trim()) {
-        return wx.showToast({ title: '请输入账号', icon: 'none' });
-      }
-      if (!this.data.password) {
-        return wx.showToast({ title: '请输入密码', icon: 'none' });
-      }
-    } else {
-      if (!PHONE_RE.test((this.data.phone || '').trim())) {
-        return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
-      }
-      if (!(this.data.code || '').trim()) {
-        return wx.showToast({ title: '请输入验证码', icon: 'none' });
+    const { loginType, role, cloudReady } = this.data;
+    if (!cloudReady) {
+      if (loginType === 'password') {
+        if (!(this.data.account || '').trim()) {
+          return wx.showToast({ title: '请输入账号', icon: 'none' });
+        }
+        if (!this.data.password) {
+          return wx.showToast({ title: '请输入密码', icon: 'none' });
+        }
+      } else {
+        if (!PHONE_RE.test((this.data.phone || '').trim())) {
+          return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+        }
+        if (!(this.data.code || '').trim()) {
+          return wx.showToast({ title: '请输入验证码', icon: 'none' });
+        }
       }
     }
-
-    wx.showLoading({ title: '登录中', mask: true });
-    // 演示阶段直接以所选身份登录；接入真实账号体系时在此调用云函数校验
-    data.setRole(role).then(() => {
-      const app = getApp();
-      if (app && app.globalData) app.globalData.openid = mock.MOCK_OPENID;
-      wx.hideLoading();
-      const url = HOME_BY_ROLE[role] || HOME_BY_ROLE.member;
-      if (TAB_HOMES.indexOf(url) !== -1) {
-        wx.switchTab({ url });
-      } else {
-        wx.reLaunch({ url });
-      }
-    });
+    this.doLogin(role);
   },
 
   onUnload() {

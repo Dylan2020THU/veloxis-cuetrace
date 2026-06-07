@@ -91,9 +91,15 @@ Page({
       return;
     }
     const hall = halls[hallIndex];
+    const existingTableTypes = (this.data.shop && this.data.shop.tableTypes) || [];
     this.setData({ submitting: true });
     data
-      .saveShopProfile({ name: shopName, hallId: hall._id, hallName: hall.name })
+      .saveShopProfile({
+        name: shopName,
+        hallId: hall._id,
+        hallName: hall.name,
+        tableTypes: existingTableTypes
+      })
       .then(() => {
         wx.showToast({ title: '已保存', icon: 'success' });
         this.setData({ editing: false });
@@ -112,6 +118,14 @@ Page({
 
   goMembers() {
     wx.navigateTo({ url: '/pages/shop/members/index' });
+  },
+
+  goTableTypes() {
+    wx.navigateTo({ url: '/pages/shop/table-types/index' });
+  },
+
+  goHallStatus() {
+    wx.navigateTo({ url: '/pages/shop/hall-status/index' });
   },
 
   logout() {

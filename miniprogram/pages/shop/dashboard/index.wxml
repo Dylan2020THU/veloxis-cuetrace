@@ -45,11 +45,11 @@
     </view>
 
     <view class="card">
-      <view class="entry" bindtap="goCoaches">
-        <view class="entry-icon">教</view>
+      <view class="entry" bindtap="goHallStatus">
+        <view class="entry-icon blue">态</view>
         <view class="entry-main">
-          <view class="entry-title">教练名单</view>
-          <view class="muted">统一管理本店台球教练</view>
+          <view class="entry-title">球厅态势</view>
+          <view class="muted">实时查看本店球桌使用状态</view>
         </view>
         <text class="arrow">›</text>
       </view>
@@ -61,6 +61,23 @@
         </view>
         <text class="arrow">›</text>
       </view>
+      <view class="entry" bindtap="goCoaches">
+        <view class="entry-icon">教</view>
+        <view class="entry-main">
+          <view class="entry-title">教练名单</view>
+          <view class="muted">统一管理本店台球教练</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="entry" bindtap="goTableTypes">
+        <view class="entry-icon">桌</view>
+        <view class="entry-main">
+          <view class="entry-title">球桌管理</view>
+          <view class="muted">设置桌型名称与收费标准</view>
+        </view>
+        <text class="arrow">›</text>
+      </view>
+
     </view>
 
     <view class="card">

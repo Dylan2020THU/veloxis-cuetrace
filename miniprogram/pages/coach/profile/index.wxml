@@ -9,6 +9,19 @@
     </view>
 
     <view class="field">
+      <text class="field-label">所属球厅</text>
+      <picker mode="selector" range="{{hallList}}" range-key="name" value="{{selectedHallIndex}}" bindchange="onHallChange">
+        <view class="field-pick {{selectedHallName ? '' : 'muted'}}">
+          {{selectedHallName || '请选择球厅'}}
+        </view>
+      </picker>
+    </view>
+    <view wx:if="{{coachId}}" class="field">
+      <text class="field-label">教练ID</text>
+      <text class="coach-id">{{coachId}}</text>
+    </view>
+
+    <view class="field">
       <text class="field-label">昵称</text>
       <input class="field-input" placeholder="教练昵称" value="{{nickname}}" data-field="nickname" bindinput="onInput" />
     </view>

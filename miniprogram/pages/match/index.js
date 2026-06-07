@@ -20,7 +20,7 @@ function buildDateOptions() {
   return out;
 }
 
-const TIME_OPTIONS = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '21:00'];
+const TIME_OPTIONS = ['00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
 
 Page({
   behaviors: [require('../../utils/themeBehavior')],
@@ -36,7 +36,8 @@ Page({
     dateOptions: buildDateOptions(),
     timeOptions: TIME_OPTIONS,
     dateIndex: 0,
-    timeIndex: 4
+    timeIndex: 4,
+    tableTypeIndex: 0
   },
 
   onLoad() {
@@ -61,7 +62,15 @@ Page({
       data.getBookableCoaches(),
       data.getBookableTables()
     ]).then(([matches, coaches, tables]) => {
-      this.setData({ matches, coaches, tables, loading: false });
+      const tablesWithMin = tables.map((t) => {
+        if (t.tableTypes && t.tableTypes.length) {
+          const prices = t.tableTypes.map((tt) => tt.pricePerHour).filter((p) => p > 0);
+          const min = prices.length ? Math.min(...prices) : 0;
+          return Object.assign({}, t, { minPricePerHour: min || 0 });
+        }
+        return Object.assign({}, t, { minPricePerHour: t.pricePerHour || 0 });
+      });
+      this.setData({ matches, coaches, tables: tablesWithMin, loading: false });
     });
   },
 
@@ -107,15 +116,34 @@ Page({
 
   openTableBooking(e) {
     const t = this.data.tables[e.currentTarget.dataset.index];
+    const typeOptions = (t.tableTypes && t.tableTypes.length) ? t.tableTypes : [];
+    const firstType = typeOptions[0] || {};
     this.setData({
+      tableTypeIndex: 0,
       booking: {
         type: 'table',
         targetId: t._id,
         targetName: t.name,
         hallName: t.name,
-        price: t.pricePerHour || 0,
-        priceLabel: t.pricePerHour ? `${t.pricePerHour} 元/小时` : '面议'
+        price: firstType.pricePerHour || t.pricePerHour || 0,
+        priceLabel: firstType.pricePerHour ? `${firstType.pricePerHour} 元/小时` : '面议',
+        tableTypeOptions: typeOptions,
+        tableTypeIndex: 0
       }
+    });
+  },
+
+  onTableTypeChange(e) {
+    const idx = Number(e.detail.value);
+    const opts = this.data.booking.tableTypeOptions;
+    const selected = opts[idx] || {};
+    this.setData({
+      tableTypeIndex: idx,
+      booking: Object.assign({}, this.data.booking, {
+        tableTypeIndex: idx,
+        price: selected.pricePerHour || 0,
+        priceLabel: selected.pricePerHour ? `${selected.pricePerHour} 元/小时` : '面议'
+      })
     });
   },
 
@@ -137,6 +165,8 @@ Page({
     const b = this.data.booking;
     if (!b) return;
     const datetime = `${this.data.dateOptions[this.data.dateIndex]} ${this.data.timeOptions[this.data.timeIndex]}`;
+    const tableTypeOption = b.tableTypeOptions && b.tableTypeOptions[b.tableTypeIndex];
+    const tableTypeName = tableTypeOption ? tableTypeOption.name : '';
     data
       .createBooking({
         type: b.type,
@@ -144,7 +174,8 @@ Page({
         targetName: b.targetName,
         hallName: b.hallName,
         datetime,
-        price: b.price
+        price: b.price,
+        tableType: tableTypeName
       })
       .then(() => {
         this.setData({ booking: null });

@@ -18,6 +18,8 @@
 }
 .row .lbl {
   color: #6b7075;
+  min-width: 140rpx;
+  flex-shrink: 0;
 }
 .row .val {
   color: #1f2329;
@@ -37,7 +39,8 @@
   color: #1f2329;
 }
 .submit {
-  margin-top: 40rpx;
+  margin-top: 60rpx;
+  margin-bottom: 80rpx;
   text-align: center;
   background: #067ef9;
   color: #fff;

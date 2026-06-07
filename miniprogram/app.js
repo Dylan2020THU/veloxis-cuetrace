@@ -1,4 +1,4 @@
-const { initData } = require('./services/data');
+const { initData, login, getUserProfile } = require('./services/data');
 
 const THEME_KEY = 'dc_theme_mode';
 
@@ -7,9 +7,10 @@ App({
     // 是否已成功初始化云开发环境；失败则自动回退到本地 mock 数据
     cloudReady: false,
     // 云开发环境 ID。部署云开发后，把这里替换成你的环境 ID。
-    cloudEnv: '',
+    cloudEnv: 'cloud1-d4g2abcud02b40531',
     openid: '',
     role: 'member',
+    userProfile: null,
     brandColor: '#067EF9',
     // 主题：themeMode 为用户选择(light/dark/system)，theme 为实际生效(light/dark)
     themeMode: 'system',
@@ -26,6 +27,8 @@ App({
     this.initCloud();
     // 首次启动时确保本地至少有一份可演示的数据
     initData();
+    // 云端模式：已登录用户冷启动时静默恢复 openid 与云端身份
+    this.sessionReady = this.restoreSession();
   },
 
   // 冷启动时恢复上次登录的身份，避免重置为默认 member 导致底栏显示错乱
@@ -122,5 +125,20 @@ App({
       console.warn('[大川激流] 云开发初始化失败，回退到本地 mock 数据', err);
       this.globalData.cloudReady = false;
     }
+  },
+
+  // 冷启动恢复：本地有 dc_role 时，以微信身份静默登录并拉取云端用户资料
+  restoreSession() {
+    if (!this.globalData.cloudReady) return Promise.resolve();
+    let hasRole = false;
+    try {
+      hasRole = !!wx.getStorageSync('dc_role');
+    } catch (e) {}
+    if (!hasRole) return Promise.resolve();
+    return login()
+      .then(() => getUserProfile())
+      .catch((err) => {
+        console.warn('[大川激流] 会话恢复失败', err);
+      });
   }
 });
