@@ -56,26 +56,12 @@
     </view>
   </view>
 
-  <!-- 会员身份：引导成为教练 / 店家 -->
+  <!-- 会员身份 -->
   <view wx:else class="card">
-    <view class="section-title">开通更多身份</view>
-    <view class="muted become-tip">教练可接收学员看数据；店家可管理教练与会员统计</view>
-    <view class="become-actions">
-      <button class="btn-primary become-btn" bindtap="goCoachProfile">成为教练</button>
-      <button class="ghost-btn become-btn" bindtap="goShopDashboard">成为店家</button>
+    <view class="entry" bindtap="goEditProfile">
+      <text class="entry-title">编辑我的信息</text>
+      <text class="arrow">›</text>
     </view>
-  </view>
-
-  <view class="card">
-    <view class="muted">功能路线图</view>
-    <view class="plan-row done">会员端 · 训练打卡可视化</view>
-    <view class="plan-row done">教练端 · 资料认证 / 时段 / 收费 / 学员数据</view>
-    <view class="plan-row done">店家端 · 教练名单 / 会员训练统计（本期）</view>
-    <view class="plan-row">台球社区 · 视频图文发帖</view>
-  </view>
-
-  <view wx:if="{{!cloudReady}}" class="card">
-    <button class="reset-btn" bindtap="resetMock">重置演示数据</button>
   </view>
 
   <view class="card">

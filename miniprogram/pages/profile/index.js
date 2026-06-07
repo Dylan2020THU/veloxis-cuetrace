@@ -83,6 +83,10 @@ Page({
     wx.navigateTo({ url: '/pages/shop/dashboard/index' });
   },
 
+  goEditProfile() {
+    wx.navigateTo({ url: '/pages/player/profile/edit/index' });
+  },
+
   // 三身份切换
   switchRole() {
     wx.showActionSheet({

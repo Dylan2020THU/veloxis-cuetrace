@@ -2,7 +2,7 @@
   "description": "大川激流 · 台球训练数据智能管理系统",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
-  "appid": "wxa7c9920cda26d7ca",
+  "appid": "",
   "compileType": "miniprogram",
   "libVersion": "3.5.0",
   "projectname": "veloxis-cuetrace",

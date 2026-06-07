@@ -52,6 +52,8 @@ Page({
     this.setData({ showAdd: false });
   },
 
+  noop() {},
+
   onCodeInput(e) {
     this.setData({ memberCode: e.detail.value });
   },

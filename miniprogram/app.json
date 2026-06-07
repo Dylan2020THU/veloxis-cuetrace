@@ -20,7 +20,8 @@
     "pages/match/mine",
     "pages/shop/hall-status/index",
     "pages/shop/table-types/index",
-    "pages/player/profile/index"
+    "pages/player/profile/index",
+    "pages/player/profile/edit/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "#067EF9",
@@ -38,7 +39,7 @@
     "list": [
       {
         "pagePath": "pages/checkin/index",
-        "text": "打卡"
+        "text": "杆迹"
       },
       {
         "pagePath": "pages/community/index",

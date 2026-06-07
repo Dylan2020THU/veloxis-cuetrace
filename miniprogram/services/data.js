@@ -14,11 +14,9 @@ function callCloud(name, data) {
   return wx.cloud.callFunction({ name, data }).then((res) => res.result);
 }
 
-// 初始化（mock 模式下播种演示数据）
+// 初始化（播种演示数据；cloudReady 时云端数据优先，本地数据作为兜底）
 function initData() {
-  if (!cloudReady()) {
-    mock.ensureSeeded();
-  }
+  mock.ensureSeeded();
 }
 
 function applyUserResult(r) {
@@ -68,6 +66,20 @@ function getUserProfile() {
   };
   applyUserResult(user);
   return Promise.resolve(user);
+}
+
+function saveUserProfile({ nickname, avatar, gender, birthDate, phone, locationCity, hometown, years, level }) {
+  if (cloudReady()) {
+    return callCloud('saveUserProfile', { nickname, avatar, gender, birthDate, phone, locationCity, hometown, years, level });
+  }
+  const key = 'dc_user_profile';
+  const existing = mock.readObject(key, null) || {};
+  const updated = Object.assign({}, existing, { nickname, avatar, gender, birthDate, phone, locationCity, hometown, years, level });
+  mock.writeObject(key, updated);
+  if (getApp().globalData) {
+    getApp().globalData.userProfile = updated;
+  }
+  return Promise.resolve({ ok: true });
 }
 
 function getHalls() {
@@ -900,6 +912,8 @@ module.exports = {
   initData,
   login,
   getUserProfile,
+  getUserProfile,
+  saveUserProfile,
   getHalls,
   getHeatmap,
   getDayDetail,

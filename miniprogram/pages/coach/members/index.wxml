@@ -34,7 +34,7 @@
 
 <!-- 添加学员弹层 -->
 <view wx:if="{{showAdd}}" class="mask" bindtap="closeAdd">
-  <view class="sheet" catchtap="">
+  <view class="sheet" catchtap="noop">
     <view class="sheet-title">添加学员</view>
 
     <block wx:if="{{cloudReady}}">

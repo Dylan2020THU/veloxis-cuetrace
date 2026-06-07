@@ -26,14 +26,14 @@ function icon(name) {
 
 const TABS = {
   member: [
-    { path: '/pages/checkin/index', text: '打卡', icon: icon('checkin') },
+    { path: '/pages/checkin/index', text: '杆迹', icon: icon('checkin') },
     { path: '/pages/community/index', text: '社区', icon: icon('community') },
     { path: '/pages/match/index', text: '约球', icon: icon('match') },
     { path: '/pages/training/add', text: '记录', icon: icon('record') },
     { path: '/pages/profile/index', text: '我的', icon: icon('profile') }
   ],
   coach: [
-    { path: '/pages/checkin/index', text: '打卡', icon: icon('checkin') },
+    { path: '/pages/checkin/index', text: '杆迹', icon: icon('checkin') },
     { path: '/pages/community/index', text: '社区', icon: icon('community') },
     { path: '/pages/training/add', text: '记录', icon: icon('record') },
     { path: '/pages/coach/members/index', text: '我的学员', icon: icon('students') },
