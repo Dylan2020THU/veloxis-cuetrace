@@ -1,7 +1,16 @@
 <view class="page theme-{{theme}}">
   <view class="page-header">
     <text class="page-title">球厅态势</text>
-    <text class="refresh-btn" bindtap="loadData">刷新</text>
+    <text class="refresh-btn" bindtap="loadInit">刷新</text>
+  </view>
+
+  <view class="store-bar" wx:if="{{stores.length > 0}}">
+    <picker mode="selector" range="{{stores}}" range-key="name" value="{{storesIndex}}" bindchange="onStoreChange">
+      <view class="store-picker">
+        <text>{{currentStoreName || '选择门店'}}</text>
+        <text class="arrow-icon">▼</text>
+      </view>
+    </picker>
   </view>
 
   <!-- 筛选栏 -->

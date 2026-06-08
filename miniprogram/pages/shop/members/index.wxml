@@ -1,4 +1,13 @@
 <view class="page theme-{{theme}}">
+  <view class="store-bar" wx:if="{{stores.length > 0}}">
+    <picker mode="selector" range="{{stores}}" range-key="name" value="{{storesIndex}}" bindchange="onStoreChange">
+      <view class="store-picker">
+        <text>{{currentStoreName || '全部门店'}}</text>
+        <text class="arrow-icon">▼</text>
+      </view>
+    </picker>
+  </view>
+
   <view class="summary card">
     <view class="sum-item">
       <view class="sum-num">{{members.length}}</view>

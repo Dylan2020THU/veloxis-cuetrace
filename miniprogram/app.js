@@ -7,7 +7,8 @@ App({
     // 是否已成功初始化云开发环境；失败则自动回退到本地 mock 数据
     cloudReady: false,
     // 云开发环境 ID。部署云开发后，把这里替换成你的环境 ID。
-    cloudEnv: 'cloud1-d4g2abcud02b40531',
+    // 置空则强制使用本地 mock 数据（演示/开发阶段）。
+    cloudEnv: '',
     openid: '',
     role: 'member',
     userProfile: null,

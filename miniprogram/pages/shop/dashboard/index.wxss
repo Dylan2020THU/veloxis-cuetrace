@@ -188,3 +188,43 @@
   justify-content: center;
   border-radius: 36rpx 0 36rpx 0;
 }
+
+/* ============ 空状态 ============ */
+.empty-card {
+  margin: 40rpx 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 80rpx 48rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 20rpx rgba(6, 126, 249, 0.06);
+}
+
+.empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: rgba(6, 126, 249, 0.1);
+  color: #067ef9;
+  font-size: 64rpx;
+  font-weight: 300;
+  line-height: 120rpx;
+  margin: 0 auto 36rpx;
+}
+
+.empty-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2329;
+  margin-bottom: 16rpx;
+}
+
+.empty-sub {
+  font-size: 28rpx;
+  color: #8a9099;
+  margin-bottom: 48rpx;
+  line-height: 1.6;
+}
+
+.empty-card .btn-primary {
+  margin-top: 8rpx;
+}

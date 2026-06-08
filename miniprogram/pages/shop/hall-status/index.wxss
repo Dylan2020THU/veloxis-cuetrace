@@ -4,6 +4,25 @@
   min-height: 100vh;
 }
 
+.store-bar {
+  padding: 16rpx 32rpx;
+  background: #fff;
+}
+.store-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  padding: 18rpx 24rpx;
+  font-size: 30rpx;
+  color: #1f2329;
+}
+.arrow-icon {
+  font-size: 22rpx;
+  color: #8a9099;
+}
+
 .page-header {
   display: flex;
   align-items: center;

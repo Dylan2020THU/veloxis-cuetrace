@@ -1,4 +1,13 @@
 <view class="page theme-{{theme}}">
+  <view class="store-bar" wx:if="{{stores.length > 0}}">
+    <picker mode="selector" range="{{stores}}" range-key="name" value="{{storesIndex}}" bindchange="onStoreChange">
+      <view class="store-picker">
+        <text>{{currentStoreName || '全部门店'}}</text>
+        <text class="arrow-icon">▼</text>
+      </view>
+    </picker>
+  </view>
+
   <view class="header">
     <text class="count">本店教练 {{coaches.length}} 名</text>
     <view class="add-link" bindtap="openAdd">+ 添加教练</view>

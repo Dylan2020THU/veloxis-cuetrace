@@ -79,61 +79,37 @@ Page({
     filters: { brand: '', status: '' },
     brandOptions: [],
     filteredTables: [],
-    occupiedCount: 0
+    occupiedCount: 0,
+    stores: [],
+    currentStoreId: '',
+    currentStoreName: ''
   },
 
   onLoad() {
-    this.loadData();
+    this.loadInit();
   },
 
-  onShow() {
-    this.startTimer();
+  loadInit() {
+    data.getMyShopStores().then((stores) => {
+      if (!stores.length) {
+        this.setData({ tables: [], filteredTables: [], refreshing: false });
+        return;
+      }
+      const storeId = stores[0]._id;
+      this.setData({ stores, currentStoreId: storeId, currentStoreName: stores[0].name });
+      this._loadByStore(storeId);
+    }).catch(() => this.setData({ refreshing: false }));
   },
 
-  onHide() {
-    this.stopTimer();
+  onStoreChange(e) {
+    const idx = e.detail.value;
+    const store = this.data.stores[idx];
+    this.setData({ currentStoreId: store._id, currentStoreName: store.name });
+    this._loadByStore(store._id);
   },
 
-  onUnload() {
-    this.stopTimer();
-  },
-
-  startTimer() {
-    this.stopTimer();
-    this._timer = setInterval(() => {
-      this.tickElapsed();
-    }, 1000);
-  },
-
-  stopTimer() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
-    }
-  },
-
-  tickElapsed() {
-    const now = Date.now();
-    const updated = this.data.tables.map((t) => {
-      if (t.status !== 'occupied' || !t.session) return t;
-      const startedAt = t.session.startedAt || now;
-      const elapsedMs = now - startedAt;
-      const revenue = t.pricePerHour ? (elapsedMs / HOUR) * t.pricePerHour : 0;
-      const revenueText = revenue > 0 ? `收入 ${revenue.toFixed(2)}元` : '';
-      const players = t.players.map((p) => {
-        if (!p.isCoach || !p.joinedAt) return p;
-        const teachMs = now - p.joinedAt;
-        return { ...p, teachMs };
-      });
-      return { ...t, elapsedMs, revenue, revenueText, players };
-    });
-    this.setData({ tables: updated });
-  },
-
-  loadData() {
+  _loadByStore(storeId) {
     this.setData({ refreshing: true });
-
-    // 演示模式：注入模拟的桌型数据，第一张台展示"占用中"完整状态
     if (DEMO_MODE) {
       const now = Date.now();
       // 20 个模拟球台数据
@@ -203,11 +179,12 @@ Page({
       return;
     }
 
-    Promise.all([data.getShopProfile(), data.getSessions(), data.getMembers()])
-      .then(([shop, sessions, members]) => {
-        const tableTypes = (shop && shop.tableTypes) || [];
+    Promise.all([data.getMyShopStores(), data.getSessions(), data.getMembers()])
+      .then(([stores, sessions, members]) => {
+        const store = stores.find((s) => s._id === this.data.currentStoreId) || stores[0] || {};
+        const tableTypes = (store && store.tableTypes) || [];
         if (!tableTypes.length) {
-          this.setData({ tables: [] });
+          this.setData({ tables: [], filteredTables: [] });
           return;
         }
         const tables = tableTypes.map((tt, i) => ({
@@ -227,6 +204,50 @@ Page({
         wx.showToast({ title: '加载失败', icon: 'none' });
       })
       .finally(() => this.setData({ refreshing: false }));
+  },
+
+  onShow() {
+    this.startTimer();
+  },
+
+  onHide() {
+    this.stopTimer();
+  },
+
+  onUnload() {
+    this.stopTimer();
+  },
+
+  startTimer() {
+    this.stopTimer();
+    this._timer = setInterval(() => {
+      this.tickElapsed();
+    }, 1000);
+  },
+
+  stopTimer() {
+    if (this._timer) {
+      clearInterval(this._timer);
+      this._timer = null;
+    }
+  },
+
+  tickElapsed() {
+    const now = Date.now();
+    const updated = this.data.tables.map((t) => {
+      if (t.status !== 'occupied' || !t.session) return t;
+      const startedAt = t.session.startedAt || now;
+      const elapsedMs = now - startedAt;
+      const revenue = t.pricePerHour ? (elapsedMs / HOUR) * t.pricePerHour : 0;
+      const revenueText = revenue > 0 ? `收入 ${revenue.toFixed(2)}元` : '';
+      const players = t.players.map((p) => {
+        if (!p.isCoach || !p.joinedAt) return p;
+        const teachMs = now - p.joinedAt;
+        return { ...p, teachMs };
+      });
+      return { ...t, elapsedMs, revenue, revenueText, players };
+    });
+    this.setData({ tables: updated });
   },
 
   toggleTable(e) {

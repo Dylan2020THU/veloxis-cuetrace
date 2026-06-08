@@ -16,7 +16,10 @@ Page({
     members: [],
     loading: true,
     totalDays: 0,
-    totalHoursText: '0'
+    totalHoursText: '0',
+    stores: [],
+    currentStoreId: '',
+    currentStoreName: ''
   },
 
   onLoad() {
@@ -25,9 +28,12 @@ Page({
 
   load() {
     this.setData({ loading: true });
-    data
-      .getShopMembers()
-      .then((list) => {
+    Promise.all([data.getShopStores(), data.getShopProfile()]).then(([stores, shop]) => {
+      const currentStoreId = (shop && shop.storeId) ? shop.storeId : (stores.length ? stores[0]._id : '');
+      const currentStore = stores.find((s) => s._id === currentStoreId) || {};
+      this.setData({ stores, currentStoreId, currentStoreName: currentStore.name || '' });
+      return data.getShopMembers(currentStoreId);
+    }).then((list) => {
         let totalDays = 0;
         let totalMinutes = 0;
         const members = list.map((m) => {
@@ -51,6 +57,18 @@ Page({
         console.error('加载会员统计失败', err);
         this.setData({ loading: false });
       });
+  },
+
+  onShow() {
+    this.load();
+  },
+
+  onStoreChange(e) {
+    const idx = e.detail.value;
+    const stores = this.data.stores;
+    const store = stores[idx];
+    this.setData({ currentStoreId: store._id, currentStoreName: store.name });
+    this.load();
   },
 
   // 点击会员名字，跳转至该会员的训练打卡页面

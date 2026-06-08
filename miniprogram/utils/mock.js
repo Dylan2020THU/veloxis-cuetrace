@@ -4,8 +4,10 @@
 const { toKey, today, addDays } = require('./date');
 
 const KEY_HALLS = 'dc_halls';
+const KEY_BRANDS = 'dc_brands';
+const KEY_STORES = 'dc_stores';
 const KEY_SESSIONS = 'dc_sessions';
-const KEY_SEEDED = 'dc_seeded';
+const KEY_SEEDED = 'dc_seeded_v2';
 const KEY_ROLE = 'dc_role';
 const KEY_COACH = 'dc_coach_profile';
 const KEY_LINKS = 'dc_links';
@@ -23,58 +25,9 @@ const KEY_JOINS = 'dc_match_joins';
 
 const MOCK_OPENID = 'local-demo-user';
 
-const DEFAULT_HALLS = [
-  { _id: 'hall_01', name: '大川激流·旗舰店', address: '城市中心广场 3F', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }] },
-  { _id: 'hall_02', name: '大川激流·滨江店', address: '滨江路 88 号', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }] },
-  { _id: 'hall_03', name: '星河台球俱乐部', address: '高新区软件园', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }] }
-];
-
-// 演示用会员（供教练绑定与查看其训练数据）
-const DEMO_MEMBERS = [
-  { openid: 'member_zhao', nickname: '赵晓川', avatar: '' },
-  { openid: 'member_qian', nickname: '钱多多', avatar: '' },
-  { openid: 'member_sun', nickname: '孙一鸣', avatar: '' }
-];
-
-// 演示用教练（供店家"教练名单"添加）
-const DEMO_COACHES = [
-  {
-    openid: 'coach_lin',
-    nickname: '林教练',
-    playYears: 15,
-    coachYears: 8,
-    pricePerMinute: 4,
-    intro: '前省队队员，专攻斯诺克',
-    avatar: '',
-    certificates: [],
-    availability: []
-  },
-  {
-    openid: 'coach_wang',
-    nickname: '王教练',
-    playYears: 10,
-    coachYears: 4,
-    pricePerMinute: 3,
-    intro: '中式八球实战派，擅长基础纠错',
-    avatar: '',
-    certificates: [],
-    availability: []
-  },
-  {
-    openid: 'coach_chen',
-    nickname: '陈教练',
-    playYears: 20,
-    coachYears: 12,
-    pricePerMinute: 5,
-    intro: '青少年培训专家，耐心细致',
-    avatar: '',
-    certificates: [],
-    availability: []
-  }
-];
-
-function avatarFor() {
-  return '';
+function avatarFor(openid) {
+  if (!openid) return '';
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(openid)}&backgroundColor=067ef9,3b82f6,10b981,f59e0b,ef4444,8b5cf6&backgroundType=gradientLinear&fontSize=38&fontWeight=600`;
 }
 
 function readArray(key) {
@@ -115,6 +68,318 @@ function pseudoRandom(seed) {
   return x - Math.floor(x);
 }
 
+// 简单确定性 hash
+function hashCode(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+// ===== 数据定义 =====
+
+// 品牌
+const BRANDS = [
+  {
+    _id: 'brand_01',
+    name: '大川激流',
+    logo: '',
+    createdAt: Date.now()
+  }
+];
+
+// 门店（原 HALLS，归属到品牌下）
+const STORES = [
+  {
+    _id: 'hall_01',
+    brandId: 'brand_01',
+    name: '大川激流·旗舰店',
+    address: '城市中心广场 3F',
+    cover: '',
+    region: '北京',
+    tableTypes: [
+      { name: '乔氏金腿', pricePerHour: 78 },
+      { name: '乔氏银腿', pricePerHour: 68 },
+      { name: '美洲豹', pricePerHour: 58 }
+    ]
+  },
+  {
+    _id: 'hall_02',
+    brandId: 'brand_01',
+    name: '大川激流·滨江店',
+    address: '滨江路 88 号',
+    cover: '',
+    region: '北京',
+    tableTypes: [
+      { name: '乔氏金腿', pricePerHour: 78 },
+      { name: '乔氏银腿', pricePerHour: 68 }
+    ]
+  },
+  {
+    _id: 'hall_03',
+    brandId: 'brand_02',
+    name: '星河台球俱乐部',
+    address: '高新区软件园',
+    cover: '',
+    region: '北京',
+    tableTypes: [
+      { name: '星牌钢库', pricePerHour: 48 },
+      { name: '星牌木库', pricePerHour: 38 }
+    ]
+  }
+];
+
+// 兼容别名：外部仍用 HALLS，内部映射到 STORES
+const HALLS = STORES;
+
+// 10 位教练，分配到 3 个门店（4/3/3）
+const COACHES = [
+  // hall_01 教练 4 位
+  {
+    openid: 'coach_01',
+    nickname: '周明辉',
+    playYears: 15,
+    coachYears: 10,
+    pricePerMinute: 5,
+    intro: '前省队队员，专攻斯诺克，擅长大赛心态调整',
+    avatar: '',
+    certificates: ['国家一级运动员', '高级教练员证'],
+    availability: ['周一至周五 14:00-21:00', '周六日 10:00-21:00'],
+    hallId: 'hall_01',
+    hallName: '大川激流·旗舰店',
+    brandId: 'brand_01',
+    gameTypes: ['斯诺克', '中式八球']
+  },
+  {
+    openid: 'coach_02',
+    nickname: '吴建国',
+    playYears: 12,
+    coachYears: 6,
+    pricePerMinute: 4,
+    intro: '中式八球实战派，擅长基础动作纠错与发力训练',
+    avatar: '',
+    certificates: ['国家二级运动员', '中级教练员证'],
+    availability: ['周二至周日 12:00-20:00'],
+    hallId: 'hall_01',
+    hallName: '大川激流·旗舰店',
+    brandId: 'brand_01',
+    gameTypes: ['中式八球', '九球']
+  },
+  {
+    openid: 'coach_03',
+    nickname: '郑海涛',
+    playYears: 18,
+    coachYears: 8,
+    pricePerMinute: 4,
+    intro: '九球与美式大师，擅长攻防转换与战术设计',
+    avatar: '',
+    certificates: ['国家二级运动员'],
+    availability: ['周一至周六 15:00-22:00'],
+    hallId: 'hall_01',
+    hallName: '大川激流·旗舰店',
+    brandId: 'brand_01',
+    gameTypes: ['九球', '美式八球']
+  },
+  {
+    openid: 'coach_04',
+    nickname: '冯志刚',
+    playYears: 10,
+    coachYears: 3,
+    pricePerMinute: 3,
+    intro: '专注新手入门，耐心讲解，课堂氛围轻松',
+    avatar: '',
+    certificates: [],
+    availability: ['周三至周日 10:00-18:00'],
+    hallId: 'hall_01',
+    hallName: '大川激流·旗舰店',
+    brandId: 'brand_01',
+    gameTypes: ['中式八球']
+  },
+  // hall_02 教练 3 位
+  {
+    openid: 'coach_05',
+    nickname: '顾小东',
+    playYears: 14,
+    coachYears: 7,
+    pricePerMinute: 4,
+    intro: '擅长进阶提升，主攻杆法与走位精细化训练',
+    avatar: '',
+    certificates: ['国家二级运动员', '中级教练员证'],
+    availability: ['周一至周五 13:00-21:00', '周六 10:00-18:00'],
+    hallId: 'hall_02',
+    hallName: '大川激流·滨江店',
+    brandId: 'brand_01',
+    gameTypes: ['中式八球', '斯诺克']
+  },
+  {
+    openid: 'coach_06',
+    nickname: '蒋伟文',
+    playYears: 20,
+    coachYears: 12,
+    pricePerMinute: 5,
+    intro: '青少年培训专家，因材施教，学员遍布各大高校',
+    avatar: '',
+    certificates: ['国家一级运动员', '高级教练员证', '青少年培训师'],
+    availability: ['周二至周六 10:00-19:00'],
+    hallId: 'hall_02',
+    hallName: '大川激流·滨江店',
+    brandId: 'brand_01',
+    gameTypes: ['中式八球', '斯诺克']
+  },
+  {
+    openid: 'coach_07',
+    nickname: '马晓龙',
+    playYears: 8,
+    coachYears: 2,
+    pricePerMinute: 3,
+    intro: '年轻教练，沟通无代沟，带你快速上手',
+    avatar: '',
+    certificates: [],
+    availability: ['周三至周日 14:00-22:00'],
+    hallId: 'hall_02',
+    hallName: '大川激流·滨江店',
+    brandId: 'brand_01',
+    gameTypes: ['中式八球', '九球']
+  },
+  // hall_03 教练 3 位
+  {
+    openid: 'coach_08',
+    nickname: '姚志勇',
+    playYears: 16,
+    coachYears: 9,
+    pricePerMinute: 4,
+    intro: '社区台球圈元老，实战经验丰富，擅长战术分析',
+    avatar: '',
+    certificates: ['国家二级运动员', '中级教练员证'],
+    availability: ['周一至周日 12:00-21:00'],
+    hallId: 'hall_03',
+    hallName: '星河台球俱乐部',
+    brandId: 'brand_02',
+    gameTypes: ['中式八球', '美式八球']
+  },
+  {
+    openid: 'coach_09',
+    nickname: '贺云鹏',
+    playYears: 22,
+    coachYears: 15,
+    pricePerMinute: 5,
+    intro: '半辈子都在打台球，理论实践兼备，教会你思考台球',
+    avatar: '',
+    certificates: ['国家一级运动员', '高级教练员证'],
+    availability: ['周二至周日 10:00-20:00'],
+    hallId: 'hall_03',
+    hallName: '星河台球俱乐部',
+    brandId: 'brand_02',
+    gameTypes: ['中式八球', '斯诺克', '九球']
+  },
+  {
+    openid: 'coach_10',
+    nickname: '谭海峰',
+    playYears: 9,
+    coachYears: 4,
+    pricePerMinute: 3,
+    intro: '技术流教练，专注杆法与旋转训练',
+    avatar: '',
+    certificates: ['中级教练员证'],
+    availability: ['周一至周五 15:00-22:00', '周日 10:00-18:00'],
+    hallId: 'hall_03',
+    hallName: '星河台球俱乐部',
+    brandId: 'brand_02',
+    gameTypes: ['中式八球']
+  }
+];
+
+// 20 位球员，多个球员分布在不同门店，每位球员绑定 1~4 个教练
+const MEMBERS = [
+  // hall_01 常客 9 人
+  { openid: 'member_01', nickname: '李晨曦', avatar: '', level: '进阶', playYears: 3, hallIds: ['hall_01'] },
+  { openid: 'member_02', nickname: '王浩然', avatar: '', level: '初级', playYears: 1, hallIds: ['hall_01'] },
+  { openid: 'member_03', nickname: '张雨萱', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_01'] },
+  { openid: 'member_04', nickname: '刘子琪', avatar: '', level: '进阶', playYears: 4, hallIds: ['hall_01'] },
+  { openid: 'member_05', nickname: '陈俊豪', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_01'] },
+  { openid: 'member_06', nickname: '黄思远', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_01'] },
+  { openid: 'member_07', nickname: '林诗涵', avatar: '', level: '进阶', playYears: 3, hallIds: ['hall_01'] },
+  { openid: 'member_08', nickname: '徐子墨', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_01'] },
+  { openid: 'member_09', nickname: '孙一凡', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_01'] },
+  // hall_02 常客 6 人
+  { openid: 'member_10', nickname: '马锦程', avatar: '', level: '进阶', playYears: 5, hallIds: ['hall_02'] },
+  { openid: 'member_11', nickname: '朱雅婷', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_02'] },
+  { openid: 'member_12', nickname: '胡泽楷', avatar: '', level: '进阶', playYears: 3, hallIds: ['hall_02'] },
+  { openid: 'member_13', nickname: '何欣怡', avatar: '', level: '中级', playYears: 1, hallIds: ['hall_02'] },
+  { openid: 'member_14', nickname: '罗文博', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_02'] },
+  { openid: 'member_15', nickname: '梁志远', avatar: '', level: '初级', playYears: 1, hallIds: ['hall_02'] },
+  // hall_03 常客 5 人
+  { openid: 'member_16', nickname: '宋雨泽', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_03'] },
+  { openid: 'member_17', nickname: '唐梦瑶', avatar: '', level: '进阶', playYears: 4, hallIds: ['hall_03'] },
+  { openid: 'member_18', nickname: '许天翔', avatar: '', level: '初级', playYears: 1, hallIds: ['hall_03'] },
+  { openid: 'member_19', nickname: '韩思琪', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_03'] },
+  { openid: 'member_20', nickname: '曹宇航', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_03'] }
+];
+
+// 教练↔学员 多对多绑定关系
+const COACH_MEMBER_LINKS = [
+  // coach_01 带 5 名学员
+  { coachOpenid: 'coach_01', memberOpenid: 'member_01', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_01', memberOpenid: 'member_04', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_01', memberOpenid: 'member_07', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_01', memberOpenid: 'member_10', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_01', memberOpenid: 'member_17', status: 'active', createdAt: Date.now() },
+  // coach_02 带 4 名学员
+  { coachOpenid: 'coach_02', memberOpenid: 'member_02', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_02', memberOpenid: 'member_05', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_02', memberOpenid: 'member_08', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_02', memberOpenid: 'member_11', status: 'active', createdAt: Date.now() },
+  // coach_03 带 4 名学员
+  { coachOpenid: 'coach_03', memberOpenid: 'member_03', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_03', memberOpenid: 'member_06', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_03', memberOpenid: 'member_09', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_03', memberOpenid: 'member_13', status: 'active', createdAt: Date.now() },
+  // coach_04 带 4 名学员
+  { coachOpenid: 'coach_04', memberOpenid: 'member_02', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_04', memberOpenid: 'member_05', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_04', memberOpenid: 'member_09', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_04', memberOpenid: 'member_14', status: 'active', createdAt: Date.now() },
+  // coach_05 带 4 名学员
+  { coachOpenid: 'coach_05', memberOpenid: 'member_10', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_05', memberOpenid: 'member_12', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_05', memberOpenid: 'member_15', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_05', memberOpenid: 'member_01', status: 'active', createdAt: Date.now() },
+  // coach_06 带 4 名学员
+  { coachOpenid: 'coach_06', memberOpenid: 'member_11', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_06', memberOpenid: 'member_13', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_06', memberOpenid: 'member_16', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_06', memberOpenid: 'member_19', status: 'active', createdAt: Date.now() },
+  // coach_07 带 3 名学员
+  { coachOpenid: 'coach_07', memberOpenid: 'member_14', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_07', memberOpenid: 'member_15', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_07', memberOpenid: 'member_20', status: 'active', createdAt: Date.now() },
+  // coach_08 带 4 名学员
+  { coachOpenid: 'coach_08', memberOpenid: 'member_16', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_08', memberOpenid: 'member_17', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_08', memberOpenid: 'member_18', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_08', memberOpenid: 'member_04', status: 'active', createdAt: Date.now() },
+  // coach_09 带 3 名学员
+  { coachOpenid: 'coach_09', memberOpenid: 'member_17', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_09', memberOpenid: 'member_19', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_09', memberOpenid: 'member_10', status: 'active', createdAt: Date.now() },
+  // coach_10 带 4 名学员
+  { coachOpenid: 'coach_10', memberOpenid: 'member_18', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_10', memberOpenid: 'member_19', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_10', memberOpenid: 'member_20', status: 'active', createdAt: Date.now() },
+  { coachOpenid: 'coach_10', memberOpenid: 'member_07', status: 'active', createdAt: Date.now() }
+];
+
+// 教练↔门店 绑定关系（1个教练只能绑定1个门店）
+const SHOP_COACH_LINKS = COACHES.map((c) => ({
+  shopOpenid: MOCK_OPENID,
+  coachOpenid: c.openid,
+  status: 'active',
+  createdAt: Date.now()
+}));
+
+// ===== 生成函数 =====
+
 function makeSession(openid, seq, hall, dateKey, startTime, durationMinutes) {
   return {
     _id: `mock_s_${openid}_${seq}`,
@@ -128,10 +393,8 @@ function makeSession(openid, seq, hall, dateKey, startTime, durationMinutes) {
   };
 }
 
-// 为某个用户生成一段时间内的训练记录，制造出不同的颜色深度，便于演示。
-// seedOffset 让不同用户拥有不同的打卡分布。
 function generateSessions(openid, seedOffset = 0) {
-  const halls = DEFAULT_HALLS;
+  const halls = HALLS;
   const sessions = [];
   const end = today();
   let seq = 0;
@@ -139,28 +402,28 @@ function generateSessions(openid, seedOffset = 0) {
   for (let i = 0; i < 300; i++) {
     const date = addDays(end, -i);
     const r = pseudoRandom(i + seedOffset);
-    if (r > 0.55) continue; // 这天没训练
+    if (r > 0.55) continue;
 
     const dateKey = toKey(date);
     const tier = pseudoRandom(i + 1000 + seedOffset);
     let totalMinutes;
     if (tier < 0.45) {
-      totalMinutes = 40 + Math.floor(pseudoRandom(i + 1 + seedOffset) * 130); // 0-3h
+      totalMinutes = 40 + Math.floor(pseudoRandom(i + 1 + seedOffset) * 130);
     } else if (tier < 0.8) {
-      totalMinutes = 200 + Math.floor(pseudoRandom(i + 2 + seedOffset) * 250); // 3-8h
+      totalMinutes = 200 + Math.floor(pseudoRandom(i + 2 + seedOffset) * 250);
     } else {
-      totalMinutes = 500 + Math.floor(pseudoRandom(i + 3 + seedOffset) * 200); // 8h+
+      totalMinutes = 500 + Math.floor(pseudoRandom(i + 3 + seedOffset) * 200);
     }
 
-    const multiHall = pseudoRandom(i + 7 + seedOffset) > 0.7 && totalMinutes > 180;
+    const multiHall = pseudoRandom(i + 7 + seedOffset) > 0.75 && totalMinutes > 180;
     if (multiHall) {
-      const firstHall = halls[i % halls.length];
-      const secondHall = halls[(i + 1) % halls.length];
+      const firstHall = halls[(i + seedOffset) % halls.length];
+      const secondHall = halls[(i + 1 + seedOffset) % halls.length];
       const firstMin = Math.floor(totalMinutes * 0.6);
       sessions.push(makeSession(openid, seq++, firstHall, dateKey, '14:00', firstMin));
       sessions.push(makeSession(openid, seq++, secondHall, dateKey, '19:30', totalMinutes - firstMin));
     } else {
-      const hall = halls[i % halls.length];
+      const hall = halls[(i + seedOffset) % halls.length];
       sessions.push(makeSession(openid, seq++, hall, dateKey, '15:00', totalMinutes));
     }
   }
@@ -168,65 +431,26 @@ function generateSessions(openid, seedOffset = 0) {
   return sessions;
 }
 
-// 演示社区帖子（图文 / 视频）。封面用占位图，便于在开发者工具中直观演示。
 function generatePosts() {
   const now = Date.now();
   const hour = 3600 * 1000;
   const img = (s) => `https://picsum.photos/seed/${s}/600/${700 + (s % 3) * 120}`;
-  const raw = [
-    {
-      openid: 'member_zhao',
-      authorName: '赵晓川',
-      type: 'image',
-      title: '中八实战：清台思路复盘',
-      content: '今天打了三小时，重点练习了走位和加塞控制，分享几张关键球的站位。坚持就是大川蓝！',
-      images: [img(11), img(12), img(13)]
-    },
-    {
-      openid: 'member_qian',
-      authorName: '钱多多',
-      type: 'image',
-      title: '新手如何握杆？避开这些坑',
-      content: '很多球友握杆太紧，导致出杆发力变形。放松手腕，找到自然摆动的节奏更重要。',
-      images: [img(21), img(22)]
-    },
-    {
-      openid: 'member_sun',
-      authorName: '孙一鸣',
-      type: 'video',
-      title: '一杆十二颗清台慢动作',
-      content: '录了个慢动作，重点看母球的回旋控制。',
-      images: [img(31)],
-      video: ''
-    },
-    {
-      openid: 'coach_lin',
-      authorName: '林教练',
-      type: 'image',
-      title: '斯诺克防守的三个原则',
-      content: '做斯诺克不是把球藏起来就行，要让对手既打不到目标球、又难以做安全球。',
-      images: [img(41), img(42), img(43)]
-    },
-    {
-      openid: 'member_zhao',
-      authorName: '赵晓川',
-      type: 'image',
-      title: '今日打卡｜旗舰店夜场',
-      content: '夜场人少，专心练直线长台。大川激流旗舰店的台子手感真不错。',
-      images: [img(51)]
-    },
-    {
-      openid: 'coach_chen',
-      authorName: '陈教练',
-      type: 'image',
-      title: '青少年训练｜从瞄准开始',
-      content: '孩子学球别急着打花式，先把瞄准和出杆直线练扎实。',
-      images: [img(61), img(62)]
-    }
-  ];
 
-  // 为演示帖子分配城市，保证默认城市「北京」有内容
-  const regions = ['北京', '青岛', '北京', '昆明', '北京', '上海'];
+  const raw = [
+    { openid: 'member_01', authorName: '李晨曦', type: 'image', title: '旗舰店夜场三小时训练复盘', content: '今晚在旗舰店练了三个小时，重点练了加塞和走位控制。乔氏金腿的台泥确实很舒服，回弹非常精准。', images: [img(101), img(102), img(103)], region: '北京' },
+    { openid: 'member_04', authorName: '刘子琪', type: 'image', title: '进阶心得：如何练好高杆？', content: '高杆的控制关键在于手腕的爆发力，不要用手臂推。出杆要稳，拉杆要直。分享我的日常练习方法。', images: [img(104), img(105)], region: '北京' },
+    { openid: 'member_07', authorName: '林诗涵', type: 'image', title: '今日打卡｜旗舰店下午场', content: '下午人少，包了整张台。练了两个小时直线长台，命中率提升明显。周教练的建议很有用！', images: [img(107)], region: '北京' },
+    { openid: 'member_10', authorName: '马锦程', type: 'image', title: '滨江店实战：连胜五局', content: '今晚在滨江店和球友切磋，连胜五局！对手是位斯诺克老手，学到了很多防守思路。', images: [img(201), img(202)], region: '北京' },
+    { openid: 'member_11', authorName: '朱雅婷', type: 'image', title: '新手必看：握杆的常见错误', content: '很多新手握杆太紧，导致出杆抖动变形。我整理了几个常见的握杆误区，欢迎大家补充讨论。', images: [img(211), img(212), img(213)], region: '北京' },
+    { openid: 'member_16', authorName: '宋雨泽', type: 'image', title: '星河俱乐部九球局记录', content: '在星河打了两个半小时的九球，对手是一位资深球友。九球的节奏和中八完全不同，更考验叫位能力。', images: [img(301), img(302)], region: '北京' },
+    { openid: 'member_17', authorName: '唐梦瑶', type: 'video', title: '一杆清台慢动作解析', content: '录了一段清台慢动作，重点看母球的旋转控制和走位路径。谭教练说我最近杆法进步很大。', images: [img(311)], video: '', region: '北京' },
+    { openid: 'member_17', authorName: '唐梦瑶', type: 'image', title: '练球日记｜第100次打卡', content: '坚持练球一百天了，从最初连球杆都握不稳到现在可以稳定清台。感谢教练们的耐心指导！', images: [img(312), img(313)], region: '北京' },
+    { openid: 'coach_01', authorName: '周明辉教练', type: 'image', title: '斯诺克防守的三个核心原则', content: '做安全球不是把球藏起来，而是让对手既打不到目标球，又难以做出安全球回应。三个原则：线路、力量、角度。', images: [img(401), img(402), img(403)], region: '北京' },
+    { openid: 'coach_06', authorName: '蒋伟文教练', type: 'image', title: '青少年台球培训：因材施教的重要性', content: '每个孩子的接受能力不同，教学方法也要调整。我总结了三种不同类型学员的教学策略，欢迎同行交流。', images: [img(601), img(602)], region: '北京' },
+    { openid: 'coach_09', authorName: '贺云鹏教练', type: 'image', title: '台球是一项需要思考的运动', content: '很多人以为台球靠手感，其实七分靠思考，三分靠技术。练球时多问自己：为什么走这步？有没有更好的选择？', images: [img(901), img(902)], region: '北京' },
+    { openid: 'member_03', authorName: '张雨萱', type: 'image', title: '旗舰店练球：专注带来进步', content: '今天在旗舰店关掉手机，练了两个半小时。专注的状态下，杆法和走位都有明显提升。', images: [img(1031)], region: '北京' },
+    { openid: 'member_12', authorName: '胡泽楷', type: 'image', title: '滨江店夜场切磋', content: '周五晚上滨江店人不多，和球友约了一场友谊赛。比分胶着到最后一局，非常过瘾。', images: [img(1231), img(1232)], region: '北京' }
+  ];
 
   return raw.map((p, i) => ({
     _id: `mock_p_${i}`,
@@ -239,162 +463,101 @@ function generatePosts() {
     images: p.images || [],
     video: p.video || '',
     cover: (p.images && p.images[0]) || '',
-    region: regions[i % regions.length],
-    likeCount: 3 + ((i * 7) % 40),
+    region: p.region,
+    likeCount: 2 + ((i * 17 + 3) % 60),
     commentCount: 0,
-    createdAt: now - i * 5 * hour
+    createdAt: now - i * 7 * hour
   }));
 }
 
-// 演示约球邀约
 function generateMatches() {
   const now = Date.now();
   const hour = 3600 * 1000;
+
   const raw = [
-    {
-      openid: 'member_zhao',
-      authorName: '赵晓川',
-      avatar: '',
-      hallId: 'hall_01',
-      hallName: '大川激流·旗舰店',
-      datetime: '今晚 20:00',
-      gameType: '中式八球',
-      note: '求一位水平相近的球友，一起练练手',
-      joinCount: 2
-    },
-    {
-      openid: 'member_qian',
-      authorName: '钱多多',
-      avatar: '',
-      hallId: 'hall_02',
-      hallName: '大川激流·滨江店',
-      datetime: '周六 14:00',
-      gameType: '斯诺克',
-      note: '练习防守与做球，欢迎切磋',
-      joinCount: 1
-    },
-    {
-      openid: 'member_sun',
-      authorName: '孙一鸣',
-      avatar: '',
-      hallId: 'hall_03',
-      hallName: '星河台球俱乐部',
-      datetime: '周日 10:00',
-      gameType: '九球',
-      note: '新手友好，重在交流',
-      joinCount: 0
-    }
+    { openid: 'member_01', authorName: '李晨曦', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 20:00', gameType: '中式八球', note: '求一位进阶球友，一起练练攻防转换', level: '进阶', gender: '', age: '' },
+    { openid: 'member_04', authorName: '刘子琪', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '周六 14:00', gameType: '中式八球', note: '新手友好，重在交流', level: '中级', gender: '不限', age: '' },
+    { openid: 'member_10', authorName: '马锦程', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周日 10:00', gameType: '斯诺克', note: '想练练长台，欢迎同等水平球友', level: '进阶', gender: '', age: '' },
+    { openid: 'member_11', authorName: '朱雅婷', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周五 19:30', gameType: '中式八球', note: '刚学球不久，找个新手一起进步', level: '新手', gender: '女', age: '' },
+    { openid: 'member_16', authorName: '宋雨泽', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周六 15:00', gameType: '九球', note: '九球爱好者召集令，欢迎切磋', level: '中级', gender: '', age: '' },
+    { openid: 'member_17', authorName: '唐梦瑶', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周日 11:00', gameType: '中式八球', note: '约个上午场，头脑清醒练练准度', level: '进阶', gender: '', age: '' },
+    { openid: 'member_03', authorName: '张雨萱', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 21:00', gameType: '中式八球', note: '打了一会儿了，再来一局收尾', level: '中级', gender: '', age: '' },
+    { openid: 'member_15', authorName: '梁志远', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周四 20:00', gameType: '中式八球', note: '周四之夜，有没有一起打球的？', level: '初级', gender: '', age: '' }
   ];
+
   return raw.map((m, i) => ({
     _id: `mock_m_${i}`,
     _openid: m.openid,
     authorName: m.authorName,
-    avatar: m.avatar || '',
+    avatar: avatarFor(m.openid),
     hallId: m.hallId,
     hallName: m.hallName,
     datetime: m.datetime,
     gameType: m.gameType,
+    level: m.level || '',
+    gender: m.gender || '',
+    age: m.age || '',
     note: m.note,
-    joinCount: m.joinCount,
+    joinCount: 1 + (i % 3),
     status: 'open',
-    createdAt: now - i * 3 * hour
+    createdAt: now - i * 5 * hour
   }));
 }
 
-// 演示预约：他人（演示会员）预约「当前用户作为教练」，用于教练端「谁约了我」
 function generateBookings() {
   const now = Date.now();
   const hour = 3600 * 1000;
+
   return [
-    {
-      _id: 'mock_b_seed_1',
-      _openid: 'member_zhao',
-      bookerName: '赵晓川',
-      bookerAvatar: avatarFor('member_zhao'),
-      type: 'coach',
-      targetId: MOCK_OPENID,
-      targetName: '我',
-      hallName: '大川激流·旗舰店',
-      datetime: '明天 19:00',
-      note: '想纠正一下握杆姿势',
-      price: 4,
-      status: 'pending',
-      createdAt: now - 2 * hour
-    },
-    {
-      _id: 'mock_b_seed_2',
-      _openid: 'member_qian',
-      bookerName: '钱多多',
-      bookerAvatar: avatarFor('member_qian'),
-      type: 'coach',
-      targetId: MOCK_OPENID,
-      targetName: '我',
-      hallName: '大川激流·滨江店',
-      datetime: '周六 15:00',
-      note: '',
-      price: 4,
-      status: 'pending',
-      createdAt: now - 5 * hour
-    }
+    { _id: 'mock_b_01', _openid: 'member_01', bookerName: '李晨曦', bookerAvatar: avatarFor('member_01'), type: 'coach', targetId: 'coach_01', targetName: '周明辉教练', hallName: '大川激流·旗舰店', datetime: '明天 19:00', note: '想重点练习高杆控制', price: 5, status: 'pending', createdAt: now - 1 * hour },
+    { _id: 'mock_b_02', _openid: 'member_04', bookerName: '刘子琪', bookerAvatar: avatarFor('member_04'), type: 'coach', targetId: 'coach_01', targetName: '周明辉教练', hallName: '大川激流·旗舰店', datetime: '周六 14:00', note: '预约本周第二次课', price: 5, status: 'pending', createdAt: now - 3 * hour },
+    { _id: 'mock_b_03', _openid: 'member_10', bookerName: '马锦程', bookerAvatar: avatarFor('member_10'), type: 'coach', targetId: 'coach_06', targetName: '蒋伟文教练', hallName: '大川激流·滨江店', datetime: '周五 15:00', note: '', price: 5, status: 'pending', createdAt: now - 5 * hour },
+    { _id: 'mock_b_04', _openid: 'member_11', bookerName: '朱雅婷', bookerAvatar: avatarFor('member_11'), type: 'coach', targetId: 'coach_06', targetName: '蒋伟文教练', hallName: '大川激流·滨江店', datetime: '周六 10:00', note: '青少年课程第一节', price: 5, status: 'pending', createdAt: now - 8 * hour },
+    { _id: 'mock_b_05', _openid: 'member_16', bookerName: '宋雨泽', bookerAvatar: avatarFor('member_16'), type: 'table', targetId: 'hall_03', targetName: '星河台球俱乐部', hallName: '星河台球俱乐部', datetime: '今晚 20:00', note: '预约乔氏金腿', tableType: '星牌钢库', price: 48, status: 'pending', createdAt: now - 2 * hour },
+    { _id: 'mock_b_06', _openid: 'member_17', bookerName: '唐梦瑶', bookerAvatar: avatarFor('member_17'), type: 'table', targetId: 'hall_01', targetName: '大川激流·旗舰店', hallName: '大川激流·旗舰店', datetime: '周日 10:00', note: '上午包台练习', tableType: '乔氏金腿', price: 78, status: 'pending', createdAt: now - 6 * hour }
   ];
 }
 
+// 演示阶段确定性派生「教练-学员」关系
+function coachStudents(coachOpenid) {
+  const members = MEMBERS;
+  if (!members.length) return [];
+  const picked = members.filter((m) => hashCode(`${coachOpenid}|${m.openid}`) % 3 !== 0);
+  return picked.length ? picked : [members[hashCode(coachOpenid) % members.length]];
+}
+
+// ===== 初始化 =====
+
 function ensureSeeded() {
   const seeded = wx.getStorageSync(KEY_SEEDED);
+  if (seeded) return;
 
-  // 已播种过：仅补齐后续里程碑新增的演示数据（向前兼容旧的本地数据）
-  if (seeded) {
-    if (!readArray(KEY_MEMBERS).length) {
-      writeArray(KEY_MEMBERS, DEMO_MEMBERS);
-      let extra = [];
-      DEMO_MEMBERS.forEach((m, idx) => {
-        extra = extra.concat(generateSessions(m.openid, (idx + 1) * 137));
-      });
-      writeArray(KEY_SESSIONS, readArray(KEY_SESSIONS).concat(extra));
-    }
-    if (!readArray(KEY_ALL_COACHES).length) {
-      writeArray(KEY_ALL_COACHES, DEMO_COACHES);
-      writeArray(KEY_SHOP_COACHES, []);
-    }
-    if (!readArray(KEY_POSTS).length) {
-      writeArray(KEY_POSTS, generatePosts());
-      writeArray(KEY_POST_LIKES, []);
-      writeArray(KEY_COMMENTS, []);
-    }
-    if (!readArray(KEY_FOLLOWS).length) {
-      // 默认关注两位演示作者，使「关注」页有内容
-      writeArray(KEY_FOLLOWS, ['member_zhao', 'coach_lin']);
-    }
-    if (!readArray(KEY_MATCHES).length) {
-      writeArray(KEY_MATCHES, generateMatches());
-    }
-    if (!readArray(KEY_BOOKINGS).length) {
-      writeArray(KEY_BOOKINGS, generateBookings());
-      writeArray(KEY_JOINS, []);
-    }
-    return;
-  }
+  // 清理旧版本种子残留（兼容从 dc_seeded 迁移的用户）
+  try { wx.removeStorageSync('dc_seeded'); } catch (e) {}
 
-  writeArray(KEY_HALLS, DEFAULT_HALLS);
-  writeArray(KEY_MEMBERS, DEMO_MEMBERS);
-  writeArray(KEY_ALL_COACHES, DEMO_COACHES);
-  writeArray(KEY_POSTS, generatePosts());
-  writeArray(KEY_POST_LIKES, []);
-  writeArray(KEY_COMMENTS, []);
-  writeArray(KEY_FOLLOWS, ['member_zhao', 'coach_lin']);
+  writeArray(KEY_HALLS, HALLS);
+  writeArray(KEY_BRANDS, BRANDS);
+  writeArray(KEY_STORES, STORES);
+  writeArray(KEY_ALL_COACHES, COACHES);
+  writeArray(KEY_MEMBERS, MEMBERS);
+  writeArray(KEY_SHOP_COACHES, SHOP_COACH_LINKS);
+  writeArray(KEY_LINKS, COACH_MEMBER_LINKS);
 
-  // 当前用户（本人）+ 各演示会员，各自生成训练数据
-  let all = generateSessions(MOCK_OPENID, 0);
-  DEMO_MEMBERS.forEach((m, idx) => {
-    all = all.concat(generateSessions(m.openid, (idx + 1) * 137));
+  let allSessions = [];
+  MEMBERS.forEach((m, idx) => {
+    allSessions = allSessions.concat(generateSessions(m.openid, (idx + 1) * 137));
   });
-  writeArray(KEY_SESSIONS, all);
+  writeArray(KEY_SESSIONS, allSessions);
 
   writeObject(KEY_ROLE, 'member');
   writeObject(KEY_COACH, null);
-  writeArray(KEY_LINKS, []);
   writeObject(KEY_SHOP, null);
-  writeArray(KEY_SHOP_COACHES, []);
+
+  writeArray(KEY_POSTS, generatePosts());
+  writeArray(KEY_POST_LIKES, []);
+  writeArray(KEY_COMMENTS, []);
+  writeArray(KEY_FOLLOWS, ['member_01', 'member_04', 'member_10', 'coach_01', 'coach_06']);
+
   writeArray(KEY_MATCHES, generateMatches());
   writeArray(KEY_BOOKINGS, generateBookings());
   writeArray(KEY_JOINS, []);
@@ -404,28 +567,6 @@ function ensureSeeded() {
   } catch (e) {}
 }
 
-// 简单确定性 hash：用于演示阶段稳定派生「教练-学员」关系
-function hashCode(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
-// 演示阶段：确定性地为某位教练派生「给哪些球员上过课」。
-// 真实业务应由训练/课程记录聚合得到，此处仅为演示稳定输出。
-function coachStudents(coachOpenid) {
-  const members = readArray(KEY_MEMBERS);
-  if (!members.length) return [];
-  const picked = members.filter(
-    (m) => hashCode(`${coachOpenid}|${m.openid}`) % 3 !== 0
-  );
-  // 至少返回一名，避免空列表
-  return picked.length ? picked : [members[hashCode(coachOpenid) % members.length]];
-}
-
-// 角色：member / coach（演示态下本地可自由切换）
 function getRole() {
   return readObject(KEY_ROLE, 'member');
 }
@@ -437,6 +578,8 @@ function setRole(role) {
 module.exports = {
   MOCK_OPENID,
   KEY_HALLS,
+  KEY_BRANDS,
+  KEY_STORES,
   KEY_SESSIONS,
   KEY_ROLE,
   KEY_COACH,
@@ -452,9 +595,11 @@ module.exports = {
   KEY_MATCHES,
   KEY_BOOKINGS,
   KEY_JOINS,
-  DEFAULT_HALLS,
-  DEMO_MEMBERS,
-  DEMO_COACHES,
+  HALLS,
+  BRANDS,
+  STORES,
+  MEMBERS,
+  COACHES,
   readArray,
   writeArray,
   readObject,

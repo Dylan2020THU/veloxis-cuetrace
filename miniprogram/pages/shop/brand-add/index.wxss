@@ -1,0 +1,254 @@
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 32rpx 0 8rpx;
+}
+.prog-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 10rpx;
+  background: #e8e9eb;
+  transition: background 0.3s;
+}
+.prog-dot.active {
+  background: #067ef9;
+}
+.prog-line {
+  width: 80rpx;
+  height: 6rpx;
+  background: #e8e9eb;
+  margin: 0 8rpx;
+  border-radius: 3rpx;
+  transition: background 0.3s;
+}
+.prog-line.active {
+  background: #067ef9;
+}
+.step-label {
+  text-align: center;
+  font-size: 24rpx;
+  color: #8a9099;
+  margin-bottom: 32rpx;
+}
+.section {
+  padding: 0 32rpx 80rpx;
+}
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2329;
+  margin-bottom: 24rpx;
+}
+.muted {
+  font-size: 24rpx;
+  color: #9aa0a6;
+}
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 20rpx rgba(6, 126, 249, 0.06);
+}
+.field {
+  margin-bottom: 28rpx;
+}
+.field:last-child {
+  margin-bottom: 0;
+}
+.field-label {
+  display: block;
+  font-size: 26rpx;
+  color: #8a9099;
+  margin-bottom: 14rpx;
+}
+.field-input {
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  padding: 22rpx 24rpx;
+  font-size: 30rpx;
+  color: #1f2329;
+  width: 100%;
+  box-sizing: border-box;
+}
+.img-upload {
+  width: 100%;
+  height: 200rpx;
+  border: 2rpx dashed #e8e9eb;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.upload-img {
+  width: 100%;
+  height: 200rpx;
+}
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+.upload-icon {
+  font-size: 48rpx;
+  color: #c4c9ce;
+}
+.upload-tip {
+  font-size: 24rpx;
+  color: #c4c9ce;
+}
+
+/* 桌型 */
+.type-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f1f3;
+}
+.type-item:last-child {
+  border-bottom: none;
+}
+.type-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 16rpx;
+}
+.type-img {
+  width: 100rpx;
+  height: 80rpx;
+  border-radius: 8rpx;
+  background: #f0f1f3;
+  flex-shrink: 0;
+}
+.type-img.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #fff;
+}
+.type-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.type-name {
+  font-size: 30rpx;
+  color: #1f2329;
+}
+.type-price {
+  font-size: 26rpx;
+  color: #e54545;
+}
+.type-actions {
+  display: flex;
+  gap: 8rpx;
+}
+.edit-btn {
+  color: #067ef9;
+  font-size: 28rpx;
+  padding: 8rpx 16rpx;
+}
+.del-btn {
+  color: #e54545;
+  font-size: 28rpx;
+  padding: 8rpx 16rpx;
+}
+
+/* 表单 */
+.form-card {
+  margin-top: 0;
+}
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.price-input {
+  flex: 1;
+}
+.price-unit {
+  font-size: 28rpx;
+  color: #8a9099;
+  flex-shrink: 0;
+}
+.color-palette {
+  display: flex;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+.color-swatch {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 28rpx;
+  border: 4rpx solid transparent;
+}
+.color-swatch.selected {
+  border-color: #1f2329;
+  transform: scale(1.1);
+}
+.form-btns {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 16rpx;
+}
+.btn {
+  flex: 1;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.cancel-btn {
+  background: #f4f6f8;
+  color: #8a9099;
+}
+.add-btn {
+  background: #067ef9;
+  color: #fff;
+}
+
+/* 按钮 */
+.btn-wrap {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 24rpx;
+}
+.btn-primary {
+  flex: 1;
+  height: 88rpx;
+  background: #067ef9;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+.btn-ghost {
+  flex: 1;
+  height: 88rpx;
+  background: #f4f6f8;
+  color: #8a9099;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+.ml {
+  margin-left: 0;
+}

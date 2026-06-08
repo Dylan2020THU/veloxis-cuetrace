@@ -5,6 +5,9 @@
 const mock = require('../utils/mock');
 const { levelFromMinutes } = require('../utils/color');
 
+const KEY_SHOP_BRANDS = 'dc_shop_brands';
+const KEY_SHOP_STORES = 'dc_shop_stores';
+
 function cloudReady() {
   const app = getApp();
   return !!(app && app.globalData && app.globalData.cloudReady && wx.cloud);
@@ -284,9 +287,10 @@ function getShopProfile() {
   return Promise.resolve(mock.readObject(mock.KEY_SHOP, null));
 }
 
-function saveShopProfile({ name, hallId, hallName, tableTypes }) {
+// 店主保存的资料（品牌+门店双层）
+function saveShopProfile({ name, hallId, hallName, tableTypes, brandId, storeId }) {
   if (cloudReady()) {
-    return callCloud('saveShopProfile', { name, hallId, hallName, tableTypes }).then((r) => {
+    return callCloud('saveShopProfile', { name, hallId, hallName, tableTypes, brandId, storeId }).then((r) => {
       mock.setRole('shop');
       return r;
     });
@@ -297,11 +301,83 @@ function saveShopProfile({ name, hallId, hallName, tableTypes }) {
     name: name !== undefined ? name : existing.name,
     hallId: hallId !== undefined ? hallId : existing.hallId,
     hallName: hallName !== undefined ? hallName : existing.hallName,
-    tableTypes: Array.isArray(tableTypes) ? tableTypes : existing.tableTypes
+    tableTypes: Array.isArray(tableTypes) ? tableTypes : existing.tableTypes,
+    brandId: brandId !== undefined ? brandId : existing.brandId,
+    storeId: storeId !== undefined ? storeId : existing.storeId
   });
   mock.writeObject(mock.KEY_SHOP, updated);
   mock.setRole('shop');
   return Promise.resolve({ ok: true });
+}
+
+// ============ 品牌管理 ============
+
+// 获取全系统品牌（系统级，所有人可见）
+function getBrands() {
+  if (cloudReady()) {
+    return callCloud('getBrands', {}).then((r) => (r && r.brands) || []);
+  }
+  return Promise.resolve(mock.readArray(mock.KEY_BRANDS));
+}
+
+// 保存品牌（店主账号下）
+function saveShopBrand(brand) {
+  if (cloudReady()) {
+    return callCloud('saveShopBrand', { brand });
+  }
+  const brands = mock.readArray(KEY_SHOP_BRANDS);
+  const idx = brands.findIndex((b) => b._id === brand._id);
+  if (idx !== -1) {
+    brands[idx] = Object.assign({}, brands[idx], brand);
+  } else {
+    brands.push(Object.assign({ _openid: mock.MOCK_OPENID, createdAt: Date.now() }, brand));
+  }
+  mock.writeArray(KEY_SHOP_BRANDS, brands);
+  return Promise.resolve({ ok: true });
+}
+
+// 获取本店品牌列表
+function getShopBrands() {
+  if (cloudReady()) {
+    return callCloud('getShopBrands', {}).then((r) => (r && r.brands) || []);
+  }
+  return Promise.resolve(mock.readArray(KEY_SHOP_BRANDS));
+}
+
+// ============ 门店管理 ============
+
+// 获取系统门店（可按 brandId 过滤）
+function getStores(brandId) {
+  if (cloudReady()) {
+    return callCloud('getStores', { brandId }).then((r) => (r && r.stores) || []);
+  }
+  const stores = mock.readArray(mock.KEY_STORES);
+  if (brandId) return Promise.resolve(stores.filter((s) => s.brandId === brandId));
+  return Promise.resolve(stores);
+}
+
+// 保存本店门店配置（店主新增/修改自己添加的门店）
+function saveShopStore(store) {
+  if (cloudReady()) {
+    return callCloud('saveShopStore', { store });
+  }
+  const stores = mock.readArray(KEY_SHOP_STORES);
+  const idx = stores.findIndex((s) => s._id === store._id);
+  if (idx !== -1) {
+    stores[idx] = Object.assign({}, stores[idx], store);
+  } else {
+    stores.push(Object.assign({ _openid: mock.MOCK_OPENID, createdAt: Date.now() }, store));
+  }
+  mock.writeArray(KEY_SHOP_STORES, stores);
+  return Promise.resolve({ ok: true });
+}
+
+// 获取本店管理的门店（店主自定义添加的门店）
+function getShopStores() {
+  if (cloudReady()) {
+    return callCloud('getShopStores', {}).then((r) => (r && r.stores) || []);
+  }
+  return Promise.resolve(mock.readArray(KEY_SHOP_STORES));
 }
 
 // ============ 球台状态（开桌/结账） ============
@@ -414,14 +490,16 @@ function getCoachStudents(coachOpenid) {
 }
 
 // 本店会员训练统计：{ openid, nickname, checkinDays, totalMinutes }
-function getShopMembers() {
+// storeId 可选：指定门店时按该门店过滤；否则用 shop.storeId
+function getShopMembers(storeId) {
   if (cloudReady()) {
-    return callCloud('getShopMembers', {}).then((r) => (r && r.members) || []);
+    return callCloud('getShopMembers', { storeId }).then((r) => (r && r.members) || []);
   }
   const shop = mock.readObject(mock.KEY_SHOP, null);
-  if (!shop || !shop.hallId) return Promise.resolve([]);
+  const targetStoreId = storeId || (shop && shop.storeId);
+  if (!targetStoreId) return Promise.resolve([]);
 
-  const sessions = mock.readArray(mock.KEY_SESSIONS).filter((s) => s.hallId === shop.hallId);
+  const sessions = mock.readArray(mock.KEY_SESSIONS).filter((s) => s.hallId === targetStoreId);
   const agg = {};
   sessions.forEach((s) => {
     if (!agg[s._openid]) agg[s._openid] = { totalMinutes: 0, days: {} };
@@ -697,8 +775,8 @@ function getBookableCoaches() {
   );
 }
 
-// 约球桌：可预约球桌（按台球厅）。合成桌位数量与每小时价格用于演示。
-// 优先取该球厅店主的 tableTypes（{name, pricePerHour} 对象数组），否则用 halls 默认值。
+// 约球桌：可预约球桌（按门店）。合成桌位数量与每小时价格用于演示。
+// 优先取该门店的 tableTypes（{name, pricePerHour} 对象数组），否则用 stores 默认值。
 function getBookableTables() {
   const synth = {
     hall_01: { tableCount: 12 },
@@ -706,18 +784,17 @@ function getBookableTables() {
     hall_03: { tableCount: 6 }
   };
   const defaultTypes = [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }];
-  const fallbackHalls = [
-    { _id: 'hall_01', name: '大川激流·旗舰店', address: '城市中心广场 3F', cover: '' },
-    { _id: 'hall_02', name: '大川激流·滨江店', address: '滨江路 88 号', cover: '' },
-    { _id: 'hall_03', name: '星河台球俱乐部', address: '高新区软件园', cover: '' }
+  const fallbackStores = [
+    { _id: 'hall_01', brandId: 'brand_01', name: '大川激流·旗舰店', address: '城市中心广场 3F', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }, { name: '美洲豹', pricePerHour: 58 }] },
+    { _id: 'hall_02', brandId: 'brand_01', name: '大川激流·滨江店', address: '滨江路 88 号', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }] },
+    { _id: 'hall_03', brandId: 'brand_02', name: '星河台球俱乐部', address: '高新区软件园', cover: '', tableTypes: [{ name: '星牌钢库', pricePerHour: 48 }, { name: '星牌木库', pricePerHour: 38 }] }
   ];
-  return Promise.all([getHalls(), getShopProfile()]).then(([halls, shop]) => {
-    const hallsToUse = halls.length ? halls : fallbackHalls;
-    const shopTableTypes = (shop && shop.tableTypes && shop.tableTypes.length) ? shop.tableTypes : defaultTypes;
-    return hallsToUse.map((h) => {
-      const base = synth[h._id] || { tableCount: 8 };
-      const hallShopTableTypes = (h.tableTypes && h.tableTypes.length) ? h.tableTypes : shopTableTypes;
-      return Object.assign({}, h, base, { tableTypes: hallShopTableTypes });
+  return getStores().then((stores) => {
+    const storesToUse = stores.length ? stores : fallbackStores;
+    return storesToUse.map((s) => {
+      const base = synth[s._id] || { tableCount: 8 };
+      const hallShopTableTypes = (s.tableTypes && s.tableTypes.length) ? s.tableTypes : defaultTypes;
+      return Object.assign({}, s, base, { tableTypes: hallShopTableTypes });
     });
   });
 }
@@ -931,6 +1008,12 @@ module.exports = {
   linkMember,
   getShopProfile,
   saveShopProfile,
+  getBrands,
+  saveShopBrand,
+  getShopBrands,
+  getStores,
+  saveShopStore,
+  getShopStores,
   getSessions,
   createSession,
   closeSession,

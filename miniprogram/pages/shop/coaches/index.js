@@ -1,6 +1,5 @@
 const data = require('../../../services/data');
 
-// 简单确定性 hash：演示阶段稳定生成教练的「在店 / 在线」状态
 function hashCode(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -12,25 +11,49 @@ function hashCode(str) {
 Page({
   behaviors: [require('../../../utils/themeBehavior')],
   data: {
+  data: {
     coaches: [],
     linkable: [],
     cloudReady: false,
     showAdd: false,
-    coachCode: ''
+    coachCode: '',
+    stores: [],
+    currentStoreId: '',
+    currentStoreName: ''
   },
 
   onShow() {
     this.setData({ cloudReady: getApp().globalData.cloudReady });
-    this.loadCoaches();
+    this.load();
   },
 
-  loadCoaches() {
+  load() {
+    data.getShopStores().then((stores) => {
+      const shop = data.getShopProfile() || Promise.resolve({});
+      return Promise.all([stores, shop]);
+    }).then(([stores, shop]) => {
+      const currentStoreId = shop && shop.storeId ? shop.storeId : (stores.length ? stores[0]._id : '');
+      const currentStore = stores.find((s) => s._id === currentStoreId) || {};
+      this.setData({ stores, currentStoreId, currentStoreName: currentStore.name || '' });
+      return data.getShopCoaches();
+    }).then((coaches) => {
+      const { currentStoreId } = this.data;
+      const list = (coaches || [])
+        .filter((c) => !currentStoreId || c.hallId === currentStoreId)
+        .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
+      this.setData({ coaches: list });
+    });
+  },
+
+  onStoreChange(e) {
+    const idx = e.detail.value;
+    const stores = this.data.stores;
+    const store = stores[idx];
+    this.setData({ currentStoreId: store._id, currentStoreName: store.name });
     data.getShopCoaches().then((coaches) => {
-      // TODO: online（是否在店/在线）应由真实业务数据提供。
-      // 当前为演示阶段：用 openid 确定性派生，便于查看绿点效果。
-      const list = (coaches || []).map((c) =>
-        Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 })
-      );
+      const list = (coaches || [])
+        .filter((c) => c.hallId === store._id)
+        .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
       this.setData({ coaches: list });
     });
   },
@@ -41,13 +64,15 @@ Page({
     wx.navigateTo({
       url: `/pages/shop/coach-students/index?openid=${encodeURIComponent(
         openid
-      )}&nickname=${encodeURIComponent(nickname)}`
+      )}&nickname=${encodeURIComponent(nickname)}&storeId=${encodeURIComponent(this.data.currentStoreId)}`
     });
   },
 
   openAdd() {
     data.getLinkableCoaches().then((linkable) => {
-      this.setData({ showAdd: true, linkable, coachCode: '' });
+      const { currentStoreId } = this.data;
+      const filtered = linkable.filter((c) => !currentStoreId || c.hallId === currentStoreId);
+      this.setData({ showAdd: true, linkable: filtered, coachCode: '' });
     });
   },
 
@@ -80,7 +105,7 @@ Page({
       }
       wx.showToast({ title: '已添加', icon: 'success' });
       this.setData({ showAdd: false });
-      this.loadCoaches();
+      this.load();
     });
   },
 
@@ -94,7 +119,7 @@ Page({
         if (!res.confirm) return;
         data.removeShopCoach(openid).then(() => {
           wx.showToast({ title: '已移除', icon: 'none' });
-          this.loadCoaches();
+          this.load();
         });
       }
     });

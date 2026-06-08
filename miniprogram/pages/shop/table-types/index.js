@@ -26,7 +26,10 @@ Page({
       '#AF52DE', '#FF2D55'
     ],
     submitting: false,
-    uploading: false
+    uploading: false,
+    stores: [],
+    currentStoreId: '',
+    currentStoreName: ''
   },
 
   onLoad() {
@@ -34,13 +37,33 @@ Page({
   },
 
   loadShop() {
-    data.getShopProfile().then((shop) => {
-      const types = (shop && shop.tableTypes) || [];
-      const patched = types.map((t) =>
-        t.bgColor ? t : Object.assign({}, t, { bgColor: matchTableColor(t.name) })
-      );
-      this.setData({ tableTypes: patched });
+    Promise.all([data.getShopStores(), data.getShopProfile()]).then(([stores, shop]) => {
+      const currentStoreId = (shop && shop.storeId) ? shop.storeId : (stores.length ? stores[0]._id : '');
+      const currentStore = stores.find((s) => s._id === currentStoreId) || {};
+      this.setData({ stores, currentStoreId, currentStoreName: currentStore.name || '' });
+      return this._loadTableTypes(currentStoreId);
     });
+  },
+
+  _loadTableTypes(storeId) {
+    if (storeId) {
+      data.getStores(storeId).then((stores) => {
+        const store = stores.find((s) => s._id === storeId);
+        const types = (store && store.tableTypes) || [];
+        const patched = types.map((t) =>
+          t.bgColor ? t : Object.assign({}, t, { bgColor: matchTableColor(t.name) })
+        );
+        this.setData({ tableTypes: patched });
+      });
+    } else {
+      data.getShopProfile().then((shop) => {
+        const types = (shop && shop.tableTypes) || [];
+        const patched = types.map((t) =>
+          t.bgColor ? t : Object.assign({}, t, { bgColor: matchTableColor(t.name) })
+        );
+        this.setData({ tableTypes: patched });
+      });
+    }
   },
 
   chooseImage() {
@@ -147,14 +170,11 @@ Page({
       return;
     }
     this.setData({ submitting: true });
-    data.getShopProfile().then((existingShop) => {
-      const shop = existingShop || {};
-      return data.saveShopProfile({
-        name: shop.name || '',
-        hallId: shop.hallId || '',
-        hallName: shop.hallName || '',
-        tableTypes: this.data.tableTypes
-      });
+    const storeId = this.data.currentStoreId;
+    data.getStores(storeId).then((stores) => {
+      const store = stores.find((s) => s._id === storeId) || {};
+      store.tableTypes = this.data.tableTypes;
+      return data.saveShopStore(store);
     })
       .then(() => {
         if (getApp().globalData._shopCache) {
@@ -167,5 +187,12 @@ Page({
         wx.showToast({ title: '保存失败', icon: 'none' });
       })
       .finally(() => this.setData({ submitting: false }));
+  },
+
+  onStoreChange(e) {
+    const idx = e.detail.value;
+    const store = this.data.stores[idx];
+    this.setData({ currentStoreId: store._id, currentStoreName: store.name });
+    this._loadTableTypes(store._id);
   }
 });

@@ -1,4 +1,13 @@
 <view class="page theme-{{theme}}">
+  <view class="store-bar" wx:if="{{stores.length > 0}}">
+    <picker mode="selector" range="{{stores}}" range-key="name" value="{{storesIndex}}" bindchange="onStoreChange">
+      <view class="store-picker">
+        <text>{{currentStoreName || '选择门店'}}</text>
+        <text class="arrow-icon">▼</text>
+      </view>
+    </picker>
+  </view>
+
   <view class="tip muted">设置本店球桌类型及每小时收费，球员预约时将从此列表中选择</view>
 
   <!-- 当前桌型列表 -->

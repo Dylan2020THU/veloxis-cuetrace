@@ -9,6 +9,7 @@
     "pages/coach/member/index",
     "pages/coach/bookings/index",
     "pages/shop/dashboard/index",
+    "pages/shop/brand-add/index",
     "pages/shop/coaches/index",
     "pages/shop/coach-students/index",
     "pages/shop/members/index",
