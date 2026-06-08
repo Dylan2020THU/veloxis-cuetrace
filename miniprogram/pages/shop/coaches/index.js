@@ -11,7 +11,6 @@ function hashCode(str) {
 Page({
   behaviors: [require('../../../utils/themeBehavior')],
   data: {
-  data: {
     coaches: [],
     linkable: [],
     cloudReady: false,

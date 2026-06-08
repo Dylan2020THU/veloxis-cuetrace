@@ -90,7 +90,7 @@ Page({
   },
 
   loadInit() {
-    data.getMyShopStores().then((stores) => {
+    data.getShopStores().then((stores) => {
       if (!stores.length) {
         this.setData({ tables: [], filteredTables: [], refreshing: false });
         return;
@@ -179,7 +179,7 @@ Page({
       return;
     }
 
-    Promise.all([data.getMyShopStores(), data.getSessions(), data.getMembers()])
+    Promise.all([data.getShopStores(), data.getSessions(), data.getMembers()])
       .then(([stores, sessions, members]) => {
         const store = stores.find((s) => s._id === this.data.currentStoreId) || stores[0] || {};
         const tableTypes = (store && store.tableTypes) || [];
@@ -279,7 +279,7 @@ Page({
     const table = this.data.filteredTables[idx];
     data.createSession({ tableId: table.tableId }).then(() => {
       wx.showToast({ title: '已开始使用', icon: 'success' });
-      this.loadData();
+      this.loadInit();
     });
   },
 
@@ -287,7 +287,7 @@ Page({
     const table = this.data.filteredTables[idx];
     data.closeSession({ sessionId: table.session._id }).then(() => {
       wx.showToast({ title: '已结束使用', icon: 'success' });
-      this.loadData();
+      this.loadInit();
     });
   },
 
