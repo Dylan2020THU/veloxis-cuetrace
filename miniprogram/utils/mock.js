@@ -291,30 +291,37 @@ const COACHES = [
 ];
 
 // 20 位球员，多个球员分布在不同门店，每位球员绑定 1~4 个教练
+const LEVEL_MAP = {
+  '进阶': '6级（业余进阶）',
+  '中级': '5级（业余中级）',
+  '初级': '3级（初学者）',
+  '新手': '2级（新手）'
+};
+
 const MEMBERS = [
   // hall_01 常客 9 人
-  { openid: 'member_01', nickname: '李晨曦', avatar: '', level: '进阶', playYears: 3, hallIds: ['hall_01'] },
-  { openid: 'member_02', nickname: '王浩然', avatar: '', level: '初级', playYears: 1, hallIds: ['hall_01'] },
-  { openid: 'member_03', nickname: '张雨萱', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_01'] },
-  { openid: 'member_04', nickname: '刘子琪', avatar: '', level: '进阶', playYears: 4, hallIds: ['hall_01'] },
-  { openid: 'member_05', nickname: '陈俊豪', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_01'] },
-  { openid: 'member_06', nickname: '黄思远', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_01'] },
-  { openid: 'member_07', nickname: '林诗涵', avatar: '', level: '进阶', playYears: 3, hallIds: ['hall_01'] },
-  { openid: 'member_08', nickname: '徐子墨', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_01'] },
-  { openid: 'member_09', nickname: '孙一凡', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_01'] },
+  { openid: 'member_01', nickname: '李晨曦', avatar: '', level: '6级（业余进阶）', playYears: 3, hallIds: ['hall_01'] },
+  { openid: 'member_02', nickname: '王浩然', avatar: '', level: '3级（初学者）', playYears: 1, hallIds: ['hall_01'] },
+  { openid: 'member_03', nickname: '张雨萱', avatar: '', level: '5级（业余中级）', playYears: 2, hallIds: ['hall_01'] },
+  { openid: 'member_04', nickname: '刘子琪', avatar: '', level: '6级（业余进阶）', playYears: 4, hallIds: ['hall_01'] },
+  { openid: 'member_05', nickname: '陈俊豪', avatar: '', level: '2级（新手）', playYears: 0, hallIds: ['hall_01'] },
+  { openid: 'member_06', nickname: '黄思远', avatar: '', level: '5级（业余中级）', playYears: 2, hallIds: ['hall_01'] },
+  { openid: 'member_07', nickname: '林诗涵', avatar: '', level: '6级（业余进阶）', playYears: 3, hallIds: ['hall_01'] },
+  { openid: 'member_08', nickname: '徐子墨', avatar: '', level: '5级（业余中级）', playYears: 2, hallIds: ['hall_01'] },
+  { openid: 'member_09', nickname: '孙一凡', avatar: '', level: '2级（新手）', playYears: 0, hallIds: ['hall_01'] },
   // hall_02 常客 6 人
-  { openid: 'member_10', nickname: '马锦程', avatar: '', level: '进阶', playYears: 5, hallIds: ['hall_02'] },
-  { openid: 'member_11', nickname: '朱雅婷', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_02'] },
-  { openid: 'member_12', nickname: '胡泽楷', avatar: '', level: '进阶', playYears: 3, hallIds: ['hall_02'] },
-  { openid: 'member_13', nickname: '何欣怡', avatar: '', level: '中级', playYears: 1, hallIds: ['hall_02'] },
-  { openid: 'member_14', nickname: '罗文博', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_02'] },
-  { openid: 'member_15', nickname: '梁志远', avatar: '', level: '初级', playYears: 1, hallIds: ['hall_02'] },
+  { openid: 'member_10', nickname: '马锦程', avatar: '', level: '6级（业余进阶）', playYears: 5, hallIds: ['hall_02'] },
+  { openid: 'member_11', nickname: '朱雅婷', avatar: '', level: '5级（业余中级）', playYears: 2, hallIds: ['hall_02'] },
+  { openid: 'member_12', nickname: '胡泽楷', avatar: '', level: '6级（业余进阶）', playYears: 3, hallIds: ['hall_02'] },
+  { openid: 'member_13', nickname: '何欣怡', avatar: '', level: '5级（业余中级）', playYears: 1, hallIds: ['hall_02'] },
+  { openid: 'member_14', nickname: '罗文博', avatar: '', level: '2级（新手）', playYears: 0, hallIds: ['hall_02'] },
+  { openid: 'member_15', nickname: '梁志远', avatar: '', level: '3级（初学者）', playYears: 1, hallIds: ['hall_02'] },
   // hall_03 常客 5 人
-  { openid: 'member_16', nickname: '宋雨泽', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_03'] },
-  { openid: 'member_17', nickname: '唐梦瑶', avatar: '', level: '进阶', playYears: 4, hallIds: ['hall_03'] },
-  { openid: 'member_18', nickname: '许天翔', avatar: '', level: '初级', playYears: 1, hallIds: ['hall_03'] },
-  { openid: 'member_19', nickname: '韩思琪', avatar: '', level: '中级', playYears: 2, hallIds: ['hall_03'] },
-  { openid: 'member_20', nickname: '曹宇航', avatar: '', level: '新手', playYears: 0, hallIds: ['hall_03'] }
+  { openid: 'member_16', nickname: '宋雨泽', avatar: '', level: '5级（业余中级）', playYears: 2, hallIds: ['hall_03'] },
+  { openid: 'member_17', nickname: '唐梦瑶', avatar: '', level: '6级（业余进阶）', playYears: 4, hallIds: ['hall_03'] },
+  { openid: 'member_18', nickname: '许天翔', avatar: '', level: '3级（初学者）', playYears: 1, hallIds: ['hall_03'] },
+  { openid: 'member_19', nickname: '韩思琪', avatar: '', level: '5级（业余中级）', playYears: 2, hallIds: ['hall_03'] },
+  { openid: 'member_20', nickname: '曹宇航', avatar: '', level: '2级（新手）', playYears: 0, hallIds: ['hall_03'] }
 ];
 
 // 教练↔学员 多对多绑定关系
@@ -475,14 +482,14 @@ function generateMatches() {
   const hour = 3600 * 1000;
 
   const raw = [
-    { openid: 'member_01', authorName: '李晨曦', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 20:00', gameType: '中式八球', note: '求一位进阶球友，一起练练攻防转换', level: '进阶', gender: '', age: '' },
-    { openid: 'member_04', authorName: '刘子琪', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '周六 14:00', gameType: '中式八球', note: '新手友好，重在交流', level: '中级', gender: '不限', age: '' },
-    { openid: 'member_10', authorName: '马锦程', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周日 10:00', gameType: '斯诺克', note: '想练练长台，欢迎同等水平球友', level: '进阶', gender: '', age: '' },
-    { openid: 'member_11', authorName: '朱雅婷', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周五 19:30', gameType: '中式八球', note: '刚学球不久，找个新手一起进步', level: '新手', gender: '女', age: '' },
-    { openid: 'member_16', authorName: '宋雨泽', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周六 15:00', gameType: '九球', note: '九球爱好者召集令，欢迎切磋', level: '中级', gender: '', age: '' },
-    { openid: 'member_17', authorName: '唐梦瑶', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周日 11:00', gameType: '中式八球', note: '约个上午场，头脑清醒练练准度', level: '进阶', gender: '', age: '' },
-    { openid: 'member_03', authorName: '张雨萱', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 21:00', gameType: '中式八球', note: '打了一会儿了，再来一局收尾', level: '中级', gender: '', age: '' },
-    { openid: 'member_15', authorName: '梁志远', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周四 20:00', gameType: '中式八球', note: '周四之夜，有没有一起打球的？', level: '初级', gender: '', age: '' }
+    { openid: 'member_01', authorName: '李晨曦', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 20:00', gameType: '中式八球', note: '求一位进阶球友，一起练练攻防转换', myLevel: '6级（业余进阶）', targetLevel: '6级（业余进阶）', gender: '', age: '' },
+    { openid: 'member_04', authorName: '刘子琪', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '周六 14:00', gameType: '中式八球', note: '新手友好，重在交流', myLevel: '6级（业余进阶）', targetLevel: '5级（业余中级）', gender: '不限', age: '' },
+    { openid: 'member_10', authorName: '马锦程', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周日 10:00', gameType: '斯诺克', note: '想练练长台，欢迎同等水平球友', myLevel: '6级（业余进阶）', targetLevel: '6级（业余进阶）', gender: '', age: '' },
+    { openid: 'member_11', authorName: '朱雅婷', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周五 19:30', gameType: '中式八球', note: '刚学球不久，找个新手一起进步', myLevel: '5级（业余中级）', targetLevel: '3级（初学者）', gender: '女', age: '' },
+    { openid: 'member_16', authorName: '宋雨泽', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周六 15:00', gameType: '九球', note: '九球爱好者召集令，欢迎切磋', myLevel: '5级（业余中级）', targetLevel: '5级（业余中级）', gender: '', age: '' },
+    { openid: 'member_17', authorName: '唐梦瑶', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周日 11:00', gameType: '中式八球', note: '约个上午场，头脑清醒练练准度', myLevel: '6级（业余进阶）', targetLevel: '5级（业余中级）', gender: '', age: '' },
+    { openid: 'member_03', authorName: '张雨萱', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 21:00', gameType: '中式八球', note: '打了一会儿了，再来一局收尾', myLevel: '5级（业余中级）', targetLevel: '5级（业余中级）', gender: '', age: '' },
+    { openid: 'member_15', authorName: '梁志远', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周四 20:00', gameType: '中式八球', note: '周四之夜，有没有一起打球的？', myLevel: '3级（初学者）', targetLevel: '3级（初学者）', gender: '', age: '' }
   ];
 
   return raw.map((m, i) => ({
@@ -494,7 +501,8 @@ function generateMatches() {
     hallName: m.hallName,
     datetime: m.datetime,
     gameType: m.gameType,
-    level: m.level || '',
+    myLevel: m.myLevel || '',
+    targetLevel: m.targetLevel || '',
     gender: m.gender || '',
     age: m.age || '',
     note: m.note,
@@ -518,6 +526,50 @@ function generateBookings() {
   ];
 }
 
+// 生成当前登录用户的模拟训练记录（用于打卡热力图展示）
+// 策略：365天跨度，约55%天数有训练，周末更长，工作日较短
+function generateUserSessions(openid) {
+  const halls = HALLS;
+  const sessions = [];
+  const end = today();
+  let seq = 0;
+
+  for (let i = 0; i < 365; i++) {
+    const date = addDays(end, -i);
+    const r = pseudoRandom(i + 9999);
+    if (r > 0.55) continue; // ~55% 训练日
+
+    const dateKey = toKey(date);
+    const d = new Date(date);
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+
+    // 一天内训练段数：85% 单次，12% 两次，3% 三次
+    const segments = pseudoRandom(i + 7777) < 0.85 ? 1
+      : pseudoRandom(i + 8888) < 0.8 ? 2 : 3;
+
+    for (let seg = 0; seg < segments; seg++) {
+      // 时长：工作日 60~200 分钟，周末 80~360 分钟
+      let totalMinutes;
+      if (isWeekend) {
+        totalMinutes = 80 + Math.floor(pseudoRandom(i + seg * 111 + 5000) * 280);
+      } else {
+        totalMinutes = 60 + Math.floor(pseudoRandom(i + seg * 111 + 5000) * 140);
+      }
+
+      const hall = halls[(i + seg) % halls.length];
+      const startHour = isWeekend
+        ? 10 + Math.floor(pseudoRandom(i + seg * 222 + 6000) * 10)
+        : 18 + Math.floor(pseudoRandom(i + seg * 222 + 6000) * 4);
+      const startMin = [0, 15, 30, 45][Math.floor(pseudoRandom(i + seg * 333 + 7000) * 4)];
+      const startTime = `${String(startHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+
+      sessions.push(makeSession(openid, seq++, hall, dateKey, startTime, totalMinutes));
+    }
+  }
+
+  return sessions;
+}
+
 // 演示阶段确定性派生「教练-学员」关系
 function coachStudents(coachOpenid) {
   const members = MEMBERS;
@@ -530,7 +582,43 @@ function coachStudents(coachOpenid) {
 
 function ensureSeeded() {
   const seeded = wx.getStorageSync(KEY_SEEDED);
-  if (seeded) return;
+  if (seeded) {
+    // 迁移：补充缺失的种子数据
+    try {
+      const existing = wx.getStorageSync(KEY_SESSIONS) || [];
+      const hasCurrentUser = existing.some((s) => s._openid === MOCK_OPENID);
+      console.log('[ensureSeeded migration] seeded=true, sessions count:', existing.length, 'hasCurrentUser:', hasCurrentUser);
+      if (!hasCurrentUser) {
+        const userSessions = generateUserSessions(MOCK_OPENID);
+        writeArray(KEY_SESSIONS, existing.concat(userSessions));
+        console.log('[ensureSeeded] wrote', userSessions.length, 'sessions for MOCK_OPENID');
+      }
+      // 补门店数据
+      const existingStores = wx.getStorageSync(KEY_SHOP_STORES) || [];
+      console.log('[ensureSeeded] shop_stores count:', existingStores.length);
+      if (!existingStores.length) {
+        writeArray(KEY_SHOP_STORES, STORES.map((s) => Object.assign({}, s)));
+        console.log('[ensureSeeded] wrote shop_stores');
+      }
+      // 补店家资料的 storeId（shop 数据可能已有，但缺少 storeId 字段）
+      const existingShop = wx.getStorageSync(KEY_SHOP) || null;
+      console.log('[ensureSeeded] shop data:', JSON.stringify(existingShop));
+      if (!existingShop || !existingShop.storeId) {
+        writeObject(KEY_SHOP, Object.assign({}, existingShop || {}, {
+          _openid: MOCK_OPENID,
+          name: existingShop && existingShop.name ? existingShop.name : '大川激流',
+          storeId: STORES[0]._id,
+          hallId: STORES[0]._id,
+          hallName: STORES[0].name,
+          brandId: STORES[0].brandId
+        }));
+        console.log('[ensureSeeded] wrote shop with storeId');
+      }
+    } catch (e) {
+      console.error('[ensureSeeded migration error]', e);
+    }
+    return;
+  }
 
   // 清理旧版本种子残留（兼容从 dc_seeded 迁移的用户）
   try { wx.removeStorageSync('dc_seeded'); } catch (e) {}
@@ -538,6 +626,8 @@ function ensureSeeded() {
   writeArray(KEY_HALLS, HALLS);
   writeArray(KEY_BRANDS, BRANDS);
   writeArray(KEY_STORES, STORES);
+  // 店家自管门店：默认指向系统门店，店主可在「桌型管理」里进一步配置
+  writeArray(KEY_SHOP_STORES, STORES.map((s) => Object.assign({}, s)));
   writeArray(KEY_ALL_COACHES, COACHES);
   writeArray(KEY_MEMBERS, MEMBERS);
   writeArray(KEY_SHOP_COACHES, SHOP_COACH_LINKS);
@@ -547,11 +637,22 @@ function ensureSeeded() {
   MEMBERS.forEach((m, idx) => {
     allSessions = allSessions.concat(generateSessions(m.openid, (idx + 1) * 137));
   });
+  // 为当前登录用户生成一年模拟训练记录
+  allSessions = allSessions.concat(generateUserSessions(MOCK_OPENID));
   writeArray(KEY_SESSIONS, allSessions);
 
   writeObject(KEY_ROLE, 'member');
   writeObject(KEY_COACH, null);
-  writeObject(KEY_SHOP, null);
+  // 默认店家资料：storeId 指向第一个门店，用于「本店会员」统计等场景
+  writeObject(KEY_SHOP, {
+    _openid: MOCK_OPENID,
+    name: '大川激流',
+    hallId: STORES[0]._id,
+    hallName: STORES[0].name,
+    storeId: STORES[0]._id,
+    brandId: STORES[0].brandId,
+    tableTypes: []
+  });
 
   writeArray(KEY_POSTS, generatePosts());
   writeArray(KEY_POST_LIKES, []);

@@ -31,16 +31,16 @@ Page({
       const shop = data.getShopProfile() || Promise.resolve({});
       return Promise.all([stores, shop]);
     }).then(([stores, shop]) => {
-      const currentStoreId = shop && shop.storeId ? shop.storeId : (stores.length ? stores[0]._id : '');
-      const currentStore = stores.find((s) => s._id === currentStoreId) || {};
-      this.setData({ stores, currentStoreId, currentStoreName: currentStore.name || '' });
-      return data.getShopCoaches();
-    }).then((coaches) => {
-      const { currentStoreId } = this.data;
-      const list = (coaches || [])
-        .filter((c) => !currentStoreId || c.hallId === currentStoreId)
-        .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
-      this.setData({ coaches: list });
+      const fallbackStoreId = (stores.length ? stores[0]._id : (shop.storeId || ''));
+      const currentStore = stores.find((s) => s._id === fallbackStoreId) || {};
+      this.setData({ stores, currentStoreId: fallbackStoreId, currentStoreName: currentStore.name || '' });
+      const capturedStoreId = fallbackStoreId;
+      return data.getShopCoaches().then((coaches) => {
+        const list = (coaches || [])
+          .filter((c) => !capturedStoreId || c.hallId === capturedStoreId)
+          .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
+        this.setData({ coaches: list });
+      });
     });
   },
 
@@ -48,10 +48,11 @@ Page({
     const idx = e.detail.value;
     const stores = this.data.stores;
     const store = stores[idx];
-    this.setData({ currentStoreId: store._id, currentStoreName: store.name });
+    const newStoreId = store._id;
+    this.setData({ currentStoreId: newStoreId, currentStoreName: store.name });
     data.getShopCoaches().then((coaches) => {
       const list = (coaches || [])
-        .filter((c) => c.hallId === store._id)
+        .filter((c) => c.hallId === newStoreId)
         .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
       this.setData({ coaches: list });
     });

@@ -131,6 +131,16 @@ image.avatar {
   color: #00b578;
   background: rgba(0, 181, 120, 0.1);
 }
+/* 发布者段位：红色 */
+.tag.red {
+  color: #f5503e;
+  background: rgba(245, 80, 62, 0.1);
+}
+/* 期望段位：蓝色 */
+.tag.blue {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.1);
+}
 .join-num {
   font-size: 22rpx;
   color: #9aa0a6;

@@ -165,6 +165,7 @@ Page({
         if (!res.confirm) return;
         [
           'dc_seeded',
+          'dc_seeded_v2',
           'dc_sessions',
           'dc_halls',
           'dc_members',
@@ -172,6 +173,7 @@ Page({
           'dc_role',
           'dc_coach_profile',
           'dc_shop',
+          'dc_shop_stores',
           'dc_shop_coaches',
           'dc_all_coaches',
           'dc_posts',

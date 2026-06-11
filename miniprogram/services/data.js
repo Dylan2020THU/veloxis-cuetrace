@@ -49,6 +49,7 @@ function login(role) {
     });
   }
   getApp().globalData.openid = mock.MOCK_OPENID;
+  mock.setRole(role);
   return Promise.resolve(mock.MOCK_OPENID);
 }
 
@@ -377,7 +378,9 @@ function getShopStores() {
   if (cloudReady()) {
     return callCloud('getShopStores', {}).then((r) => (r && r.stores) || []);
   }
-  return Promise.resolve(mock.readArray(KEY_SHOP_STORES));
+  const stores = mock.readArray(KEY_SHOP_STORES);
+  console.log('[getShopStores] KEY_SHOP_STORES count:', stores.length);
+  return Promise.resolve(stores);
 }
 
 // ============ 球台状态（开桌/结账） ============
@@ -436,11 +439,10 @@ function getShopCoaches() {
   }
   const links = mock.readArray(mock.KEY_SHOP_COACHES);
   const linkedOpenids = links.map((l) => l.coachOpenid);
-  return Promise.resolve(
-    mock
-      .readArray(mock.KEY_ALL_COACHES)
-      .filter((c) => linkedOpenids.indexOf(c.openid) !== -1)
-  );
+  const allCoaches = mock.readArray(mock.KEY_ALL_COACHES);
+  const filtered = allCoaches.filter((c) => linkedOpenids.indexOf(c.openid) !== -1);
+  console.log('[getShopCoaches] links:', links.length, 'openids:', linkedOpenids, 'coaches:', filtered.length);
+  return Promise.resolve(filtered);
 }
 
 // 可添加（尚未被本店管理）的教练列表
@@ -497,9 +499,11 @@ function getShopMembers(storeId) {
   }
   const shop = mock.readObject(mock.KEY_SHOP, null);
   const targetStoreId = storeId || (shop && shop.storeId);
+  console.log('[getShopMembers] shop:', JSON.stringify(shop), 'targetStoreId:', targetStoreId);
   if (!targetStoreId) return Promise.resolve([]);
 
   const sessions = mock.readArray(mock.KEY_SESSIONS).filter((s) => s.hallId === targetStoreId);
+  console.log('[getShopMembers] sessions for hallId', targetStoreId, ':', sessions.length);
   const agg = {};
   sessions.forEach((s) => {
     if (!agg[s._openid]) agg[s._openid] = { totalMinutes: 0, days: {} };
@@ -643,7 +647,7 @@ function resolveCity() {
 
 // ============ 约球 ============
 
-// 约球友：邀约列表
+// 约球友：邀约列表（附加发布者段位）
 function getMatchPosts() {
   if (cloudReady()) {
     return callCloud('getMatchPosts', {}).then((r) => (r && r.matches) || []);
@@ -652,10 +656,19 @@ function getMatchPosts() {
     .readArray(mock.KEY_MATCHES)
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt);
-  return Promise.resolve(matches);
+  const members = mock.readArray(mock.KEY_MEMBERS);
+  const memberMap = {};
+  members.forEach((m) => { memberMap[m.openid] = m; });
+    const enriched = matches.map((m) => {
+      const author = memberMap[m._openid];
+      const myLevel = m.myLevel || (author ? author.level : '') || '';
+      const targetLevel = m.targetLevel || m.level || (author ? author.level : '') || '';
+      return Object.assign({}, m, { myLevel, targetLevel });
+    });
+  return Promise.resolve(enriched);
 }
 
-function createMatchPost({ hallId, hallName, datetime, gameType, note, level, gender, age }) {
+function createMatchPost({ hallId, hallName, datetime, gameType, note, myLevel, targetLevel, gender, age }) {
   const info = getCurrentUserInfo();
   if (cloudReady()) {
     return callCloud('createMatchPost', {
@@ -664,7 +677,8 @@ function createMatchPost({ hallId, hallName, datetime, gameType, note, level, ge
       datetime,
       gameType,
       note,
-      level,
+      myLevel,
+      targetLevel,
       gender,
       age,
       authorName: info.authorName
@@ -680,7 +694,8 @@ function createMatchPost({ hallId, hallName, datetime, gameType, note, level, ge
     hallName: hallName || '',
     datetime: datetime || '',
     gameType: gameType || '',
-    level: level || '',
+    myLevel: myLevel || '',
+    targetLevel: targetLevel || '',
     gender: gender || '',
     age: age || '',
     note: note || '',

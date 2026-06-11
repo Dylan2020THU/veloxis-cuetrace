@@ -40,7 +40,8 @@ Page({
     gameTypes: GAME_TYPES,
     gameIndex: 0,
     levels: LEVELS,
-    levelIndex: 0,
+    myLevelIndex: 0,
+    targetLevelIndex: 0,
     genderOptions: GENDER_OPTIONS,
     genderIndex: 0,
     ageOptions: AGE_OPTIONS,
@@ -63,8 +64,11 @@ Page({
   onGame(e) {
     this.setData({ gameIndex: Number(e.detail.value) });
   },
-  onLevel(e) {
-    this.setData({ levelIndex: Number(e.detail.value) });
+  onMyLevel(e) {
+    this.setData({ myLevelIndex: Number(e.detail.value) });
+  },
+  onTargetLevel(e) {
+    this.setData({ targetLevelIndex: Number(e.detail.value) });
   },
   onGender(e) {
     this.setData({ genderIndex: Number(e.detail.value) });
@@ -97,7 +101,8 @@ Page({
         hallName: hall.name,
         datetime,
         gameType: this.data.gameTypes[this.data.gameIndex],
-        level: this.data.levels[this.data.levelIndex],
+        myLevel: this.data.levels[this.data.myLevelIndex],
+        targetLevel: this.data.levels[this.data.targetLevelIndex],
         gender: this.data.genderOptions[this.data.genderIndex],
         age: this.data.ageOptions[this.data.ageIndex],
         note: this.data.note

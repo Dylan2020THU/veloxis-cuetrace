@@ -10,9 +10,14 @@
       <text class="val">{{gameTypes[gameIndex]}} ›</text>
     </picker>
 
-    <picker class="row" mode="selector" range="{{levels}}" value="{{levelIndex}}" bindchange="onLevel">
-      <text class="lbl">档位：</text>
-      <text class="val">{{levels[levelIndex]}} ›</text>
+    <picker class="row" mode="selector" range="{{levels}}" value="{{myLevelIndex}}" bindchange="onMyLevel">
+      <text class="lbl">我的段位：</text>
+      <text class="val">{{levels[myLevelIndex]}} ›</text>
+    </picker>
+
+    <picker class="row" mode="selector" range="{{levels}}" value="{{targetLevelIndex}}" bindchange="onTargetLevel">
+      <text class="lbl">对手段位：</text>
+      <text class="val">{{levels[targetLevelIndex]}} ›</text>
     </picker>
 
     <picker class="row" mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGender">

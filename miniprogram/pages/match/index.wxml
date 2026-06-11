@@ -30,8 +30,9 @@
         <view wx:else class="avatar">{{item.authorName[0]}}</view>
         <view class="match-meta">
           <text class="name">{{item.authorName}}</text>
+          <text class="tag red" wx:if="{{item.myLevel}}">{{item.myLevel}}</text>
           <text class="tag">{{item.gameType}}</text>
-          <text class="tag green" wx:if="{{item.level}}">{{item.level}}</text>
+          <text class="tag blue" wx:if="{{item.targetLevel}}">{{item.targetLevel}}</text>
         </view>
         <view class="join-num">{{item.joinCount}} 人已报名</view>
       </view>

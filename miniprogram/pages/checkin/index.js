@@ -16,7 +16,7 @@ Page({
   },
 
   onLoad() {
-    data.login().finally(() => this.loadHeatmap());
+    this.loadHeatmap();
   },
 
   // 从其它页面（如新增记录）返回时刷新
