@@ -186,8 +186,7 @@ function getCoachProfileByOpenid(openid) {
   if (cloudReady()) {
     return callCloud('getCoachProfile', { targetOpenid: openid }).then((r) => (r && r.profile) || null);
   }
-  const p = mock.readObject(mock.KEY_COACH, null);
-  return Promise.resolve(p && p._openid === openid ? p : null);
+  return Promise.resolve(mock.getCoachProfileByOpenid(openid));
 }
 
 function getMemberProfileByOpenid(openid) {
@@ -204,7 +203,7 @@ function getMemberCheckinsByOpenid(openid) {
   if (cloudReady()) {
     return callCloud('getMemberCheckins', { targetOpenid: openid }).then((r) => (r && r.checkins) || []);
   }
-  return Promise.resolve([]);
+  return Promise.resolve(mock.getMemberCheckins(openid));
 }
 
 function getMemberCheckins() {

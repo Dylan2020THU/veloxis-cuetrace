@@ -676,6 +676,27 @@ function setRole(role) {
   writeObject(KEY_ROLE, role);
 }
 
+// 读取某会员的所有打卡记录，聚合为按日期统计的数组
+// 用于「球员主页」热力图展示
+function getMemberCheckins(openid) {
+  const sessions = readArray(KEY_SESSIONS).filter(
+    (s) => s._openid === openid && s.status !== 'closed'
+  );
+  const map = {};
+  sessions.forEach((s) => {
+    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0 };
+    map[s.date].totalMinutes += s.durationMinutes || 0;
+    map[s.date].sessionCount += 1;
+  });
+  return Object.keys(map).map((k) => map[k]);
+}
+
+// 根据 openid 查找教练资料（从 KEY_ALL_COACHES 数组）
+function getCoachProfileByOpenid(openid) {
+  const coaches = readArray(KEY_ALL_COACHES);
+  return coaches.find((c) => c.openid === openid) || null;
+}
+
 module.exports = {
   MOCK_OPENID,
   KEY_HALLS,
@@ -709,5 +730,7 @@ module.exports = {
   avatarFor,
   getRole,
   setRole,
+  getMemberCheckins,
+  getCoachProfileByOpenid,
   ensureSeeded
 };
