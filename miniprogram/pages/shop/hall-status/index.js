@@ -294,9 +294,15 @@ Page({
   goPlayerProfile(e) {
     const { openid, nickname, iscoach } = e.currentTarget.dataset;
     if (!openid) return;
-    wx.navigateTo({
-      url: `/pages/player/profile/index?openid=${encodeURIComponent(openid)}&nickname=${encodeURIComponent(nickname || '')}&isCoach=${iscoach || 0}`
-    });
+    if (iscoach === 1 || iscoach === '1') {
+      wx.navigateTo({
+        url: `/pages/shop/coach-students/index?openid=${encodeURIComponent(openid)}&nickname=${encodeURIComponent(nickname || '')}&storeId=${encodeURIComponent(this.data.currentStoreId || '')}`
+      });
+    } else {
+      wx.navigateTo({
+        url: `/pages/coach/member/index?openid=${encodeURIComponent(openid)}&nickname=${encodeURIComponent(nickname || '')}`
+      });
+    }
   },
 
   formatDuration(ms) {
