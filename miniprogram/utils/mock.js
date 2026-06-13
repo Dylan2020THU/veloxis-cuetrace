@@ -627,7 +627,7 @@ function ensureSeeded() {
   writeArray(KEY_BRANDS, BRANDS);
   writeArray(KEY_STORES, STORES);
   // 店家自管门店：默认指向系统门店，店主可在「桌型管理」里进一步配置
-  writeArray(KEY_SHOP_STORES, STORES.map((s) => Object.assign({}, s)));
+  writeArray(KEY_STORES, STORES.map((s) => Object.assign({}, s)));
   writeArray(KEY_ALL_COACHES, COACHES);
   writeArray(KEY_MEMBERS, MEMBERS);
   writeArray(KEY_SHOP_COACHES, SHOP_COACH_LINKS);

@@ -5,9 +5,6 @@
 const mock = require('../utils/mock');
 const { levelFromMinutes } = require('../utils/color');
 
-const KEY_SHOP_BRANDS = 'dc_shop_brands';
-const KEY_SHOP_STORES = 'dc_shop_stores';
-
 function cloudReady() {
   const app = getApp();
   return !!(app && app.globalData && app.globalData.cloudReady && wx.cloud);
@@ -326,14 +323,14 @@ function saveShopBrand(brand) {
   if (cloudReady()) {
     return callCloud('saveShopBrand', { brand });
   }
-  const brands = mock.readArray(KEY_SHOP_BRANDS);
+  const brands = mock.readArray(mock.KEY_BRANDS);
   const idx = brands.findIndex((b) => b._id === brand._id);
   if (idx !== -1) {
     brands[idx] = Object.assign({}, brands[idx], brand);
   } else {
     brands.push(Object.assign({ _openid: mock.MOCK_OPENID, createdAt: Date.now() }, brand));
   }
-  mock.writeArray(KEY_SHOP_BRANDS, brands);
+  mock.writeArray(mock.KEY_BRANDS, brands);
   return Promise.resolve({ ok: true });
 }
 
@@ -342,7 +339,7 @@ function getShopBrands() {
   if (cloudReady()) {
     return callCloud('getShopBrands', {}).then((r) => (r && r.brands) || []);
   }
-  return Promise.resolve(mock.readArray(KEY_SHOP_BRANDS));
+  return Promise.resolve(mock.readArray(mock.KEY_BRANDS));
 }
 
 // ============ 门店管理 ============
@@ -362,14 +359,14 @@ function saveShopStore(store) {
   if (cloudReady()) {
     return callCloud('saveShopStore', { store });
   }
-  const stores = mock.readArray(KEY_SHOP_STORES);
+  const stores = mock.readArray(mock.KEY_STORES);
   const idx = stores.findIndex((s) => s._id === store._id);
   if (idx !== -1) {
     stores[idx] = Object.assign({}, stores[idx], store);
   } else {
     stores.push(Object.assign({ _openid: mock.MOCK_OPENID, createdAt: Date.now() }, store));
   }
-  mock.writeArray(KEY_SHOP_STORES, stores);
+  mock.writeArray(mock.KEY_STORES, stores);
   return Promise.resolve({ ok: true });
 }
 
@@ -378,8 +375,8 @@ function getShopStores() {
   if (cloudReady()) {
     return callCloud('getShopStores', {}).then((r) => (r && r.stores) || []);
   }
-  const stores = mock.readArray(KEY_SHOP_STORES);
-  console.log('[getShopStores] KEY_SHOP_STORES count:', stores.length);
+  const stores = mock.readArray(mock.KEY_STORES);
+  console.log('[getShopStores] KEY_STORES count:', stores.length);
   return Promise.resolve(stores);
 }
 
