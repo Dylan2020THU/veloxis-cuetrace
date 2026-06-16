@@ -732,6 +732,16 @@ function joinMatch(matchId) {
   return Promise.resolve({ ok: true, joinCount: m ? m.joinCount : 0 });
 }
 
+// 获取某场约球的已报名用户列表
+function getMatchJoiners(matchId) {
+  if (!matchId) return Promise.resolve([]);
+  if (cloudReady()) {
+    return callCloud('getMatchJoiners', { matchId }).then((r) => (r && r.joiners) || []);
+  }
+  const joins = mock.readArray(mock.KEY_JOINS).filter((j) => j.matchId === matchId);
+  return Promise.resolve(joins);
+}
+
 // 我报名的球局
 function getMyJoins() {
   if (cloudReady()) {
@@ -1047,6 +1057,7 @@ module.exports = {
   resolveCity,
   getMatchPosts,
   createMatchPost,
+  getMatchJoiners,
   joinMatch,
   getBookableCoaches,
   getBookableTables,

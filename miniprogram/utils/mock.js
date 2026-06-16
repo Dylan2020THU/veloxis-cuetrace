@@ -13,6 +13,7 @@ const KEY_COACH = 'dc_coach_profile';
 const KEY_LINKS = 'dc_links';
 const KEY_MEMBERS = 'dc_members';
 const KEY_SHOP = 'dc_shop';
+const KEY_SHOP_STORES = 'dc_shop_stores';
 const KEY_SHOP_COACHES = 'dc_shop_coaches';
 const KEY_ALL_COACHES = 'dc_all_coaches';
 const KEY_POSTS = 'dc_posts';
@@ -708,6 +709,7 @@ module.exports = {
   KEY_LINKS,
   KEY_MEMBERS,
   KEY_SHOP,
+  KEY_SHOP_STORES,
   KEY_SHOP_COACHES,
   KEY_ALL_COACHES,
   KEY_POSTS,

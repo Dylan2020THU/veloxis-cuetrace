@@ -43,7 +43,7 @@
         <text class="badge" wx:if="{{item.age}}">{{item.age}}</text>
       </view>
       <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
-      <view class="join-btn" data-id="{{item._id}}" bindtap="joinMatch">我要报名</view>
+      <view class="join-btn" data-id="{{item._id}}" data-idx="{{index}}" bindtap="openDetail">进入查看</view>
     </view>
   </view>
 

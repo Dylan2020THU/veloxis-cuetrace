@@ -99,6 +99,13 @@ Page({
     });
   },
 
+  openDetail(e) {
+    const id = e.currentTarget.dataset.id;
+    console.log('[match] openDetail id:', id);
+    if (!id) { console.warn('openDetail: id 为空'); return; }
+    wx.navigateTo({ url: `/pages/match/detail/index?id=${encodeURIComponent(id)}` });
+  },
+
   // ---- 预约弹窗（约教练 / 约球桌通用）----
   openCoachBooking(e) {
     const c = this.data.coaches[e.currentTarget.dataset.index];

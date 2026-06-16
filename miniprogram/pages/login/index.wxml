@@ -1,7 +1,7 @@
 <view class="page {{theme==='dark'?'theme-dark':''}}">
   <view class="login-wrap">
     <view class="brand">
-      <image class="brand-logo" src="/images/login/logo-cuetrace.webp" mode="aspectFit"></image>
+      <image class="brand-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
       <view class="brand-name">强化杆迹</view>
       <view class="brand-slogan">没有任何一杆是白打的</view>
       <view class="brand-sub">{{ step === 1 ? (cloudReady ? '请选择身份，使用微信一键登录' : '请选择登录身份') : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>

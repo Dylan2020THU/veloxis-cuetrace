@@ -1,0 +1,41 @@
+<view class="page theme-{{theme}}">
+  <view wx:if="{{loading}}" class="loading">加载中…</view>
+  <view wx:elif="{{!match}}" class="empty">未找到该球局</view>
+  <view wx:else class="detail-card">
+    <view class="match-head">
+      <image wx:if="{{match.avatar}}" class="avatar" src="{{match.avatar}}" mode="aspectFill"></image>
+      <view wx:else class="avatar">{{match.authorName ? match.authorName[0] : '?'}}</view>
+      <view class="match-meta">
+        <text class="name">{{match.authorName}}</text>
+        <text class="tag red" wx:if="{{match.myLevel}}">{{match.myLevel}}</text>
+        <text class="tag" wx:if="{{match.gameType}}">{{match.gameType}}</text>
+        <text class="tag blue" wx:if="{{match.targetLevel}}">{{match.targetLevel}}</text>
+      </view>
+      <view class="join-num">{{match.joinCount || 0}} 人已报名</view>
+    </view>
+
+    <view class="row"><text class="lbl">球厅</text><text class="val">{{match.hallName}}</text></view>
+    <view class="row"><text class="lbl">时间</text><text class="val">{{match.datetime}}</text></view>
+    <view class="badges" wx:if="{{match.gender || match.age}}">
+      <text class="badge" wx:if="{{match.gender}}">{{match.gender}}</text>
+      <text class="badge" wx:if="{{match.age}}">{{match.age}}</text>
+    </view>
+    <view class="note" wx:if="{{match.note}}">{{match.note}}</view>
+
+    <!-- 已报名用户列表 -->
+    <view class="joiner-list" wx:if="{{joiners.length > 0}}">
+      <view class="joiner-title">已报名用户</view>
+      <view class="joiner-row">
+        <view wx:for="{{joiners}}" wx:key="openid" class="joiner-avatar {{item.avatar ? '' : 'placeholder'}}">
+          <image wx:if="{{item.avatar}}" src="{{item.avatar}}" mode="aspectFill"></image>
+          <text wx:else>{{item.nickname ? item.nickname[0] : '?'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部固定操作栏 -->
+  <view wx:if="{{match}}" class="bottom-bar">
+    <view class="action-btn" bindtap="applyMatch">我要报名</view>
+  </view>
+</view>

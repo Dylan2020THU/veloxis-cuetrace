@@ -3,9 +3,9 @@ const mock = require('../../utils/mock');
 
 // 三种登录身份，顺序即页面从上至下的展示顺序
 const ROLES = [
-  { key: 'member', label: '球员', desc: '记录训练 · 追踪成长', img: '/images/login/login-member.webp' },
-  { key: 'coach', label: '教练', desc: '管理学员 · 排课带教', img: '/images/login/login-coach.webp' },
-  { key: 'shop', label: '店主', desc: '门店经营 · 数据看板', img: '/images/login/login-shop.webp' }
+  { key: 'member', label: '球员', desc: '记录训练 · 追踪成长', img: '/images/login/login-member.png' },
+  { key: 'coach', label: '教练', desc: '管理学员 · 排课带教', img: '/images/login/login-coach.png' },
+  { key: 'shop', label: '店主', desc: '门店经营 · 数据看板', img: '/images/login/login-shop.png' }
 ];
 
 const PHONE_RE = /^1\d{10}$/;
