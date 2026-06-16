@@ -17,7 +17,7 @@
     "pages/community/detail",
     "pages/community/post",
     "pages/match/index",
-    "pages/match/detail",
+    "pages/match/detail/index",
     "pages/match/post",
     "pages/match/mine",
     "pages/shop/hall-status/index",

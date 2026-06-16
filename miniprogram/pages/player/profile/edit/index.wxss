@@ -171,3 +171,11 @@ picker {
   margin-left: 12rpx;
   transform: scale(0.82);
 }
+
+/* 公开展示区块底部提示 */
+.public-hint {
+  padding: 16rpx 32rpx 24rpx;
+  font-size: 22rpx;
+  color: #8a9099;
+  line-height: 1.5;
+}

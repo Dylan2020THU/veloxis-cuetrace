@@ -25,7 +25,6 @@
         <picker mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
           <text class="form-value {{genderOptions[genderIndex] ? '' : 'muted'}}">{{genderOptions[genderIndex] || '请选择'}}</text>
         </picker>
-        <switch class="field-switch" checked="{{canSeeGender}}" data-name="canSeeGender" bindchange="onToggleField" color="#067ef9" />
       </view>
     </view>
 
@@ -36,7 +35,6 @@
         <picker mode="date" value="{{birthDate}}" start="1950-01-01" end="2025-12-31" bindchange="onBirthDateChange">
           <text class="form-value {{birthDate ? '' : 'muted'}}">{{birthDate || '请选择'}}</text>
         </picker>
-        <switch class="field-switch" checked="{{canSeeBirthDate}}" data-name="canSeeBirthDate" bindchange="onToggleField" color="#067ef9" />
       </view>
     </view>
 
@@ -60,20 +58,55 @@
       </view>
     </view>
 
-    <!-- 籍贯（省级+市级） -->
+    <!-- 籍贯（省级+市级，单 picker 联动两级） -->
     <view class="form-row">
       <text class="form-label">籍贯</text>
       <view class="value-area hometown-pickers">
-        <picker mode="selector" range="{{hometownProvinces}}" value="{{hometownProvinceIndex}}" bindchange="onHometownProvinceChange">
-          <text class="form-value muted-hometown">{{hometownProvinces[hometownProvinceIndex] || '省'}}</text>
+        <picker mode="multiSelector" range="{{hometownRange}}" value="{{hometownValue}}" bindchange="onHometownChange" bindcolumnchange="onHometownColumnChange">
+          <text class="form-value muted-hometown">{{hometownDisplay || '省/市'}}</text>
         </picker>
-        <text class="picker-sep">/</text>
-        <picker mode="selector" range="{{hometownCities}}" value="{{hometownCityIndex}}" bindchange="onHometownCityChange">
-          <text class="form-value muted-hometown">{{hometownCities[hometownCityIndex] || '市'}}</text>
-        </picker>
+      </view>
+    </view>
+  </view>
+
+  <!-- 公开展示设置（单独区块） -->
+  <view class="form" style="margin-top: 24rpx;">
+    <view class="form-section-title">公开展示</view>
+
+    <view class="form-row">
+      <text class="form-label">性别</text>
+      <view class="value-area">
+        <text class="form-value {{canSeeGender ? '' : 'muted'}}">{{canSeeGender ? '公开' : '隐藏'}}</text>
+        <switch class="field-switch" checked="{{canSeeGender}}" data-name="canSeeGender" bindchange="onToggleField" color="#067ef9" />
+      </view>
+    </view>
+
+    <view class="form-row">
+      <text class="form-label">出生年月</text>
+      <view class="value-area">
+        <text class="form-value {{canSeeBirthDate ? '' : 'muted'}}">{{canSeeBirthDate ? '公开' : '隐藏'}}</text>
+        <switch class="field-switch" checked="{{canSeeBirthDate}}" data-name="canSeeBirthDate" bindchange="onToggleField" color="#067ef9" />
+      </view>
+    </view>
+
+    <view class="form-row">
+      <text class="form-label">手机号</text>
+      <view class="value-area">
+        <text class="form-value {{canSeePhone ? '' : 'muted'}}">{{canSeePhone ? '公开' : '隐藏'}}</text>
+        <switch class="field-switch" checked="{{canSeePhone}}" data-name="canSeePhone" bindchange="onToggleField" color="#067ef9" />
+      </view>
+    </view>
+
+    <view class="form-row">
+      <text class="form-label">籍贯</text>
+      <view class="value-area">
+        <text class="form-value {{canSeeHometown ? '' : 'muted'}}">{{canSeeHometown ? '公开' : '隐藏'}}</text>
         <switch class="field-switch" checked="{{canSeeHometown}}" data-name="canSeeHometown" bindchange="onToggleField" color="#067ef9" />
       </view>
     </view>
+
+
+    <view class="public-hint">仅展示您允许公开的字段，其他玩家看不到的内容会显示为"未公开"。</view>
   </view>
 
   <!-- 球技信息 -->

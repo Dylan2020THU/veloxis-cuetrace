@@ -72,11 +72,11 @@ Page({
     // 所在地（定位或手动选择，市级）
     locationCity: '',
     locationLoading: false,
-    // 籍贯（省级+市级，两列联动）
-    hometownProvinces: PROVINCES,
-    hometownProvinceIndex: 0,
-    hometownCityIndex: 0,
-    hometownCities: [],
+    // 籍贯（省级+市级，单 picker 联动两级）
+    // hometownRange 是 [[省列表], [对应省的城市列表]] 两列结构
+    hometownRange: [PROVINCES.slice(), CITIES_BY_PROVINCE[PROVINCES[0]].slice()],
+    hometownValue: [0, 0],
+    hometownDisplay: '',
     hometown: ['', ''],
     // 球龄
     yearsIndex: 0,
@@ -88,7 +88,8 @@ Page({
     // 字段可见性（开关控制是否对他人可见）
     canSeeGender: true,
     canSeeBirthDate: true,
-    canSeeHometown: true
+    canSeeHometown: true,
+    canSeePhone: false  // 手机号默认隐藏（隐私考虑）
   },
 
   onLoad() {
@@ -117,14 +118,14 @@ Page({
         phone: u.phone || '',
         locationCity: u.locationCity || '',
         hometown: u.hometown || [PROVINCES[0], cities[0]],
-        hometownProvinceIndex: provinceIdx,
-        hometownCityIndex: cityIdx,
-        hometownCities: cities,
+        hometownValue: [provinceIdx, cityIdx],
+        hometownDisplay: city ? `${province} / ${city}` : province,
         yearsIndex: findIndex(YEARS_OPTIONS, u.years),
         levelIndex: findIndex(LEVELS, u.level),
         canSeeGender: u.canSeeGender !== undefined ? u.canSeeGender : true,
         canSeeBirthDate: u.canSeeBirthDate !== undefined ? u.canSeeBirthDate : true,
-        canSeeHometown: u.canSeeHometown !== undefined ? u.canSeeHometown : true
+        canSeeHometown: u.canSeeHometown !== undefined ? u.canSeeHometown : true,
+        canSeePhone: u.canSeePhone !== undefined ? u.canSeePhone : false
       });
     });
   },
@@ -183,26 +184,29 @@ Page({
     this.setData({ locationCity: val[1] ? val[1].replace(/市$/, '') : val[0] });
   },
 
-  // 籍贯：省级变化，重新加载城市列表
-  onHometownProvinceChange(e) {
-    const pIdx = Number(e.detail.value);
-    const province = PROVINCES[pIdx];
-    const cities = CITIES_BY_PROVINCE[province] || [''];
-    this.setData({
-      hometownProvinceIndex: pIdx,
-      hometownCities: cities,
-      hometownCityIndex: 0,
-      hometown: [province, cities[0]]
-    });
+  // 籍贯：滚动省/市时，更新第二列的城市列表
+  onHometownColumnChange(e) {
+    const { column, value } = e.detail;
+    if (column === 0) {
+      const pIdx = Number(value);
+      const province = PROVINCES[pIdx];
+      const cities = (CITIES_BY_PROVINCE[province] || ['']).slice();
+      const newRange = [this.data.hometownRange[0], cities];
+      this.setData({
+        hometownRange: newRange,
+        hometownValue: [pIdx, 0]
+      });
+    }
   },
 
-  // 籍贯：市级变化
-  onHometownCityChange(e) {
-    const cIdx = Number(e.detail.value);
-    const province = PROVINCES[this.data.hometownProvinceIndex];
-    const city = this.data.hometownCities[cIdx] || '';
+  // 籍贯：选中某省某市
+  onHometownChange(e) {
+    const [pIdx, cIdx] = e.detail.value;
+    const province = PROVINCES[pIdx];
+    const city = (this.data.hometownRange[1] || [])[cIdx] || '';
     this.setData({
-      hometownCityIndex: cIdx,
+      hometownValue: [pIdx, cIdx],
+      hometownDisplay: `${province} / ${city}`,
       hometown: [province, city]
     });
   },
