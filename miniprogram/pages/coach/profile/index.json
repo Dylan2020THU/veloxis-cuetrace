@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "教练资料",
-  "usingComponents": {}
+  "usingComponents": {
+    "paywall": "/components/paywall/index"
+  }
 }

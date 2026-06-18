@@ -1,4 +1,5 @@
 const data = require('../../services/data.js');
+const billing = require('../../utils/billing.js');
 
 const TABS = [
   { key: 'friend', text: '约球友' },
@@ -90,6 +91,7 @@ Page({
 
   joinMatch(e) {
     const id = e.currentTarget.dataset.id;
+    // 约球友的"报名"暂不纳入付费墙（创建/回复帖子已加拦截）；后续若需独立权限可改为 requirePlan({ feature: 'member.joinMatch' })
     data.joinMatch(id).then((r) => {
       wx.showToast({ title: '报名成功', icon: 'success' });
       const matches = this.data.matches.map((m) =>
@@ -171,22 +173,55 @@ Page({
   confirmBooking() {
     const b = this.data.booking;
     if (!b) return;
-    const datetime = `${this.data.dateOptions[this.data.dateIndex]} ${this.data.timeOptions[this.data.timeIndex]}`;
-    const tableTypeOption = b.tableTypeOptions && b.tableTypeOptions[b.tableTypeIndex];
-    const tableTypeName = tableTypeOption ? tableTypeOption.name : '';
+    // 付费墙：约球桌/约教练属于 player_pro
+    const feature = b.type === 'table' ? 'member.bookTable' : 'member.bookCoach';
+    billing.requirePlan({ feature, title: b.type === 'table' ? '在线预约球桌' : '在线预约教练' }).then((ok) => {
+      if (!ok) return;
+      const datetime = `${this.data.dateOptions[this.data.dateIndex]} ${this.data.timeOptions[this.data.timeIndex]}`;
+      const tableTypeOption = b.tableTypeOptions && b.tableTypeOptions[b.tableTypeIndex];
+      const tableTypeName = tableTypeOption ? tableTypeOption.name : '';
+      // 弹二次确认窗（仅展示，不下单）
+      this.setData({
+        confirmBox: {
+          type: b.type,
+          targetId: b.targetId,
+          targetName: b.targetName,
+          hallName: b.hallName,
+          price: b.price,
+          priceLabel: b.priceLabel,
+          datetime,
+          tableType: tableTypeName
+        }
+      });
+    });
+  },
+
+  // 二次确认：点"否" → 关窗，不下单
+  closeConfirm() {
+    this.setData({ confirmBox: null });
+  },
+
+  // 二次确认：点"是" → 真正下单
+  doConfirmBooking() {
+    const c = this.data.confirmBox;
+    if (!c) return;
     data
       .createBooking({
-        type: b.type,
-        targetId: b.targetId,
-        targetName: b.targetName,
-        hallName: b.hallName,
-        datetime,
-        price: b.price,
-        tableType: tableTypeName
+        type: c.type,
+        targetId: c.targetId,
+        targetName: c.targetName,
+        hallName: c.hallName,
+        datetime: c.datetime,
+        price: c.price,
+        tableType: c.tableType
       })
       .then(() => {
-        this.setData({ booking: null });
+        this.setData({ booking: null, confirmBox: null });
         wx.showToast({ title: '预约已提交', icon: 'success' });
+      })
+      .catch((err) => {
+        this.setData({ confirmBox: null });
+        wx.showToast({ title: (err && err.message) || '预约失败', icon: 'none' });
       });
   }
 });

@@ -56,8 +56,10 @@
         <image wx:if="{{item.avatar}}" class="m-avatar small" src="{{item.avatar}}" mode="aspectFill"></image>
         <view wx:else class="m-avatar small">{{item.nickname[0]}}</view>
         <text class="cand-name">{{item.nickname}}</text>
-        <text class="cand-link">绑定</text>
-      </view>
-    </block>
+      <text class="cand-link">绑定</text>
+    </view>
+  </block>
   </view>
 </view>
+
+<paywall id="paywall"></paywall>

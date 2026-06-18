@@ -1,4 +1,18 @@
 <view class="page theme-{{theme}}">
+  <!-- 计费状态 banner：三态分支（trial 不可点 / active 可续费 / expired 可开通） -->
+  <view wx:if="{{bannerMode === 'trial'}}" class="trial-banner trial-banner--active">
+    <text class="trial-banner__icon">·</text>
+    <text class="trial-banner__txt">店主版试用期内，还剩 {{trialDays}} 天</text>
+  </view>
+  <view wx:elif="{{bannerMode === 'active'}}" class="trial-banner trial-banner--active" bindtap="onTapBanner">
+    <text class="trial-banner__icon">·</text>
+    <text class="trial-banner__txt">店主版会员剩余 {{planRemainDays}} 天 · 点此续费</text>
+  </view>
+  <view wx:elif="{{hasBrand}}" class="trial-banner trial-banner--expired" bindtap="onTapBanner">
+    <text class="trial-banner__icon">!</text>
+    <text class="trial-banner__txt">试用期已结束，开通店主版解锁报表 / 会员管理 / 多门店</text>
+  </view>
+
   <view wx:if="{{loading}}" class="loading">加载中...</view>
 
   <!-- 无品牌：空状态引导 -->
@@ -76,3 +90,5 @@
     </view>
   </block>
 </view>
+
+<paywall id="paywall"></paywall>

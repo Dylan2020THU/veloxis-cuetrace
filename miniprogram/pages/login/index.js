@@ -93,6 +93,7 @@ Page({
     data
       .login(role)
       .then(() => data.getUserProfile())
+      .then(() => data.markFirstLogin(role))
       .then(() => {
         wx.hideLoading();
         this.goHome(role);

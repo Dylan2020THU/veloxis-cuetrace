@@ -290,13 +290,19 @@ image.avatar {
   background: rgba(0, 0, 0, 0.45);
   z-index: 100;
   display: flex;
-  align-items: flex-end;
+  align-items: center;             /* 改：居中显示，避开底部 TabBar */
+  justify-content: center;        /* 新增：水平居中 */
+  padding: 0 32rpx;               /* 新增：左右留白 */
 }
 .sheet {
   width: 100%;
+  max-width: 640rpx;              /* 新增：最大宽度，防止太宽 */
+  max-height: 80vh;               /* 新增：最大高度，超出滚动 */
   background: #fff;
-  border-radius: 24rpx 24rpx 0 0;
-  padding: 32rpx 32rpx 48rpx;
+  border-radius: 24rpx;           /* 改：全圆角（之前顶部圆角是底部抽屉） */
+  padding: 32rpx 32rpx 40rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);  /* 新增：阴影 */
+  overflow-y: auto;               /* 新增：内容多时可滚 */
 }
 .sheet-title {
   font-size: 32rpx;
@@ -347,4 +353,49 @@ image.avatar {
 .btn.primary {
   background: #067ef9;
   color: #fff;
+}
+
+/* 二次确认弹窗（新增） */
+.confirm-sheet {
+  width: 100%;
+  max-width: 600rpx;              /* 新增：最大宽度 */
+  background: #fff;
+  border-radius: 24rpx;           /* 改：全圆角（居中卡片） */
+  padding: 36rpx 32rpx 40rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+}
+.confirm-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  text-align: center;
+  color: #1f2329;
+  margin-bottom: 28rpx;
+}
+.confirm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f0f1f3;
+  font-size: 28rpx;
+}
+.confirm-row .lbl {
+  color: #6b7075;
+  min-width: 120rpx;
+  flex-shrink: 0;
+}
+.confirm-row .val {
+  color: #1f2329;
+  flex: 1;
+  text-align: right;
+}
+.confirm-row.highlight .val {
+  color: #f5503e;
+  font-weight: 600;
+  font-size: 30rpx;
+}
+.confirm-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
 }

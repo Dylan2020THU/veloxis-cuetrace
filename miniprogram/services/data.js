@@ -4,6 +4,7 @@
 
 const mock = require('../utils/mock');
 const { levelFromMinutes } = require('../utils/color');
+const billing = require('../utils/billing');
 
 function cloudReady() {
   const app = getApp();
@@ -27,6 +28,8 @@ function applyUserResult(r) {
     mock.setRole(r.role);
     app.globalData.role = r.role;
   }
+  if (r.firstLoginAt) app.globalData.firstLoginAt = r.firstLoginAt;
+  if (r.plan) app.globalData.plan = r.plan;
   if (r.nickname !== undefined || r.avatar !== undefined) {
     app.globalData.userProfile = {
       openid: r.openid || app.globalData.openid,
@@ -1006,6 +1009,141 @@ function addComment(postId, content) {
   return Promise.resolve({ ok: true, id });
 }
 
+// ============ 收费 / 试用 ============
+
+// 读取当前用户的计费状态 { firstLoginAt, plan, role, isInTrial }
+// 云端模式从 users 集合拿，mock 模式从本地 KEY_BILLING 拿
+// 读取当前用户在指定角色（或当前角色）下的计费状态：firstLoginAt / plan / isInTrial
+// role 可不传，默认从 mock.getRole() 取；为支持 per_role 存储，传 role 时以它为准
+function getUserBilling(opts) {
+  const app = getApp();
+  const passed = opts && opts.role;
+  const role = passed || (app && app.globalData && app.globalData.role) || mock.getRole();
+  const owner = app && app.globalData && app.globalData.openid ? app.globalData.openid : mock.MOCK_OPENID;
+  if (cloudReady()) {
+    return callCloud('getUserBilling', { role }).then((r) => {
+      const b = (r && r.billing) || { firstLoginAt: 0, plan: 'free' };
+      if (app && app.globalData) {
+        app.globalData.firstLoginAt = b.firstLoginAt;
+        app.globalData.plan = b.plan;
+        app.globalData.planExpiresAt = b.planExpiresAt || 0;
+      }
+      // 关键：云端返回后立即让内存里 planExpiresAt 同步，hasPlan 才有依据
+      return Object.assign({ role }, b, {
+        isInTrial: billing.isInTrial(),
+        trialRemainingMs: billing.trialRemainingMs()
+      });
+    });
+  }
+  const stateKey = mock.KEY_BILLING + '_' + owner + '_' + role;
+  const stored = mock.readObject(stateKey, null);
+  const now = Date.now();
+  let firstLoginAt = (stored && stored.firstLoginAt) || 0;
+  let plan = (stored && stored.plan) || 'free';
+  if (!firstLoginAt) {
+    firstLoginAt = now;
+    mock.writeObject(stateKey, { firstLoginAt, plan, role });
+  }
+  if (app && app.globalData) {
+    app.globalData.firstLoginAt = firstLoginAt;
+    app.globalData.plan = plan;
+    app.globalData.planExpiresAt = (stored && stored.planExpiresAt) || 0;
+  }
+  return Promise.resolve({
+    firstLoginAt,
+    plan,
+    role,
+    term: (stored && stored.term) || 1,
+    planExpiresAt: (stored && stored.planExpiresAt) || 0,
+    isInTrial: billing.isInTrial(),
+    trialRemainingMs: billing.trialRemainingMs()
+  });
+}
+
+// 便捷方法：判断当前用户对某 plan 是否"在有效期"内（封装 billing.isPlanActive + 同步 globalData）
+function isPlanActive(planKey) {
+  // 确保 globalData 已读到位（不阻塞，缺失时 isPlanActive 自己会兜底）
+  const app = getApp();
+  if (app && app.globalData && !app.globalData.planExpiresAt) {
+    // 尝试从 storage 同步一次（避免首次拉取时不同步）
+    const role = app.globalData.role || mock.getRole();
+    const owner = app.globalData.openid || mock.MOCK_OPENID;
+    const stateKey = mock.KEY_BILLING + '_' + owner + '_' + role;
+    const stored = mock.readObject(stateKey, null);
+    if (stored && stored.planExpiresAt) {
+      app.globalData.planExpiresAt = stored.planExpiresAt;
+      if (stored.plan) app.globalData.plan = stored.plan;
+    }
+  }
+  return billing.isPlanActive(planKey);
+}
+
+// 首次完成"角色选择"时调用，落地首次登录时间戳
+// 首次登录时间戳标记（per_owner + per_role：同一人以不同身份登录时各自开始试期）
+// 设计原则：firstLoginAt 只在用户在该角色下从未登录过时才写入；后续调用不会覆盖。
+function markFirstLogin(role) {
+  const app = getApp();
+  const r = role || (app && app.globalData && app.globalData.role) || mock.getRole();
+  const owner = app && app.globalData && app.globalData.openid ? app.globalData.openid : mock.MOCK_OPENID;
+  const now = Date.now();
+  const stateKey = mock.KEY_BILLING + '_' + owner + '_' + r;
+  if (cloudReady()) {
+    return callCloud('markFirstLogin', { role: r, firstLoginAt: now }).then((res) => {
+      // 云端兜底：仅当云端未返回时本地兜底
+      const stored = mock.readObject(stateKey, null);
+      const firstLoginAt = (stored && stored.firstLoginAt) || now;
+      if (app && app.globalData) app.globalData.firstLoginAt = firstLoginAt;
+      mock.writeObject(stateKey, { firstLoginAt, plan: (stored && stored.plan) || 'free', role: r });
+      return res || { ok: true, firstLoginAt, role: r };
+    });
+  }
+  const stored = mock.readObject(stateKey, null);
+  const firstLoginAt = (stored && stored.firstLoginAt) || now;
+  const plan = (stored && stored.plan) || 'free';
+  mock.writeObject(stateKey, { firstLoginAt, plan, role: r });
+  if (app && app.globalData) {
+    app.globalData.firstLoginAt = firstLoginAt;
+    app.globalData.plan = plan;
+  }
+  return Promise.resolve({ ok: true, firstLoginAt, role: r, plan });
+}
+
+// 升级套餐（per_owner + per_role 存储；后续接 wx.requestPayment 替换云端分支）
+// 入参 term 为年限（1/2/3），默认 1。落表会写 planExpiresAt（到期内可继续使用）。
+function upgradePlan(planKey, term) {
+  const app = getApp();
+  const role = (app && app.globalData && app.globalData.role) || mock.getRole();
+  const owner = app && app.globalData && app.globalData.openid ? app.globalData.openid : mock.MOCK_OPENID;
+  const t = Number(term) || 1;
+  if (cloudReady()) {
+    return callCloud('upgradePlan', { planKey, role, term: t }).then((r) => {
+      if (app && app.globalData) app.globalData.plan = planKey;
+      return r || { ok: true, plan: planKey, term: t };
+    });
+  }
+  const stateKey = mock.KEY_BILLING + '_' + owner + '_' + role;
+  const stored = mock.readObject(stateKey, null) || {};
+  // 续期：若用户已购同套餐且未到期，在原到期日上累加；否则从 now 起算
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const base = (stored && stored.plan === planKey && stored.planExpiresAt && stored.planExpiresAt > now)
+    ? stored.planExpiresAt
+    : now;
+  const planExpiresAt = base + t * ONE_YEAR_MS;
+  const updated = Object.assign({}, stored, {
+    plan: planKey,
+    role,
+    term: t,
+    planExpiresAt,
+    upgradedAt: now
+  });
+  mock.writeObject(stateKey, updated);
+  if (app && app.globalData) {
+    app.globalData.plan = planKey;
+  }
+  return Promise.resolve({ ok: true, plan: planKey, term: t, planExpiresAt });
+}
+
 module.exports = {
   initData,
   login,
@@ -1068,5 +1206,9 @@ module.exports = {
   cancelMatch,
   getMyJoins,
   cancelJoin,
-  getCoachBookings
+  getCoachBookings,
+  getUserBilling,
+  markFirstLogin,
+  upgradePlan,
+  isPlanActive
 };

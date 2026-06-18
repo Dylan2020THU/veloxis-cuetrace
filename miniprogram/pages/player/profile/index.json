@@ -1,3 +1,5 @@
 {
-  "usingComponents": {}
+  "usingComponents": {
+    "paywall": "/components/paywall/index"
+  }
 }

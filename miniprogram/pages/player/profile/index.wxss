@@ -187,3 +187,57 @@
   color: #8a9099;
   font-size: 26rpx;
 }
+
+/* 会员中心卡片 */
+.member-card {
+  background: linear-gradient(180deg, #ffffff 0%, #F0F7FF 100%);
+  border: 2rpx solid #DBEAFE;
+}
+.member-status {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin: 16rpx 0 24rpx;
+}
+.member-status__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 28rpx;
+}
+.member-status__label {
+  color: #64748B;
+}
+.member-status__value {
+  font-weight: 600;
+  color: #0F172A;
+}
+.member-status__value.is-free { color: #94A3B8; }
+.member-status__value.is-pro {
+  color: #067EF9;
+}
+.member-status__value.is-trial {
+  color: #F59E0B;
+}
+.member-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+.member-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 16rpx;
+  background: #F1F5F9;
+  color: #475569;
+  font-size: 28rpx;
+  font-weight: 500;
+}
+.member-btn--primary {
+  background: linear-gradient(135deg, #067EF9 0%, #4DA3FF 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(6, 126, 249, 0.25);
+}

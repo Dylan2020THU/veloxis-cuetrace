@@ -1,4 +1,5 @@
 const data = require('../../../services/data');
+const billing = require('../../../utils/billing.js');
 
 // 简单确定性 hash：用于演示阶段稳定地生成学员的「在练 / 在线」状态
 function hashCode(str) {
@@ -43,9 +44,14 @@ Page({
   },
 
   openAdd() {
-    data.getLinkableMembers().then((linkable) => {
-      this.setData({ showAdd: true, linkable, memberCode: '' });
-    });
+    billing
+      .requirePlan({ feature: 'coach.memberMgmt', title: '学员管理' })
+      .then((ok) => {
+        if (!ok) return;
+        data.getLinkableMembers().then((linkable) => {
+          this.setData({ showAdd: true, linkable, memberCode: '' });
+        });
+      });
   },
 
   closeAdd() {
@@ -71,7 +77,12 @@ Page({
       wx.showToast({ title: '请输入会员编码', icon: 'none' });
       return;
     }
-    this.doLink(code);
+    billing
+      .requirePlan({ feature: 'coach.memberMgmt', title: '学员管理' })
+      .then((ok) => {
+        if (!ok) return;
+        this.doLink(code);
+      });
   },
 
   doLink(memberOpenid) {

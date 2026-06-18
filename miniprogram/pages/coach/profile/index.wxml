@@ -1,4 +1,14 @@
 <view class="page theme-{{theme}}">
+  <!-- 试期状态：试期内显示剩余天数；试期外+免费版显示过期提示（可点升级） -->
+  <view wx:if="{{trialActive}}" class="trial-banner trial-banner--active">
+    <text class="trial-banner__icon">·</text>
+    <text class="trial-banner__txt">教练专业版试用期内，还剩 {{trialDays}} 天</text>
+  </view>
+  <view wx:elif="{{plan === 'free'}}" class="trial-banner trial-banner--expired" bindtap="onOpenCoachPaywall">
+    <text class="trial-banner__icon">!</text>
+    <text class="trial-banner__txt">试用期已结束，开通教练专业版解锁学员管理与收入统计</text>
+  </view>
+
   <view class="card">
     <view class="avatar-row">
       <view class="avatar-wrap" bindtap="chooseAvatar">
@@ -88,4 +98,6 @@
       {{ submitting ? '保存中...' : '保存资料' }}
     </button>
   </view>
+
+  <paywall id="paywall"></paywall>
 </view>

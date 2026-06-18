@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "约球",
   "enablePullDownRefresh": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "paywall": "/components/paywall/index"
+  }
 }

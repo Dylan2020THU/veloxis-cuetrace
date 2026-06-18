@@ -1,4 +1,4 @@
-const { initData, login, getUserProfile } = require('./services/data');
+const { initData, login, getUserProfile, getUserBilling } = require('./services/data');
 
 const THEME_KEY = 'dc_theme_mode';
 
@@ -8,10 +8,13 @@ App({
     cloudReady: false,
     // 云开发环境 ID。部署云开发后，把这里替换成你的环境 ID。
     // 置空则强制使用本地 mock 数据（演示/开发阶段）。
-    cloudEnv: '',
+    cloudEnv: 'cloud1-d4g2abcud02b40531',
     openid: '',
     role: 'member',
     userProfile: null,
+    // 收费/试用：firstLoginAt 首次登录时间戳，plan 当前套餐（free/player_pro/coach_pro/shop_basic/shop_pro）
+    firstLoginAt: 0,
+    plan: 'free',
     brandColor: '#067EF9',
     // 主题：themeMode 为用户选择(light/dark/system)，theme 为实际生效(light/dark)
     themeMode: 'system',
@@ -28,8 +31,11 @@ App({
     this.initCloud();
     // 首次启动时确保本地至少有一份可演示的数据
     initData();
-    // 云端模式：已登录用户冷启动时静默恢复 openid 与云端身份
+    // 冷启动恢复计费状态：写入 firstLoginAt / plan 到 globalData
     this.sessionReady = this.restoreSession();
+    this.billingReady = getUserBilling({ role: this.globalData.role }).catch((err) => {
+      console.warn('[大川激流] 计费状态恢复失败', err);
+    });
   },
 
   // 冷启动时恢复上次登录的身份，避免重置为默认 member 导致底栏显示错乱
@@ -138,8 +144,45 @@ App({
     if (!hasRole) return Promise.resolve();
     return login()
       .then(() => getUserProfile())
+      // 用当前 role 拉取对应的计费状态，避免跨角色时间戳串台
+      .then(() => {
+        const role = (this.globalData && this.globalData.role) || '';
+        if (role && typeof getUserBilling === 'function') {
+          return getUserBilling({ role }).catch((err) => {
+            console.warn('[大川激流] 计费状态恢复失败', err);
+          });
+        }
+      })
       .catch((err) => {
         console.warn('[大川激流] 会话恢复失败', err);
       });
+  },
+
+  // ---------- 付费墙（全局入口）----------
+  // 调用方式：getApp().paywall({ feature, planKey, role, multi }, (ok) => { ... })
+  // 内部通过 getCurrentPages() 找到当前页面的 <paywall id="paywall"> 并 show()
+  // 未找到 paywall 组件时降级为 wx.showModal
+  paywall(opts, cb) {
+    const pages = getCurrentPages();
+    const cur = pages[pages.length - 1];
+    if (cur && typeof cur.selectComponent === 'function') {
+      const comp = cur.selectComponent('#paywall');
+      if (comp && typeof comp.show === 'function') {
+        comp.show(opts || {}, cb);
+        return;
+      }
+    }
+    // 降级：原生模态弹窗
+    const billing = require('./utils/billing');
+    const planKey = opts && opts.planKey;
+    const plan = (planKey && billing.PLANS[planKey]) || billing.PLANS.free;
+    wx.showModal({
+      title: '该功能需升级',
+      content: `${plan.label}（¥${plan.price}/年）后可使用`,
+      confirmText: '去看看',
+      cancelText: '暂不开通',
+      success: (res) => typeof cb === 'function' && cb(!!res.confirm),
+      fail: () => typeof cb === 'function' && cb(false)
+    });
   }
 });

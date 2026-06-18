@@ -112,3 +112,20 @@
     </view>
   </view>
 </view>
+
+<!-- 二次确认弹窗（新增）：约教练 / 约球桌 下单前最后确认 -->
+<view wx:if="{{confirmBox}}" class="mask" bindtap="closeConfirm">
+  <view class="confirm-sheet" catchtap="noop">
+    <view class="confirm-title">是否预约此{{confirmBox.type === 'coach' ? '教练' : '球桌'}}？</view>
+    <view class="confirm-row"><text class="lbl">名称：</text><text class="val">{{confirmBox.targetName}}</text></view>
+    <view class="confirm-row"><text class="lbl">时间：</text><text class="val">{{confirmBox.datetime}}</text></view>
+    <view class="confirm-row"><text class="lbl">桌型：</text><text class="val" wx:if="{{confirmBox.tableType}}">{{confirmBox.tableType}}</text><text class="val" wx:else>—</text></view>
+    <view class="confirm-row highlight"><text class="lbl">价格：</text><text class="val">{{confirmBox.priceLabel}}</text></view>
+    <view class="confirm-actions">
+      <view class="btn ghost" bindtap="closeConfirm">否</view>
+      <view class="btn primary" bindtap="doConfirmBooking">是</view>
+    </view>
+  </view>
+</view>
+
+<paywall id="paywall"></paywall>

@@ -23,6 +23,7 @@ const KEY_FOLLOWS = 'dc_follows';
 const KEY_MATCHES = 'dc_matches';
 const KEY_BOOKINGS = 'dc_bookings';
 const KEY_JOINS = 'dc_match_joins';
+const KEY_BILLING = 'dc_billing';
 
 const MOCK_OPENID = 'local-demo-user';
 
@@ -719,6 +720,7 @@ module.exports = {
   KEY_MATCHES,
   KEY_BOOKINGS,
   KEY_JOINS,
+  KEY_BILLING,
   HALLS,
   BRANDS,
   STORES,
