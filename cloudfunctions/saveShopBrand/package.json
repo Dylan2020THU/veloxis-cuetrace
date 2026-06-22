@@ -1,0 +1,9 @@
+{
+  "name": "saveShopBrand",
+  "version": "1.0.0",
+  "description": "大川激流 - 店主创建/更新品牌",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

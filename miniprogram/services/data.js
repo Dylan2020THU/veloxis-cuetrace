@@ -7,11 +7,14 @@ const { levelFromMinutes } = require('../utils/color');
 const billing = require('../utils/billing');
 
 function cloudReady() {
-  const app = getApp();
+  // onLaunch 期间 getApp() 可能尚未就绪，访问 .globalData 会抛 TypeError。
+  // 任何一个环节为空都按"未就绪"处理，由调用方决定走 mock 兜底。
+  const app = typeof getApp === 'function' ? getApp() : null;
   return !!(app && app.globalData && app.globalData.cloudReady && wx.cloud);
 }
 
 function callCloud(name, data) {
+  console.warn('[cloud] calling:', name);
   return wx.cloud.callFunction({ name, data }).then((res) => res.result);
 }
 
@@ -801,17 +804,18 @@ function getBookableCoaches() {
 
 // 约球桌：可预约球桌（按门店）。合成桌位数量与每小时价格用于演示。
 // 优先取该门店的 tableTypes（{name, pricePerHour} 对象数组），否则用 stores 默认值。
+// 云端模式下 getStores 已固定返回"大川激流·旗舰店"种子门店，stores.length ≥ 1 不会走 fallback；
+// fallbackStores 仅在云端完全失败时作为最后兜底。
 function getBookableTables() {
   const synth = {
     hall_01: { tableCount: 12 },
     hall_02: { tableCount: 8 },
-    hall_03: { tableCount: 6 }
+    hall_03: { tableCount: 6 },
+    seed_store_dachuan_flag: { tableCount: 12 }
   };
   const defaultTypes = [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }];
   const fallbackStores = [
-    { _id: 'hall_01', brandId: 'brand_01', name: '大川激流·旗舰店', address: '城市中心广场 3F', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }, { name: '美洲豹', pricePerHour: 58 }] },
-    { _id: 'hall_02', brandId: 'brand_01', name: '大川激流·滨江店', address: '滨江路 88 号', cover: '', tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }] },
-    { _id: 'hall_03', brandId: 'brand_02', name: '星河台球俱乐部', address: '高新区软件园', cover: '', tableTypes: [{ name: '星牌钢库', pricePerHour: 48 }, { name: '星牌木库', pricePerHour: 38 }] }
+    { _id: 'seed_store_dachuan_flag', brandId: 'seed_brand_dachuan', name: '大川激流·旗舰店', address: '北京·朝阳区国贸 CBD 中心', cover: '', isSeed: true, tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }, { name: '美洲豹', pricePerHour: 58 }] }
   ];
   return getStores().then((stores) => {
     const storesToUse = stores.length ? stores : fallbackStores;

@@ -10,6 +10,7 @@ const VALID_ROLES = ['member', 'coach', 'shop'];
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const role = VALID_ROLES.indexOf(event.role) !== -1 ? event.role : '';
+  console.log('[getUserBilling] event=', event, 'OPENID=', OPENID, 'role=', role);
 
   try {
     const res = await db.collection('users').where({ _openid: OPENID }).get();

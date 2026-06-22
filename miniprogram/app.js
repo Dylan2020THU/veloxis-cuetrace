@@ -32,7 +32,12 @@ App({
     // 首次启动时确保本地至少有一份可演示的数据
     initData();
     // 冷启动恢复计费状态：写入 firstLoginAt / plan 到 globalData
-    this.sessionReady = this.restoreSession();
+    // onLaunch 同步阶段 getApp() 可能尚未挂载到 services/data 上，延后一帧再调避免崩溃
+    this.sessionReady = new Promise((resolve) => {
+      setTimeout(() => {
+        this.restoreSession().then(resolve, resolve);
+      }, 0);
+    });
     this.billingReady = getUserBilling({ role: this.globalData.role }).catch((err) => {
       console.warn('[大川激流] 计费状态恢复失败', err);
     });
