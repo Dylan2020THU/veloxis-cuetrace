@@ -53,15 +53,6 @@ Page({
     const app = getApp();
     const cloudReady = !!(app && app.globalData && app.globalData.cloudReady);
     this.setData({ cloudReady });
-    const ready = (app && app.sessionReady) || Promise.resolve();
-    ready.then(() => {
-      if (!cloudReady || !app.globalData.openid) return;
-      let role = 'member';
-      try {
-        role = wx.getStorageSync('dc_role') || app.globalData.role || 'member';
-      } catch (e) {}
-      this.goHome(role);
-    });
   },
 
   goHome(role) {
