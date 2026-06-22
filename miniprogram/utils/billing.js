@@ -5,13 +5,18 @@
 //   3) 试用期外：按 feature key 映射到所需 plan 档位，缺档位则 requirePlan() 弹墙
 //   4) 入口统一在 data.js：本文件不直接读写 storage，便于后续切云端
 
-// 7 天 = 7 * 24 * 60 * 60 * 1000
-const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+// 30 天 = 30 * 24 * 60 * 60 * 1000
+const TRIAL_MS = 30 * 24 * 60 * 60 * 1000;
+
+// 平台对教练课时成交的抽佣费率（低抽佣定位，5%）。
+// 轻量实现：成交时按此费率算出平台服务费并记录/展示，暂不接微信真实分账。
+const COACH_COMMISSION_RATE = 0.05;
 
 // 套餐档位（与 data.js mock 存储、付费墙展示统一）
 // price 为 1 年原价；termOptions 为可选年限与折扣后总价
 const PLANS = {
   free: { key: 'free', label: '免费', price: 0, termOptions: [] },
+  // 【已停用】球员改免费、教练改低抽佣后，以下两档不再用于付费墙；保留定义仅供回滚。
   player_pro: {
     key: 'player_pro',
     label: '球员会员',
@@ -60,16 +65,12 @@ const PLANS = {
 
 // 功能 → 所需套餐（缺省即免费；高套餐包含低套餐能力）
 // key 命名：<role>.<feature>
+// 定价模型：店主付费、球员免费、教练低抽佣。
+//   球员端：全部功能免费（作为流量入口，不设墙）；
+//   教练端：改为按课时成交抽佣（见 COACH_COMMISSION_RATE），功能不再用订阅墙拦截；
+//   故 member.* / coach.* 不再列入收费清单——canUse() 对未列入项一律放行。
 const FEATURE_TO_PLAN = {
-  // 球员端
-  'member.bookTable': 'player_pro',     // 约球桌
-  'member.bookCoach': 'player_pro',     // 约教练
-  'member.aiAnalysis': 'player_pro',    // AI 数据分析（未来）
-  // 教练端
-  'coach.memberMgmt': 'coach_pro',      // 学员管理
-  'coach.stats': 'coach_pro',           // 课时/收入统计
-  'coach.marketing': 'coach_pro',       // 营销海报
-  // 店主端
+  // 店主端（唯一订阅付费方）
   'shop.report': 'shop_pro',            // 经营数据报表
   'shop.memberMgmt': 'shop_basic',      // 会员管理
   'shop.coachStats': 'shop_pro',        // 教练学员分析
@@ -174,8 +175,7 @@ function requirePlan(opts) {
 
 // 给付费墙组件使用：返回当前端的所有套餐（含价格）
 function getPlanList(role) {
-  if (role === 'member') return [PLANS.player_pro];
-  if (role === 'coach') return [PLANS.coach_pro];
+  // 球员免费、教练改抽佣：均不再展示订阅档；仅店主有付费套餐。
   if (role === 'shop') return [PLANS.shop_basic, PLANS.shop_pro];
   return [];
 }
@@ -221,10 +221,20 @@ function getFeatureLabel(feature) {
   return map[feature] || feature;
 }
 
+// 计算教练课时成交的平台服务费（佣金）。
+// amount 为该笔课时订单总额（元）；返回四舍五入到分的佣金额（元）。
+function calcCoachCommission(amount) {
+  const a = Number(amount) || 0;
+  if (a <= 0) return 0;
+  return Math.round(a * COACH_COMMISSION_RATE * 100) / 100;
+}
+
 module.exports = {
   TRIAL_MS,
+  COACH_COMMISSION_RATE,
   PLANS,
   FEATURE_TO_PLAN,
+  calcCoachCommission,
   isInTrial,
   trialRemainingMs,
   getPlanExpiry,

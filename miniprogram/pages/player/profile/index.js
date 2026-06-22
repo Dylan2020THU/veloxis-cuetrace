@@ -1,7 +1,4 @@
 const data = require('../../../services/data');
-const billing = require('../../../utils/billing');
-
-const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
 
 Page({
   behaviors: [require('../../../utils/themeBehavior')],
@@ -22,18 +19,7 @@ Page({
     totalHoursText: '0',
     streak: 0,
     stats: [],
-    loading: true,
-    // 计费相关
-    plan: 'free',
-    planLabel: '免费版',
-    trialRemaining: 0,
-    trialDays: 0,
-    // 三态 banner：
-    //   'trial'   试期内   → "试期内，还剩 X 天"，banner 不可点
-    //   'active'  已购有效 → "会员剩余 X 天 · 点此续费"，banner 可点
-    //   'expired' 试期外+未购 → "试期已结束，去开通"，banner 可点
-    bannerMode: 'expired',
-    planRemainDays: 0
+    loading: true
   },
 
   onLoad(query) {
@@ -44,77 +30,6 @@ Page({
     this.setData({ openid, nickname, isCoach, isCurrentUser });
     wx.setNavigationBarTitle({ title: nickname || '球员信息' });
     this.loadProfile(openid, isCoach, isCurrentUser);
-    if (isCurrentUser) this.loadBilling();
-  },
-
-  // 加载当前用户计费状态（plan / 试期剩余 / 三态 banner）
-  loadBilling() {
-    data.getUserBilling().then((b) => {
-      if (!b) return;
-      const planKey = b.plan || 'free';
-      const plan = billing.PLANS[planKey] || billing.PLANS.free;
-      const trialMs = b.trialRemainingMs || 0;
-      const inTrial = billing.isInTrial();
-      const hasActiveMember = billing.isPlanActive('player_pro') || billing.isPlanActive('member_basic');
-      const planExpiresAt = billing.getPlanExpiry() || 0;
-      const planRemainDays = (planExpiresAt && Date.now() < planExpiresAt)
-        ? Math.max(0, Math.ceil((planExpiresAt - Date.now()) / (24 * 60 * 60 * 1000)))
-        : 0;
-      let bannerMode = 'expired';
-      if (inTrial) bannerMode = 'trial';
-      else if (hasActiveMember) bannerMode = 'active';
-      this.setData({
-        plan: planKey,
-        planLabel: plan.label || '免费版',
-        trialRemaining: trialMs,
-        trialDays: trialMs > 0 ? Math.ceil(trialMs / TRIAL_DAY_MS) : 0,
-        bannerMode,
-        planRemainDays
-      });
-    }).catch((err) => {
-      console.warn('[球员主页] 拉取计费状态失败', err);
-    });
-  },
-
-  // 主动开通：多端 tab 模式
-  onOpenPaywall() {
-    const app = getApp();
-    // active 模式默认 focus 到当前已购档（续费同档），expired 模式给 player_pro
-    const focusKey = this.data.bannerMode === 'active' && this.data.plan !== 'free'
-      ? this.data.plan
-      : 'player_pro';
-    app.paywall({
-      feature: '',
-      planKey: focusKey,
-      role: 'member',
-      multi: true,
-      from: 'player_profile'
-    }, (ok) => {
-      if (ok) this.loadBilling();
-    });
-  },
-
-  // 顶部 banner 入口：trial 模式不响应；active/expired 弹 paywall
-  onTapProfileBanner() {
-    if (this.data.bannerMode === 'trial') return;
-    this.onOpenPaywall();
-  },
-
-  // 模拟被拦场景：试期外体验付费功能 → 触发 feature 拦截
-  onTryBlockedFeature() {
-    const app = getApp();
-    // 走 billing.requirePlan 验证拦截逻辑
-    billing.requirePlan({
-      feature: 'member.bookTable',
-      role: 'member',
-      title: '在线约球桌'
-    }).then((ok) => {
-      if (ok) {
-        wx.showToast({ title: '已可使用', icon: 'success' });
-      } else {
-        // 用户中途关闭，不做处理
-      }
-    }).catch(() => {});
   },
 
   loadProfile(openid, isCoach, isCurrentUser) {

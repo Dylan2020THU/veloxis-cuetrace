@@ -1,7 +1,4 @@
 const data = require('../../../services/data');
-const billing = require('../../../utils/billing');
-
-const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
@@ -67,16 +64,11 @@ Page({
     slotWeekday: 0,
     slotStart: '18:00',
     slotEnd: '21:00',
-    submitting: false,
-    // 试期状态（教练端）
-    plan: 'free',
-    trialDays: 0,
-    trialActive: false
+    submitting: false
   },
 
   onLoad() {
     this.loadHalls();
-    this.loadBilling();
     data.getCoachProfile().then((p) => {
       if (!p) return;
       this.setData({
@@ -98,36 +90,6 @@ Page({
   loadHalls() {
     data.getHalls().then((halls) => {
       this.setData({ hallList: halls || [] });
-    });
-  },
-
-  // 加载试期 / 套餐状态（顶部提示用）
-  loadBilling() {
-    data.getUserBilling().then((b) => {
-      if (!b) return;
-      const planKey = b.plan || 'free';
-      const trialMs = b.trialRemainingMs || 0;
-      this.setData({
-        plan: planKey,
-        trialDays: trialMs > 0 ? Math.ceil(trialMs / TRIAL_DAY_MS) : 0,
-        trialActive: billing.isInTrial()
-      });
-    }).catch((err) => {
-      console.warn('[教练资料] 拉取计费状态失败', err);
-    });
-  },
-
-  // 试期外+免费版：点顶部 banner 触发付费墙
-  onOpenCoachPaywall() {
-    const app = getApp();
-    app.paywall({
-      feature: '',
-      planKey: 'coach_pro',
-      role: 'coach',
-      multi: true,
-      from: 'coach_profile'
-    }, (ok) => {
-      if (ok) this.loadBilling();
     });
   },
 

@@ -7,31 +7,6 @@
     </view>
   </view>
 
-  <!-- 顶部 banner：三态（trial 不可点 / active 可续费 / expired 可开通） -->
-  <view
-    wx:if="{{isCurrentUser && !isCoach && bannerMode === 'trial'}}"
-    class="trial-banner trial-banner--active"
-  >
-    <text class="trial-banner__icon">·</text>
-    <text class="trial-banner__txt">会员试用期内，还剩 {{trialDays}} 天</text>
-  </view>
-  <view
-    wx:elif="{{isCurrentUser && !isCoach && bannerMode === 'active'}}"
-    class="trial-banner trial-banner--active"
-    bindtap="onTapProfileBanner"
-  >
-    <text class="trial-banner__icon">·</text>
-    <text class="trial-banner__txt">会员剩余 {{planRemainDays}} 天 · 点此续费</text>
-  </view>
-  <view
-    wx:elif="{{isCurrentUser && !isCoach && plan === 'free' && trialRemaining === 0}}"
-    class="trial-expired"
-    bindtap="onTapProfileBanner"
-  >
-    <text class="trial-expired__icon">!</text>
-    <text class="trial-expired__txt">试用期已结束，开通会员解锁约球桌 / 约教练 / 数据分析等能力</text>
-  </view>
-
   <!-- 头部信息 -->
   <view class="hero" style="--brand:{{isCoach ? '#e67e22' : '#067EF9'}}">
     <view class="avatar-wrap">
@@ -70,13 +45,6 @@
 
   <!-- 会员视图 -->
   <view wx:else class="content">
-    <!-- 试期已过期且未购买：红色提醒 banner -->
-    <view class="card trial-expired" wx:if="{{showTrialExpired}}">
-      <view class="trial-expired__title">您的试用期已结束</view>
-      <view class="trial-expired__sub">开通会员后可继续使用约球桌、约教练等高级功能</view>
-      <view class="trial-expired__btn" bindtap="onOpenPaywall">立即开通</view>
-    </view>
-
     <view class="card">
       <view class="card-title">训练概览</view>
       <view wx:if="{{loading}}" class="loading">加载中...</view>
@@ -99,24 +67,6 @@
       </view>
     </view>
 
-    <!-- 会员中心（仅当前会员用户可见） -->
-    <view class="card member-card" wx:if="{{isCurrentUser && !isCoach}}">
-      <view class="card-title">会员中心</view>
-      <view class="member-status">
-        <view class="member-status__row">
-          <text class="member-status__label">当前套餐</text>
-          <text class="member-status__value {{plan === 'free' ? 'is-free' : 'is-pro'}}">{{planLabel}}</text>
-        </view>
-        <view class="member-status__row" wx:if="{{trialRemaining > 0}}">
-          <text class="member-status__label">试用剩余</text>
-          <text class="member-status__value is-trial">{{trialDays}} 天</text>
-        </view>
-      </view>
-      <view class="member-actions">
-        <view class="member-btn member-btn--primary" bindtap="onOpenPaywall">开通 / 续费会员</view>
-        <view class="member-btn" bindtap="onTryBlockedFeature" wx:if="{{plan === 'free' && trialRemaining === 0}}">体验付费功能</view>
-      </view>
-    </view>
   </view>
 
   <!-- 通用付费墙（仅当前用户实例化，避免他人主页弹出） -->

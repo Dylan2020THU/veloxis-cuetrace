@@ -17,6 +17,7 @@
     </view>
     <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
     <view class="row" wx:if="{{item.hallName}}"><text class="lbl">球厅</text><text class="val">{{item.hallName}}</text></view>
+    <view class="row" wx:if="{{item.commissionText}}"><text class="lbl">平台服务费</text><text class="val">{{item.commissionText}}</text></view>
     <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
   </view>
 </view>

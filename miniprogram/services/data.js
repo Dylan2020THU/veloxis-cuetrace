@@ -889,7 +889,7 @@ function createBooking({ type, targetId, targetName, hallName, datetime, note, p
   }
   const bookings = mock.readArray(mock.KEY_BOOKINGS);
   const id = `mock_b_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-  bookings.push({
+  const booking = {
     _id: id,
     _openid: mock.MOCK_OPENID,
     bookerName: info.authorName,
@@ -903,7 +903,12 @@ function createBooking({ type, targetId, targetName, hallName, datetime, note, p
     tableType: tableType || '',
     status: 'pending',
     createdAt: Date.now()
-  });
+  };
+  // 约教练订单：标记平台抽佣率（与云端 createBooking 一致）
+  if (type === 'coach') {
+    booking.commissionRate = billing.COACH_COMMISSION_RATE;
+  }
+  bookings.push(booking);
   mock.writeArray(mock.KEY_BOOKINGS, bookings);
   return Promise.resolve({ ok: true, id });
 }
