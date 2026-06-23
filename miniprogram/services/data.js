@@ -1153,6 +1153,18 @@ function upgradePlan(planKey, term) {
   return Promise.resolve({ ok: true, plan: planKey, term: t, planExpiresAt });
 }
 
+// 账号注销：删除本人全部数据（云端调用 deleteAccount 云函数；mock 清空本地存储）
+function deleteAccount() {
+  if (cloudReady()) {
+    return callCloud('deleteAccount', {});
+  }
+  try {
+    const info = wx.getStorageInfoSync();
+    (info.keys || []).forEach((k) => wx.removeStorageSync(k));
+  } catch (e) {}
+  return Promise.resolve({ ok: true });
+}
+
 module.exports = {
   initData,
   login,
@@ -1219,5 +1231,6 @@ module.exports = {
   getUserBilling,
   markFirstLogin,
   upgradePlan,
+  deleteAccount,
   isPlanActive
 };

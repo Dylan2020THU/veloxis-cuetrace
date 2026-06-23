@@ -1,5 +1,6 @@
 const mock = require('../../utils/mock');
 const data = require('../../services/data');
+const rank = require('../../utils/rank');
 
 const ROLE_LABEL = { member: '会员', coach: '教练', shop: '店家' };
 const THEME_LABEL = { light: '白天模式', dark: '夜间模式', system: '跟随系统' };
@@ -9,8 +10,7 @@ Page({
 
   data: {
     nickname: '大川会员',
-    cloudReady: false,
-    openid: '',
+    avatar: '',
     role: 'member',
     roleLabel: '会员',
     isCoach: false,
@@ -18,7 +18,16 @@ Page({
     hasCoachProfile: false,
     hasShopProfile: false,
     themeMode: 'system',
-    themeModeLabel: '跟随系统'
+    themeModeLabel: '跟随系统',
+    // 训练成就 / 段位
+    summary: { totalDays: 0, totalHoursText: '0.0', streak: 0 },
+    rankInfo: { label: '青铜杆手', growth: 0, nextMin: 600, nextLabel: '白银杆手', toNextHoursText: '10.0', progress: 0, isMax: false },
+    // 约球计数：我发起 / 我参与 / 约教练 / 约球桌
+    matchCounts: { posted: 0, joined: 0, coach: 0, table: 0 },
+    // 设置面板开关
+    settingsOpen: false,
+    // 本地缓存大小（清理缓存项展示）
+    cacheText: ''
   },
 
   onShow() {
@@ -29,21 +38,22 @@ Page({
     const role = mock.getRole();
     const profile = app.globalData.userProfile;
     this.setData({
-      cloudReady: app.globalData.cloudReady,
-      openid: app.globalData.openid || mock.MOCK_OPENID,
       role,
       roleLabel: ROLE_LABEL[role] || '会员',
       isCoach: role === 'coach',
       isShop: role === 'shop',
       nickname: (profile && profile.nickname) || '大川会员',
+      avatar: (profile && profile.avatar) || '',
       themeMode: app.globalData.themeMode,
-      themeModeLabel: THEME_LABEL[app.globalData.themeMode] || '跟随系统'
+      themeModeLabel: THEME_LABEL[app.globalData.themeMode] || '跟随系统',
+      settingsOpen: false
     });
     data.getUserProfile().then((user) => {
       if (!user) return;
       const nextRole = user.role || role;
       this.setData({
         nickname: user.nickname || '大川会员',
+        avatar: user.avatar || '',
         role: nextRole,
         roleLabel: ROLE_LABEL[nextRole] || '会员',
         isCoach: nextRole === 'coach',
@@ -52,6 +62,176 @@ Page({
     });
     data.getCoachProfile().then((p) => this.setData({ hasCoachProfile: !!p }));
     data.getShopProfile().then((p) => this.setData({ hasShopProfile: !!p }));
+    this.loadAchievement();
+    this.loadMatchCounts();
+    this.refreshCacheSize();
+  },
+
+  // 训练成就 + 段位（成长值 = 累计训练分钟）
+  loadAchievement() {
+    data.getMemberCheckins().then((stats) => {
+      const summary = rank.summarize(stats);
+      const rankInfo = rank.computeRank(summary.totalMinutes);
+      this.setData({ summary, rankInfo });
+    }).catch((err) => {
+      console.warn('[我的] 训练成就加载失败', err);
+    });
+  },
+
+  // 约球计数：我发起 / 我参与 / 约教练 / 约球桌
+  loadMatchCounts() {
+    Promise.all([
+      data.getMyMatches().catch(() => []),
+      data.getMyJoins().catch(() => []),
+      data.getMyBookings().catch(() => [])
+    ]).then(([matches, joins, bookings]) => {
+      const list = bookings || [];
+      this.setData({
+        matchCounts: {
+          posted: (matches || []).length,
+          joined: (joins || []).length,
+          coach: list.filter((b) => b.type === 'coach').length,
+          table: list.filter((b) => b.type === 'table').length
+        }
+      });
+    });
+  },
+
+  // ---------- 导航 ----------
+  goMyProfile() {
+    this.setData({ settingsOpen: false });
+    const nickname = encodeURIComponent(this.data.nickname || '');
+    wx.navigateTo({ url: `/pages/player/profile/index?isCurrentUser=1&nickname=${nickname}` });
+  },
+  goMatchMine() {
+    wx.navigateTo({ url: '/pages/match/mine' });
+  },
+  goCheckin() {
+    wx.switchTab({ url: '/pages/checkin/index' });
+  },
+  goCommunity() {
+    wx.switchTab({ url: '/pages/community/index' });
+  },
+  goEditProfile() {
+    this.setData({ settingsOpen: false });
+    wx.navigateTo({ url: '/pages/player/profile/edit/index' });
+  },
+  goCoachProfile() {
+    wx.navigateTo({ url: '/pages/coach/profile/index' });
+  },
+  goCoachMembers() {
+    wx.switchTab({ url: '/pages/coach/members/index' });
+  },
+  goCoachBookings() {
+    wx.navigateTo({ url: '/pages/coach/bookings/index' });
+  },
+  goShopDashboard() {
+    wx.navigateTo({ url: '/pages/shop/dashboard/index' });
+  },
+
+  about() {
+    wx.showModal({
+      title: '强化杆迹',
+      content: '记录每一杆的成长。\n版本 v1.1.0',
+      showCancel: false,
+      confirmText: '知道了'
+    });
+  },
+
+  openSettings() {
+    this.setData({ settingsOpen: true });
+  },
+  closeSettings() {
+    this.setData({ settingsOpen: false });
+  },
+  noop() {},
+
+  // 隐私政策（打开后台配置的《小程序隐私保护指引》）
+  openPrivacy() {
+    if (typeof wx.openPrivacyContract !== 'function') {
+      wx.showToast({ title: '当前版本不支持', icon: 'none' });
+      return;
+    }
+    wx.openPrivacyContract({
+      fail: () => wx.showToast({ title: '请先在后台配置隐私协议', icon: 'none' })
+    });
+  },
+
+  goAgreement() {
+    this.setData({ settingsOpen: false });
+    wx.navigateTo({ url: '/pages/legal/index?type=agreement' });
+  },
+  goThirdParty() {
+    this.setData({ settingsOpen: false });
+    wx.navigateTo({ url: '/pages/legal/index?type=thirdparty' });
+  },
+
+  // 统计本地缓存大小
+  refreshCacheSize() {
+    try {
+      const info = wx.getStorageInfoSync();
+      this.setData({ cacheText: (info.currentSize || 0) + ' KB' });
+    } catch (e) {
+      this.setData({ cacheText: '' });
+    }
+  },
+
+  // 清理缓存：清除本地缓存，但保留登录身份与主题设置
+  clearCache() {
+    wx.showModal({
+      title: '清理缓存',
+      content: '将清除本地缓存数据（不会退出登录），确定？',
+      confirmText: '清理',
+      success: (res) => {
+        if (!res.confirm) return;
+        const keep = { dc_role: 1, dc_theme_mode: 1 };
+        try {
+          const info = wx.getStorageInfoSync();
+          (info.keys || []).forEach((k) => {
+            if (!keep[k]) wx.removeStorageSync(k);
+          });
+        } catch (e) {}
+        this.refreshCacheSize();
+        wx.showToast({ title: '已清理', icon: 'success' });
+      }
+    });
+  },
+
+  // 账号注销（不可恢复，双重确认）
+  deleteAccount() {
+    wx.showModal({
+      title: '注销账号',
+      content: '注销后将永久删除你的训练记录、社区内容、约球与预约等数据，且不可恢复。确定继续？',
+      confirmText: '继续',
+      confirmColor: '#e54545',
+      success: (res) => {
+        if (!res.confirm) return;
+        wx.showModal({
+          title: '再次确认',
+          content: '这是不可逆操作，确认注销并删除全部数据吗？',
+          confirmText: '确认注销',
+          confirmColor: '#e54545',
+          success: (res2) => {
+            if (!res2.confirm) return;
+            wx.showLoading({ title: '处理中', mask: true });
+            data.deleteAccount().then(() => {
+              try { wx.removeStorageSync('dc_role'); } catch (e) {}
+              const app = getApp();
+              if (app && app.globalData) {
+                app.globalData.openid = '';
+                app.globalData.userProfile = null;
+              }
+              wx.hideLoading();
+              wx.showToast({ title: '已注销', icon: 'success' });
+              setTimeout(() => wx.reLaunch({ url: '/pages/login/index' }), 800);
+            }).catch(() => {
+              wx.hideLoading();
+              wx.showToast({ title: '注销失败，请重试', icon: 'none' });
+            });
+          }
+        });
+      }
+    });
   },
 
   switchTheme() {
@@ -65,26 +245,6 @@ Page({
         this.setData({ themeMode: mode, themeModeLabel: THEME_LABEL[mode] });
       }
     });
-  },
-
-  goCoachProfile() {
-    wx.navigateTo({ url: '/pages/coach/profile/index' });
-  },
-
-  goCoachMembers() {
-    wx.switchTab({ url: '/pages/coach/members/index' });
-  },
-
-  goCoachBookings() {
-    wx.navigateTo({ url: '/pages/coach/bookings/index' });
-  },
-
-  goShopDashboard() {
-    wx.navigateTo({ url: '/pages/shop/dashboard/index' });
-  },
-
-  goEditProfile() {
-    wx.navigateTo({ url: '/pages/player/profile/edit/index' });
   },
 
   // 三身份切换
@@ -153,47 +313,6 @@ Page({
       confirmText: '去设置',
       success: (res) => {
         if (res.confirm) onConfirm();
-      }
-    });
-  },
-
-  resetMock() {
-    wx.showModal({
-      title: '重置演示数据',
-      content: '将清空本地数据并重新生成一份演示数据，确定？',
-      success: (res) => {
-        if (!res.confirm) return;
-        [
-          'dc_seeded',
-          'dc_seeded_v2',
-          'dc_sessions',
-          'dc_halls',
-          'dc_members',
-          'dc_links',
-          'dc_role',
-          'dc_coach_profile',
-          'dc_shop',
-          'dc_shop_stores',
-          'dc_shop_coaches',
-          'dc_all_coaches',
-          'dc_posts',
-          'dc_post_likes',
-          'dc_comments',
-          'dc_follows',
-          'dc_matches',
-          'dc_bookings',
-          'dc_match_joins'
-        ].forEach((k) => wx.removeStorageSync(k));
-        mock.ensureSeeded();
-        this.setData({
-          role: 'member',
-          roleLabel: '会员',
-          isCoach: false,
-          isShop: false,
-          hasCoachProfile: false,
-          hasShopProfile: false
-        });
-        wx.showToast({ title: '已重置', icon: 'success' });
       }
     });
   }

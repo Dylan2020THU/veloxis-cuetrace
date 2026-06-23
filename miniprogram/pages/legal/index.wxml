@@ -1,0 +1,10 @@
+<view class="page theme-{{theme}}">
+  <view class="doc">
+    <view class="doc-title">{{title}}</view>
+    <view class="doc-meta">更新日期：{{updatedAt}}　·　本文为初稿，最终以正式发布版本为准</view>
+    <view class="sec" wx:for="{{sections}}" wx:key="h">
+      <view class="sec-h">{{item.h}}</view>
+      <view class="sec-p">{{item.p}}</view>
+    </view>
+  </view>
+</view>

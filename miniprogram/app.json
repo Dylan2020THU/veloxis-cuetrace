@@ -23,7 +23,8 @@
     "pages/shop/hall-status/index",
     "pages/shop/table-types/index",
     "pages/player/profile/index",
-    "pages/player/profile/edit/index"
+    "pages/player/profile/edit/index",
+    "pages/legal/index"
   ],
   "window": {
     "navigationBarBackgroundColor": "#067EF9",
