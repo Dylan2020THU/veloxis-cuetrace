@@ -1,7 +1,10 @@
 <view class="page theme-{{theme}}">
   <view class="page-header">
     <text class="page-title">球厅态势</text>
-    <text class="refresh-btn" bindtap="loadInit">刷新</text>
+    <view class="header-actions">
+      <text class="header-link" bindtap="goCheckinQr">到店码</text>
+      <text class="refresh-btn" bindtap="loadInit">刷新</text>
+    </view>
   </view>
 
   <view class="store-bar" wx:if="{{stores.length > 0}}">
@@ -65,6 +68,12 @@
     <text class="stats-text occupied-count">使用中 {{occupiedCount}} 张</text>
   </view>
 
+  <!-- 到店待确认横幅 -->
+  <view wx:if="{{pendingCount > 0}}" class="pending-banner">
+    <text class="pending-dot"></text>
+    <text class="pending-text">{{pendingCount}} 位球员已到店待确认 · 点击空闲球台「使用」为其开台</text>
+  </view>
+
   <view wx:if="{{filteredTables.length === 0}}" class="empty-state">
     <text class="empty-text">暂无球台信息\n请先在「桌型管理」中添加桌型</text>
   </view>
@@ -97,6 +106,16 @@
         <!-- 球员区域 -->
         <view class="players-zone">
           <block wx:if="{{item.status === 'occupied'}}">
+            <!-- 匿名占用：无绑定球员，仅显示"有人" -->
+            <view wx:if="{{!item.players.length}}" class="player-row anon-row">
+              <view class="player-avatar-wrap">
+                <view class="player-avatar-placeholder anon">人</view>
+              </view>
+              <view class="player-info">
+                <text class="player-name">有人 · 未绑定球员</text>
+                <text class="coach-time anon-tip">球员扫码到店后显示头像</text>
+              </view>
+            </view>
             <view class="player-row"
               wx:for="{{item.players}}"
               wx:for-item="player"
@@ -115,7 +134,7 @@
                 <text wx:if="{{player.isCoach && player.joinedAt}}" class="coach-time">{{player.teachText || ''}}</text>
               </view>
             </view>
-            <view wx:if="{{item.players.length < 2}}" class="waiting-hint">等待另一人加入...</view>
+            <view wx:if="{{item.players.length && item.players.length < 2}}" class="waiting-hint">等待另一人加入...</view>
           </block>
           <view wx:else class="idle-hint">空闲中</view>
         </view>
@@ -127,7 +146,12 @@
 
         <!-- 已开桌时长 -->
         <view class="table-elapsed" wx:if="{{item.status === 'occupied'}}">
-          <text class="elapsed-text">{{item.elapsedText || ('已开桌 ' + formatDuration(item.elapsedMs))}}</text>
+          <text class="elapsed-text">{{item.elapsedText}}</text>
+        </view>
+
+        <!-- 超时提醒 -->
+        <view class="table-overtime" wx:if="{{item.overtime}}">
+          <text class="overtime-text">⚠ 已超时，请及时结账</text>
         </view>
 
         <!-- 当前收入 -->
@@ -146,6 +170,56 @@
           </view>
         </view>
       </view>
+    </view>
+  </view>
+</view>
+
+<!-- 开台确认弹窗：绑定到店球员 + 教学局教练 -->
+<view wx:if="{{openSheet}}" class="use-mask" catchtap="closeUseSheet">
+  <view class="use-sheet theme-{{theme}}" catchtap="noop">
+    <view class="use-title">开台 · {{openSheet.tableName}}</view>
+
+    <view class="use-section-label">到店球员</view>
+    <view class="use-opt {{openSheet.selectedMember === '' ? 'sel' : ''}}" data-openid="" bindtap="selectMember">
+      <view class="use-avatar ph">匿</view>
+      <view class="use-opt-main">
+        <text class="use-opt-name">匿名开台（不绑定球员）</text>
+        <text class="use-opt-sub">无球员到店或散客自助</text>
+      </view>
+      <view class="use-radio"></view>
+    </view>
+    <view class="use-opt {{openSheet.selectedMember === item.memberOpenid ? 'sel' : ''}}"
+      wx:for="{{openSheet.requests}}" wx:key="_id"
+      data-openid="{{item.memberOpenid}}" bindtap="selectMember">
+      <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
+      <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '球'}}</view>
+      <view class="use-opt-main">
+        <text class="use-opt-name">{{item.nickname || '球员'}}</text>
+        <text wx:if="{{item.dist != null}}" class="use-opt-sub">距门店 {{item.dist}}km</text>
+      </view>
+      <view class="use-radio"></view>
+    </view>
+    <view wx:if="{{!openSheet.requests.length}}" class="use-empty">暂无到店待确认球员，可匿名开台</view>
+
+    <view class="use-row">
+      <text class="use-section-label nomargin">教学局（绑定教练课时）</text>
+      <switch checked="{{openSheet.isCoaching}}" bindchange="toggleCoaching" color="#067ef9" />
+    </view>
+    <block wx:if="{{openSheet.isCoaching}}">
+      <view class="use-opt {{openSheet.coachOpenid === item._cid ? 'sel' : ''}}"
+        wx:for="{{coaches}}" wx:key="_cid"
+        data-openid="{{item._cid}}" bindtap="selectCoach">
+        <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
+        <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '教'}}</view>
+        <view class="use-opt-main"><text class="use-opt-name">{{item.nickname}}</text></view>
+        <view class="use-radio"></view>
+      </view>
+      <view wx:if="{{!coaches.length}}" class="use-empty">本店暂无教练，请先在「教练」中添加</view>
+    </block>
+
+    <view class="use-actions">
+      <view class="use-btn ghost" bindtap="closeUseSheet">取消</view>
+      <view class="use-btn primary" bindtap="confirmUse">确认开台</view>
     </view>
   </view>
 </view>

@@ -22,6 +22,9 @@ const SEED_STORE = {
   address: '北京·朝阳区国贸 CBD 中心',
   cover: '',
   region: '北京',
+  lat: 39.908,
+  lng: 116.404,
+  checkinEnabled: true,
   isSeed: true,
   tableTypes: [
     { name: '乔氏金腿', pricePerHour: 78, bgColor: '#067ef9' },
@@ -42,6 +45,10 @@ exports.main = async (event) => {
   if (!brandId || brandId === SEED_STORE.brandId) {
     stores.unshift(SEED_STORE);
   }
+  // 决策3（待完善）：到店打卡列表应"仅已订阅且开启打卡"门店。
+  // checkinEnabled 已随门店返回，由客户端 getBookableTables 过滤；
+  // "已订阅"为店主维度，建议在此 join users 集合按 _openid 取 plan/planExpiresAt，
+  // stamp s.subscribed = (plan!=='free' && planExpiresAt>Date.now())，再让客户端按 subscribed && checkinEnabled 过滤。
   return { ok: true, stores };
 };
 

@@ -394,21 +394,30 @@ function getSessions() {
   return Promise.resolve(mock.readArray(mock.KEY_SESSIONS));
 }
 
-function createSession({ tableId }) {
+// 开桌：支持绑定到店球员 memberOpenid、教学局教练 coachOpenid、门店 storeId、是否已核验 verified。
+// hall-status.computeStatus 读取这些字段渲染占用卡（球员/教练头像、助教时长）。
+function createSession({ tableId, storeId, memberOpenid, coachOpenid, coachJoinedAt, verified }) {
   if (cloudReady()) {
-    return callCloud('createSession', { tableId });
+    return callCloud('createSession', { tableId, storeId, memberOpenid, coachOpenid, coachJoinedAt, verified });
   }
   const sessions = mock.readArray(mock.KEY_SESSIONS);
+  const now = Date.now();
+  const sid = `mock_s_${now}`;
   sessions.push({
-    _id: `mock_s_${Date.now()}`,
+    _id: sid,
     _openid: mock.MOCK_OPENID,
     tableId,
+    storeId: storeId || '',
+    memberOpenid: memberOpenid || '',
+    coachOpenid: coachOpenid || '',
+    coachJoinedAt: coachOpenid ? (coachJoinedAt || now) : null,
+    verified: !!verified,
     status: 'active',
-    startedAt: Date.now(),
-    createdAt: Date.now()
+    startedAt: now,
+    createdAt: now
   });
   mock.writeArray(mock.KEY_SESSIONS, sessions);
-  return Promise.resolve({ ok: true });
+  return Promise.resolve({ ok: true, sessionId: sid });
 }
 
 function closeSession({ sessionId }) {
@@ -423,6 +432,158 @@ function closeSession({ sessionId }) {
     mock.writeArray(mock.KEY_SESSIONS, sessions);
   }
   return Promise.resolve({ ok: true });
+}
+
+// ============ 到店打卡核验（B：扫码/选店到店 → 前台确认 → 绑定开台） ============
+// 演示阶段 mock 落本地 'dc_checkin_requests'；接真实云端改 callCloud（云函数待部署）。
+const KEY_CHECKIN = 'dc_checkin_requests';
+const KEY_COACH_LESSONS = 'dc_coach_lessons';
+
+function _currentOpenid() {
+  const app = getApp();
+  return (app && app.globalData && app.globalData.openid) || mock.MOCK_OPENID;
+}
+
+// 球员到店：发起待前台确认的到店请求。lat/lng/dist 供"在店内"距离核验留痕。
+function requestCheckin({ storeId, storeName, tableId, tableName, nickname, avatar, lat, lng, dist }) {
+  const me = _currentOpenid();
+  const record = {
+    _id: `ci_${Date.now()}`,
+    storeId: storeId || '',
+    storeName: storeName || '',
+    tableId: tableId || '',
+    tableName: tableName || '',
+    memberOpenid: me,
+    nickname: nickname || '',
+    avatar: avatar || '',
+    lat: typeof lat === 'number' ? lat : null,
+    lng: typeof lng === 'number' ? lng : null,
+    dist: typeof dist === 'number' ? dist : null,
+    status: 'pending',
+    createdAt: Date.now()
+  };
+  if (cloudReady()) {
+    return callCloud('requestCheckin', record).then((r) => r || { ok: true, request: record });
+  }
+  const arr = mock.readArray(KEY_CHECKIN);
+  // 同一球员对同一门店仅保留一条 pending（重复发起覆盖）
+  const kept = arr.filter((x) => !(x.memberOpenid === me && x.storeId === record.storeId && x.status === 'pending'));
+  kept.push(record);
+  mock.writeArray(KEY_CHECKIN, kept);
+  return Promise.resolve({ ok: true, request: record });
+}
+
+// 前台：拉取本店待确认的到店请求队列
+function getPendingCheckins(storeId) {
+  if (cloudReady()) {
+    return callCloud('getPendingCheckins', { storeId }).then((r) => (r && r.requests) || []);
+  }
+  const arr = mock.readArray(KEY_CHECKIN)
+    .filter((x) => x.status === 'pending' && (!storeId || x.storeId === storeId))
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return Promise.resolve(arr);
+}
+
+// 前台：确认 / 拒绝某条到店请求（action: 'confirm' | 'reject'）
+function resolveCheckin(requestId, action) {
+  if (cloudReady()) {
+    return callCloud('resolveCheckin', { requestId, action });
+  }
+  const arr = mock.readArray(KEY_CHECKIN);
+  const idx = arr.findIndex((x) => x._id === requestId);
+  if (idx !== -1) {
+    arr[idx].status = action === 'reject' ? 'rejected' : 'confirmed';
+    arr[idx].resolvedAt = Date.now();
+    mock.writeArray(KEY_CHECKIN, arr);
+  }
+  return Promise.resolve({ ok: true });
+}
+
+// 球员：查询自己在某门店最近一条到店请求状态（pending/confirmed/rejected/none）
+function getMyCheckinStatus(storeId) {
+  const me = _currentOpenid();
+  if (cloudReady()) {
+    return callCloud('getMyCheckinStatus', { storeId }).then((r) => (r && r.status) || 'none');
+  }
+  const list = mock.readArray(KEY_CHECKIN)
+    .filter((x) => x.memberOpenid === me && (!storeId || x.storeId === storeId))
+    .sort((a, b) => b.createdAt - a.createdAt);
+  return Promise.resolve(list.length ? list[0].status : 'none');
+}
+
+// ============ 结账同步（C：球桌实测时长 → 球员已核验训练 + 教练课时） ============
+// durationMinutes 由调用方按分钟算好。memberOpenid 必填，coachOpenid 可选（教学局）。
+function recordVerifiedTraining({ memberOpenid, memberNickname, coachOpenid, coachNickname, hallId, hallName, storeId, durationMinutes, amount }) {
+  const mins = Math.round(Number(durationMinutes) || 0);
+  if (!memberOpenid || mins <= 0) return Promise.resolve({ ok: false });
+  const now = new Date();
+  const date = _todayKey();
+  const hh = now.getHours();
+  const mm = now.getMinutes();
+  const startTime = (hh < 10 ? '0' + hh : '' + hh) + ':' + (mm < 10 ? '0' + mm : '' + mm);
+  if (cloudReady()) {
+    return callCloud('recordVerifiedTraining', {
+      memberOpenid, memberNickname, coachOpenid, coachNickname,
+      hallId: hallId || storeId, hallName, date, startTime, durationMinutes: mins, amount
+    });
+  }
+  // 1) 球员"已核验"训练记录（进热力图 / 杆迹 / 我的）
+  const sessions = mock.readArray(mock.KEY_SESSIONS);
+  sessions.push({
+    _id: `mock_t_${Date.now()}`,
+    _openid: memberOpenid,
+    hallId: hallId || storeId || '',
+    hallName: hallName || '',
+    date,
+    startTime,
+    durationMinutes: mins,
+    verified: true,
+    createdAt: Date.now()
+  });
+  mock.writeArray(mock.KEY_SESSIONS, sessions);
+  // 2) 教学局：教练课时记录
+  if (coachOpenid) {
+    const lessons = mock.readArray(KEY_COACH_LESSONS);
+    lessons.push({
+      _id: `mock_l_${Date.now()}`,
+      coachOpenid,
+      coachNickname: coachNickname || '',
+      memberOpenid,
+      memberNickname: memberNickname || '',
+      hallId: hallId || storeId || '',
+      hallName: hallName || '',
+      date,
+      durationMinutes: mins,
+      amount: Number(amount) || 0,
+      verified: true,
+      createdAt: Date.now()
+    });
+    mock.writeArray(KEY_COACH_LESSONS, lessons);
+  }
+  return Promise.resolve({ ok: true });
+}
+
+// 生成门店"到店码"（小程序码，scene=s=<storeId>）。
+// 云端走 genCheckinCode 云函数（wxacode.getUnlimited，需部署 + 真云环境）；
+// mock/未部署返回空串，页面用 payload 文本 + 占位兜底。
+function genStoreCheckinCode(storeId) {
+  if (cloudReady()) {
+    return callCloud('genCheckinCode', { storeId }).then((r) => (r && (r.fileID || r.image)) || '');
+  }
+  return Promise.resolve('');
+}
+
+// 教练课时列表（默认当前用户；演示单账号下亦可传指定 coachOpenid）
+function getCoachLessons(coachOpenid) {
+  const who = coachOpenid || _currentOpenid();
+  if (cloudReady()) {
+    return callCloud('getCoachLessons', { coachOpenid }).then((r) => (r && r.lessons) || []);
+  }
+  const all = mock.readArray(KEY_COACH_LESSONS).sort((a, b) => b.createdAt - a.createdAt);
+  const mine = all.filter((x) => x.coachOpenid === who);
+  // 演示为单账号（openid 恒为 local-demo-user），教学局里选的教练是 coach_xx，
+  // 与当前 openid 不一致会看不到课时；mock 下若本人无匹配则回退展示全部，便于验收 D 期。
+  return Promise.resolve(mine.length ? mine : all);
 }
 
 // ============ 球员列表（按 openid 查昵称/头像，供 hall-status 渲染） ============
@@ -647,6 +808,63 @@ function resolveCity() {
   });
 }
 
+// 取用户当前经纬度（gcj02）。未授权/失败返回 null（调用方自行降级）。
+function getUserLatLng() {
+  return new Promise((resolve) => {
+    wx.getLocation({
+      type: 'gcj02',
+      success: (res) => resolve({ lat: res.latitude, lng: res.longitude }),
+      fail: () => resolve(null)
+    });
+  });
+}
+
+// 两点球面距离（km），保留 1 位小数；任一坐标缺失返回 null。
+function distanceKm(lat1, lng1, lat2, lng2) {
+  const nums = [lat1, lng1, lat2, lng2];
+  if (nums.some((v) => typeof v !== 'number' || isNaN(v))) return null;
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const sinLat = Math.sin(dLat / 2);
+  const sinLng = Math.sin(dLng / 2);
+  const a = sinLat * sinLat + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinLng * sinLng;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
+// 按门店 region 找城市中心坐标兜底
+function _cityCenter(region) {
+  const c = CITY_CENTERS.find((x) => region && region.indexOf(x.city) !== -1);
+  return c || CITY_CENTERS[0];
+}
+
+// 确定性微抖动（±约 5km），让无坐标门店在地图上不重叠
+function _hashJitter(seed) {
+  let h = 0;
+  const str = String(seed || '');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  const dy = ((h % 1000) / 1000 - 0.5) * 0.1;
+  const dx = (((h >>> 10) % 1000) / 1000 - 0.5) * 0.1;
+  return { dx, dy };
+}
+
+// 补全门店坐标：已有 lat/lng 直接返回；否则按 region 城市中心 + 确定性抖动兜底。
+// 用于兼容"老种子数据"（升级前已落库、无坐标字段）与未选点的门店。
+function ensureStoreGeo(store) {
+  if (store && typeof store.lat === 'number' && typeof store.lng === 'number') return store;
+  const center = _cityCenter(store && store.region);
+  const j = _hashJitter(store && store._id);
+  return Object.assign({}, store, { lat: center.lat + j.dy, lng: center.lng + j.dx });
+}
+
+// 门店是否为"系统种子/官方店"（用于老数据默认开启到店打卡）
+function _isSeedStore(s) {
+  const id = (s && s._id) || '';
+  return !!(s && (s.isSeed || /^hall_/.test(id) || /seed/.test(id)));
+}
+
 // ============ 约球 ============
 
 // 约球友：邀约列表（附加发布者段位）
@@ -818,12 +1036,31 @@ function getBookableTables() {
     { _id: 'seed_store_dachuan_flag', brandId: 'seed_brand_dachuan', name: '大川激流·旗舰店', address: '北京·朝阳区国贸 CBD 中心', cover: '', isSeed: true, tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }, { name: '美洲豹', pricePerHour: 58 }] }
   ];
   return getStores().then((stores) => {
-    const storesToUse = stores.length ? stores : fallbackStores;
-    return storesToUse.map((s) => {
-      const base = synth[s._id] || { tableCount: 8 };
-      const hallShopTableTypes = (s.tableTypes && s.tableTypes.length) ? s.tableTypes : defaultTypes;
-      return Object.assign({}, s, base, { tableTypes: hallShopTableTypes });
-    });
+    const raw = stores.length ? stores : fallbackStores;
+    return raw
+      .map((s) => ensureStoreGeo(s))
+      .map((s) => {
+        // 决策3：仅"已订阅且开启到店打卡"的合作门店出现在约球桌/地图找店。
+        // 订阅按店主维度，跨用户在客户端拿不到 → 云端 getStores 应 join 店主订阅并 stamp s.subscribed 后再过滤；
+        // mock/老数据：种子门店默认开启，店主新建门店以 checkinEnabled 为准（开启时已在门店管理校验订阅）。
+        const enabled = s.checkinEnabled === undefined ? _isSeedStore(s) : !!s.checkinEnabled;
+        return Object.assign({}, s, { checkinEnabled: enabled });
+      })
+      .filter((s) => s.checkinEnabled)
+      .map((s) => {
+        const base = synth[s._id] || { tableCount: 8 };
+        const hallShopTableTypes = (s.tableTypes && s.tableTypes.length) ? s.tableTypes : defaultTypes;
+        return Object.assign({}, s, base, { tableTypes: hallShopTableTypes });
+      });
+  });
+}
+
+// 按 _id 取单个门店（约球桌/地图/扫码核验用）
+function getStoreById(storeId) {
+  if (!storeId) return Promise.resolve(null);
+  return getStores().then((stores) => {
+    const s = (stores || []).find((x) => x._id === storeId);
+    return s ? ensureStoreGeo(s) : null;
   });
 }
 
@@ -1266,6 +1503,16 @@ module.exports = {
   getFollows,
   toggleFollow,
   resolveCity,
+  getUserLatLng,
+  distanceKm,
+  getStoreById,
+  requestCheckin,
+  getPendingCheckins,
+  resolveCheckin,
+  getMyCheckinStatus,
+  recordVerifiedTraining,
+  getCoachLessons,
+  genStoreCheckinCode,
   getMatchPosts,
   createMatchPost,
   getMatchJoiners,

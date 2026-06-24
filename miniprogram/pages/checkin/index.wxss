@@ -132,3 +132,15 @@
   width: 100%;
   height: 88rpx;
 }
+
+/* 已核验（到店打卡 → 结账实测）标识 */
+.verified-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: #00a870;
+  background: rgba(0, 168, 112, 0.12);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  vertical-align: middle;
+}

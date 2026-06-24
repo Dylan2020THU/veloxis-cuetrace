@@ -1,0 +1,9 @@
+{
+  "name": "getPendingCheckins",
+  "version": "1.0.0",
+  "description": "大川激流 - 门店待确认到店队列",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

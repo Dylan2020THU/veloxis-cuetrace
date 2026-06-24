@@ -42,6 +42,26 @@
   color: #067ef9;
   font-weight: 600;
 }
+.tab-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+.tab-ic {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: #8a9099;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.tab.active .tab-ic {
+  background-color: #067ef9;
+}
 .tab .bar {
   position: absolute;
   bottom: 8rpx;
@@ -398,4 +418,263 @@ image.avatar {
   display: flex;
   gap: 20rpx;
   margin-top: 32rpx;
+}
+
+/* 约球桌：到店打卡 / 地图找店 顶部动作条 */
+.table-actions-bar {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+.ta-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 22rpx 0;
+  background: #fff;
+  color: #067ef9;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(6, 126, 249, 0.25);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.ta-ic {
+  width: 30rpx;
+  height: 30rpx;
+  background-color: #067ef9;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.ta-btn:active {
+  background: rgba(6, 126, 249, 0.06);
+}
+
+/* 距离行 */
+.sub-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8rpx;
+}
+.sub-line .sub {
+  margin-top: 0;
+}
+.dist {
+  font-size: 24rpx;
+  color: #067ef9;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+/* 约球桌卡片：到店打卡 / 预约 双按钮（纵向） */
+.table-btns {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.table-btns .book-btn {
+  margin-left: 0;
+  text-align: center;
+  min-width: 132rpx;
+}
+.book-btn.ghost {
+  background: #f2f3f5;
+  color: #4b5056;
+}
+
+/* ===== 工具区：城市 + 搜索 + 筛选 chip ===== */
+.toolbar {
+  background: #fff;
+  padding: 12rpx 24rpx 16rpx;
+  border-bottom: 1rpx solid #f0f1f3;
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.city-btn {
+  flex-shrink: 0;
+}
+.city-inner {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  background: #f4f6f8;
+  border-radius: 32rpx;
+  padding: 12rpx 20rpx;
+}
+.city-name {
+  font-size: 26rpx;
+  color: #1f2329;
+  max-width: 140rpx;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.city-arrow {
+  font-size: 20rpx;
+  color: #8a9099;
+}
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  background: #f4f6f8;
+  border-radius: 32rpx;
+  padding: 0 20rpx;
+  height: 64rpx;
+}
+.search-ic {
+  font-size: 24rpx;
+  color: #9aa0a6;
+  flex-shrink: 0;
+}
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: #1f2329;
+  height: 64rpx;
+}
+.search-input::placeholder {
+  color: #aab0b6;
+}
+.search-clear {
+  font-size: 30rpx;
+  color: #b4b9bf;
+  padding: 0 6rpx;
+  flex-shrink: 0;
+}
+.chip-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 14rpx;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.chip {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #4b5056;
+  background: #f4f6f8;
+  border-radius: 28rpx;
+  padding: 10rpx 22rpx;
+  border: 1rpx solid transparent;
+}
+.chip.on {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.08);
+  border-color: rgba(6, 126, 249, 0.3);
+}
+.chip.more {
+  color: #067ef9;
+}
+
+/* ===== 更多筛选 底部弹层 ===== */
+.filter-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+}
+.filter-sheet {
+  width: 100%;
+  max-height: 78vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 32rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+}
+.filter-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+.fs-label {
+  font-size: 26rpx;
+  color: #8a9099;
+  margin: 24rpx 0 14rpx;
+}
+.fs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.fs-chip {
+  font-size: 26rpx;
+  color: #4b5056;
+  background: #f4f6f8;
+  border-radius: 28rpx;
+  padding: 12rpx 26rpx;
+  border: 1rpx solid transparent;
+}
+.fs-chip.sel {
+  color: #fff;
+  background: #067ef9;
+  border-color: #067ef9;
+}
+.fs-empty {
+  font-size: 24rpx;
+  color: #c4c9ce;
+  padding: 8rpx 0;
+}
+.fs-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 36rpx;
+}
+.fs-btn {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.fs-btn.ghost {
+  flex: 1;
+  background: #f2f3f5;
+  color: #4b5056;
+}
+.fs-btn.primary {
+  flex: 2;
+  background: #067ef9;
+  color: #fff;
+}
+
+/* 暗色 */
+.theme-dark .toolbar {
+  background: #1f2329;
+  border-bottom-color: #2a2f37;
+}
+.theme-dark .city-inner,
+.theme-dark .search-box,
+.theme-dark .chip,
+.theme-dark .fs-chip {
+  background: #2a2f37;
+}
+.theme-dark .city-name,
+.theme-dark .search-input,
+.theme-dark .filter-title {
+  color: #f0f1f3;
+}
+.theme-dark .filter-sheet {
+  background: #1f2329;
+}
+.theme-dark .fs-btn.ghost {
+  background: #2a2f37;
+  color: #c4c9ce;
 }

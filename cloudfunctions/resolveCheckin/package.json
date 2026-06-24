@@ -1,0 +1,9 @@
+{
+  "name": "resolveCheckin",
+  "version": "1.0.0",
+  "description": "大川激流 - 确认/拒绝到店请求",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

@@ -14,8 +14,51 @@
       data-key="{{item.key}}"
       bindtap="switchTab"
     >
-      <text>{{item.text}}</text>
+      <view class="tab-label">
+        <view class="tab-ic" style="-webkit-mask-image:url('{{item.icon}}');mask-image:url('{{item.icon}}')"></view>
+        <text>{{item.text}}</text>
+      </view>
       <view class="bar" wx:if="{{active === item.key}}"></view>
+    </view>
+  </view>
+
+  <!-- 工具区：城市 + 搜索（三页共用） + 筛选 chip（按子页变化） -->
+  <view class="toolbar">
+    <view class="tool-row">
+      <picker class="city-btn" mode="selector" range="{{cityOptions}}" bindchange="onCityChange">
+        <view class="city-inner">
+          <text class="city-name">{{city}}</text>
+          <text class="city-arrow">▾</text>
+        </view>
+      </picker>
+      <view class="search-box">
+        <text class="search-ic">搜</text>
+        <input
+          class="search-input"
+          placeholder="{{active === 'coach' ? '搜索教练 / 介绍' : (active === 'table' ? '搜索门店 / 地址' : '搜索球友 / 球厅 / 备注')}}"
+          value="{{searchText}}"
+          bindinput="onSearchInput"
+          confirm-type="search"
+        />
+        <text wx:if="{{searchText}}" class="search-clear" bindtap="clearSearch">×</text>
+      </view>
+    </view>
+
+    <view class="chip-row">
+      <block wx:if="{{active === 'friend'}}">
+        <view class="chip {{filters.friend.gameType ? 'on' : ''}}" bindtap="openFilter">{{filters.friend.gameType || '类型'}} ▾</view>
+        <view class="chip {{filters.friend.targetLevel ? 'on' : ''}}" bindtap="openFilter">{{filters.friend.targetLevel || '对手段位'}} ▾</view>
+        <view class="chip more" bindtap="openFilter">更多筛选 ▾</view>
+      </block>
+      <block wx:elif="{{active === 'coach'}}">
+        <view class="chip {{filters.coach.sort !== 'new' ? 'on' : ''}}" bindtap="openFilter">{{filters.coach.sort === 'new' ? '排序' : sortLabels[filters.coach.sort]}} ▾</view>
+        <view class="chip more" bindtap="openFilter">更多筛选 ▾</view>
+      </block>
+      <block wx:else>
+        <view class="chip {{filters.table.tableType ? 'on' : ''}}" bindtap="openFilter">{{filters.table.tableType || '桌型'}} ▾</view>
+        <view class="chip {{filters.table.sort !== 'distance' ? 'on' : ''}}" bindtap="openFilter">{{sortLabels[filters.table.sort]}} ▾</view>
+        <view class="chip more" bindtap="openFilter">更多筛选 ▾</view>
+      </block>
     </view>
   </view>
 
@@ -67,7 +110,17 @@
 
   <!-- 约球桌 -->
   <view wx:if="{{active === 'table'}}" class="list">
-    <view wx:if="{{!loading && !tables.length}}" class="empty">暂无可预约球桌</view>
+    <view class="table-actions-bar">
+      <view class="ta-btn" bindtap="onScanCheckin">
+        <view class="ta-ic" style="-webkit-mask-image:url('{{scanIcon}}');mask-image:url('{{scanIcon}}')"></view>
+        <text>扫码到店</text>
+      </view>
+      <view class="ta-btn" bindtap="goMap">
+        <view class="ta-ic" style="-webkit-mask-image:url('{{mapIcon}}');mask-image:url('{{mapIcon}}')"></view>
+        <text>地图找店</text>
+      </view>
+    </view>
+    <view wx:if="{{!loading && !tables.length}}" class="empty">暂无开通到店打卡的合作门店</view>
     <view wx:for="{{tables}}" wx:key="_id" class="card table">
       <image wx:if="{{item.cover}}" class="table-avatar" src="{{item.cover}}" mode="aspectFill"></image>
       <view wx:else class="table-avatar placeholder">{{item.name[0]}}</view>
@@ -78,9 +131,15 @@
           <text class="price" wx:else>暂无报价</text>
         </view>
         <view class="sub">{{item.address}}</view>
-        <view class="sub light">共 {{item.tableCount}} 张球桌可预约</view>
+        <view class="sub-line">
+          <text class="sub light">共 {{item.tableCount}} 张球桌可预约</text>
+          <text wx:if="{{item.distanceText}}" class="dist">距您 {{item.distanceText}}</text>
+        </view>
       </view>
-      <view class="book-btn" data-index="{{index}}" bindtap="openTableBooking">选择</view>
+      <view class="table-btns">
+        <view class="book-btn" data-index="{{index}}" bindtap="checkinHere">到店打卡</view>
+        <view class="book-btn ghost" data-index="{{index}}" bindtap="openTableBooking">预约</view>
+      </view>
     </view>
   </view>
 
@@ -124,6 +183,64 @@
     <view class="confirm-actions">
       <view class="btn ghost" bindtap="closeConfirm">否</view>
       <view class="btn primary" bindtap="doConfirmBooking">是</view>
+    </view>
+  </view>
+</view>
+
+<!-- 更多筛选弹层（按子页给不同维度） -->
+<view wx:if="{{filterSheet}}" class="filter-mask" catchtap="closeFilter">
+  <view class="filter-sheet" catchtap="noop">
+    <view class="filter-title">筛选</view>
+
+    <block wx:if="{{filterSheet.tab === 'friend'}}">
+      <view class="fs-label">约球类型</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.gameType === item ? 'sel' : ''}}" wx:for="{{optGameTypes}}" wx:key="*this" data-dim="gameType" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optGameTypes.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">期望对手段位</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.targetLevel === item ? 'sel' : ''}}" wx:for="{{optTargetLevels}}" wx:key="*this" data-dim="targetLevel" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optTargetLevels.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">性别</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.gender === item ? 'sel' : ''}}" wx:for="{{optGenders}}" wx:key="*this" data-dim="gender" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optGenders.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">排序</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.sort === 'new' ? 'sel' : ''}}" data-dim="sort" data-val="new" bindtap="pickFilter">最新发布</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'level' ? 'sel' : ''}}" data-dim="sort" data-val="level" bindtap="pickFilter">段位匹配</view>
+      </view>
+    </block>
+
+    <block wx:elif="{{filterSheet.tab === 'coach'}}">
+      <view class="fs-label">排序</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.sort === 'new' ? 'sel' : ''}}" data-dim="sort" data-val="new" bindtap="pickFilter">综合</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'priceAsc' ? 'sel' : ''}}" data-dim="sort" data-val="priceAsc" bindtap="pickFilter">价格低→高</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'priceDesc' ? 'sel' : ''}}" data-dim="sort" data-val="priceDesc" bindtap="pickFilter">价格高→低</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'exp' ? 'sel' : ''}}" data-dim="sort" data-val="exp" bindtap="pickFilter">教龄优先</view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="fs-label">桌型</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.tableType === item ? 'sel' : ''}}" wx:for="{{optTableTypes}}" wx:key="*this" data-dim="tableType" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optTableTypes.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">排序</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.sort === 'distance' ? 'sel' : ''}}" data-dim="sort" data-val="distance" bindtap="pickFilter">离我最近</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'priceAsc' ? 'sel' : ''}}" data-dim="sort" data-val="priceAsc" bindtap="pickFilter">价格低→高</view>
+      </view>
+    </block>
+
+    <view class="fs-actions">
+      <view class="fs-btn ghost" bindtap="resetFilter">重置</view>
+      <view class="fs-btn primary" bindtap="applyFilter">查看结果</view>
     </view>
   </view>
 </view>

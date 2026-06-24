@@ -100,6 +100,9 @@ const STORES = [
     address: '城市中心广场 3F',
     cover: '',
     region: '北京',
+    lat: 39.908,
+    lng: 116.404,
+    checkinEnabled: true,
     tableTypes: [
       { name: '乔氏金腿', pricePerHour: 78 },
       { name: '乔氏银腿', pricePerHour: 68 },
@@ -113,6 +116,9 @@ const STORES = [
     address: '滨江路 88 号',
     cover: '',
     region: '北京',
+    lat: 39.924,
+    lng: 116.432,
+    checkinEnabled: true,
     tableTypes: [
       { name: '乔氏金腿', pricePerHour: 78 },
       { name: '乔氏银腿', pricePerHour: 68 }
@@ -125,6 +131,9 @@ const STORES = [
     address: '高新区软件园',
     cover: '',
     region: '北京',
+    lat: 39.881,
+    lng: 116.463,
+    checkinEnabled: true,
     tableTypes: [
       { name: '星牌钢库', pricePerHour: 48 },
       { name: '星牌木库', pricePerHour: 38 }

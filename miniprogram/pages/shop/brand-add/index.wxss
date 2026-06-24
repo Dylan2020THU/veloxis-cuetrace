@@ -253,3 +253,45 @@
 .ml {
   margin-left: 0;
 }
+
+/* 门店定位选点行 */
+.loc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  min-height: 88rpx;
+  padding: 0 24rpx;
+}
+.loc-text {
+  font-size: 28rpx;
+  color: #1f2329;
+  flex: 1;
+}
+.loc-text.placeholder {
+  color: #9aa0a6;
+}
+.loc-arrow {
+  font-size: 36rpx;
+  color: #c4c9ce;
+  margin-left: 12rpx;
+}
+
+/* 到店打卡开关行 */
+.switch-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24rpx;
+}
+.switch-label {
+  flex: 1;
+}
+.switch-tip {
+  display: block;
+  font-size: 22rpx;
+  color: #9aa0a6;
+  margin-top: 8rpx;
+  line-height: 1.4;
+}

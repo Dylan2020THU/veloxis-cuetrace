@@ -4,6 +4,11 @@
     <view class="add-link" bindtap="openAdd">+ 添加学员</view>
   </view>
 
+  <view wx:if="{{lessonCount > 0}}" class="lesson-banner">
+    <view class="lesson-main">已核验教学课时 {{lessonCount}} 节</view>
+    <view class="lesson-sub">累计 {{lessonHoursText}} 小时 · 到店打卡·结账实测自动记账</view>
+  </view>
+
   <view wx:if="{{members.length === 0}}" class="empty card">
     <view class="empty-icon">○</view>
     <view class="muted">还没有绑定学员，点击右上角添加</view>

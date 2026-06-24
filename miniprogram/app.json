@@ -21,7 +21,9 @@
     "pages/match/detail/index",
     "pages/match/post",
     "pages/match/mine",
+    "pages/match/map/index",
     "pages/shop/hall-status/index",
+    "pages/shop/checkin-qr/index",
     "pages/shop/table-types/index",
     "pages/player/profile/index",
     "pages/player/profile/edit/index",
@@ -88,7 +90,7 @@
       "desc": "用于展示你所在地区的台球动态"
     }
   },
-  "requiredPrivateInfos": ["getLocation"],
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
   "style": "v2",
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents"

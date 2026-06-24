@@ -1,0 +1,100 @@
+.page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+.map {
+  width: 100vw;
+  height: 100vh;
+}
+
+.map-empty {
+  position: absolute;
+  top: 40rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 26rpx;
+  padding: 16rpx 28rpx;
+  border-radius: 32rpx;
+}
+
+/* 选中门店底部卡片 */
+.sel-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+}
+.sel-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.12);
+}
+.sel-name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+.sel-addr {
+  font-size: 26rpx;
+  color: #6b7075;
+  margin-top: 12rpx;
+}
+.sel-meta {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  margin-top: 16rpx;
+}
+.sel-price {
+  font-size: 28rpx;
+  color: #f5503e;
+  font-weight: 600;
+}
+.sel-dist {
+  font-size: 26rpx;
+  color: #067ef9;
+}
+.sel-btns {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
+.sel-btn {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.sel-btn.primary {
+  background: #067ef9;
+  color: #fff;
+}
+.sel-btn.ghost {
+  background: #f2f3f5;
+  color: #4b5056;
+}
+
+/* 暗色 */
+.theme-dark .sel-card {
+  background: #1f2329;
+}
+.theme-dark .sel-name {
+  color: #f0f1f3;
+}
+.theme-dark .sel-addr {
+  color: #9aa0a6;
+}
+.theme-dark .sel-btn.ghost {
+  background: #2a2f37;
+  color: #c4c9ce;
+}

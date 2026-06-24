@@ -17,6 +17,10 @@ exports.main = async (event) => {
     brandId: store.brandId || '',
     cover: store.cover || '',
     region: store.region || '',
+    // 到店打卡 / 距离：经纬度 + 打卡开关（白名单，未列入的字段会被丢弃）
+    lat: typeof store.lat === 'number' ? store.lat : null,
+    lng: typeof store.lng === 'number' ? store.lng : null,
+    checkinEnabled: !!store.checkinEnabled,
     tableTypes: Array.isArray(store.tableTypes) ? store.tableTypes : [],
     updatedAt: db.serverDate()
   };

@@ -427,3 +427,204 @@
   color: #ff7a00;
   font-weight: 700;
 }
+
+/* 超时提醒 */
+.table-overtime {
+  margin-top: 6rpx;
+}
+.overtime-text {
+  font-size: 20rpx;
+  color: #ff7a00;
+  font-weight: 600;
+}
+
+/* ===== 到店打卡：待确认横幅 ===== */
+.pending-banner {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: rgba(6, 126, 249, 0.08);
+  border: 1rpx solid rgba(6, 126, 249, 0.2);
+  border-radius: 14rpx;
+  padding: 18rpx 22rpx;
+  margin-bottom: 16rpx;
+}
+.pending-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #067ef9;
+  flex-shrink: 0;
+}
+.pending-text {
+  font-size: 24rpx;
+  color: #067ef9;
+  line-height: 1.4;
+}
+
+/* 匿名占用态 */
+.anon-row .player-avatar-placeholder.anon {
+  background: #c4c9ce;
+  color: #fff;
+}
+.anon-tip {
+  color: #9aa0a6 !important;
+}
+
+/* ===== 开台确认弹窗 ===== */
+.use-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+.use-sheet {
+  width: 100%;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.14);
+}
+.use-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1f2329;
+  text-align: center;
+  margin-bottom: 28rpx;
+}
+.use-section-label {
+  display: block;
+  font-size: 26rpx;
+  color: #8a9099;
+  margin: 20rpx 0 12rpx;
+}
+.use-section-label.nomargin {
+  margin: 0;
+}
+.use-opt {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  background: #f4f6f8;
+  margin-bottom: 12rpx;
+  border: 2rpx solid transparent;
+}
+.use-opt.sel {
+  border-color: #067ef9;
+  background: rgba(6, 126, 249, 0.06);
+}
+.use-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #e8e9eb;
+}
+.use-avatar.ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #067ef9;
+  color: #fff;
+  font-size: 28rpx;
+}
+.use-opt-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.use-opt-name {
+  font-size: 30rpx;
+  color: #1f2329;
+}
+.use-opt-sub {
+  font-size: 22rpx;
+  color: #9aa0a6;
+}
+.use-radio {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 2rpx solid #c4c9ce;
+  flex-shrink: 0;
+  position: relative;
+}
+.use-opt.sel .use-radio {
+  border-color: #067ef9;
+}
+.use-opt.sel .use-radio::after {
+  content: '';
+  position: absolute;
+  inset: 7rpx;
+  border-radius: 50%;
+  background: #067ef9;
+}
+.use-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24rpx 0 8rpx;
+}
+.use-empty {
+  font-size: 24rpx;
+  color: #9aa0a6;
+  text-align: center;
+  padding: 24rpx 0;
+}
+.use-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 28rpx;
+}
+.use-btn {
+  flex: 1;
+  text-align: center;
+  padding: 24rpx 0;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.use-btn.ghost {
+  background: #f2f3f5;
+  color: #4b5056;
+}
+.use-btn.primary {
+  background: #067ef9;
+  color: #fff;
+}
+
+/* 暗色 */
+.use-sheet.theme-dark {
+  background: #1f2329;
+}
+.theme-dark .use-title {
+  color: #f0f1f3;
+}
+.theme-dark .use-opt {
+  background: #2a2f37;
+}
+.theme-dark .use-opt-name {
+  color: #f0f1f3;
+}
+.theme-dark .use-btn.ghost {
+  background: #2a2f37;
+  color: #c4c9ce;
+}
+
+/* 顶部操作（到店码 / 刷新） */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 28rpx;
+}
+.header-link {
+  font-size: 28rpx;
+  color: #067ef9;
+}

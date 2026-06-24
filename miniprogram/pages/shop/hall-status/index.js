@@ -7,6 +7,9 @@ const HOUR = 60 * MINUTE;
 // 临时演示模式：设为 true 则用模拟数据展示完整占用态，改为 false 恢复真数据
 const DEMO_MODE = true;
 
+// 单场最长时长（超过则提示"超时请结账"，仅提醒不自动扣费，防跑表误账）
+const MAX_SESSION_MS = 6 * 60 * 60 * 1000;
+
 function formatDuration(ms) {
   if (!ms || ms <= 0) return '0秒';
   const h = Math.floor(ms / HOUR);
@@ -82,7 +85,12 @@ Page({
     occupiedCount: 0,
     stores: [],
     currentStoreId: '',
-    currentStoreName: ''
+    currentStoreName: '',
+    // 到店打卡：待确认队列 + 开台确认弹窗 + 教练列表（教学局用）
+    pendingCheckins: [],
+    pendingCount: 0,
+    coaches: [],
+    openSheet: null
   },
 
   onLoad() {
@@ -98,6 +106,8 @@ Page({
       const storeId = stores[0]._id;
       this.setData({ stores, currentStoreId: storeId, currentStoreName: stores[0].name });
       this._loadByStore(storeId);
+      this._loadCoaches();
+      this._loadPending(true);
     }).catch(() => this.setData({ refreshing: false }));
   },
 
@@ -106,6 +116,39 @@ Page({
     const store = this.data.stores[idx];
     this.setData({ currentStoreId: store._id, currentStoreName: store.name });
     this._loadByStore(store._id);
+    this._loadCoaches();
+    this._loadPending(false);
+  },
+
+  // 加载教练列表（教学局选教练用）
+  _loadCoaches() {
+    data.getShopCoaches().then((list) => {
+      const coaches = (list || []).map((c) => ({
+        _cid: c.openid || c._openid || c._id || '',
+        nickname: c.nickname || '教练',
+        avatar: c.avatar || ''
+      })).filter((c) => c._cid);
+      this.setData({ coaches });
+    }).catch(() => {});
+  },
+
+  // 到店待确认队列。autoJump=true 时：当前门店无请求但其它门店有，则自动切到有请求的门店，
+  // 让前台不必手动切门店即可看到（演示为单店主多门店；生产云端应按"本店主名下门店"过滤）。
+  _loadPending(autoJump) {
+    data.getPendingCheckins(autoJump ? '' : this.data.currentStoreId).then((all) => {
+      const allList = all || [];
+      let list = allList.filter((x) => x.storeId === this.data.currentStoreId);
+      if (autoJump && !list.length && allList.length) {
+        const target = allList[allList.length - 1];
+        const store = (this.data.stores || []).find((s) => s._id === target.storeId);
+        if (store) {
+          this.setData({ currentStoreId: store._id, currentStoreName: store.name });
+          this._loadByStore(store._id);
+          list = allList.filter((x) => x.storeId === store._id);
+        }
+      }
+      this.setData({ pendingCheckins: list, pendingCount: list.length });
+    }).catch(() => {});
   },
 
   _loadByStore(storeId) {
@@ -210,6 +253,7 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().refresh();
     }
+    this._loadPending(true);
     this.startTimer();
   },
 
@@ -246,11 +290,15 @@ Page({
       const players = t.players.map((p) => {
         if (!p.isCoach || !p.joinedAt) return p;
         const teachMs = now - p.joinedAt;
-        return { ...p, teachMs };
+        return { ...p, teachMs, teachText: '已助教 ' + formatDuration(teachMs) };
       });
-      return { ...t, elapsedMs, revenue, revenueText, players };
+      const elapsedText = '已开桌 ' + formatDuration(elapsedMs);
+      return { ...t, elapsedMs, elapsedText, revenue, revenueText, players, overtime: elapsedMs > MAX_SESSION_MS };
     });
     this.setData({ tables: updated });
+    // 每 ~5 秒刷新一次到店待确认队列（球员在本页打卡也能及时出现）
+    this._pendTick = (this._pendTick || 0) + 1;
+    if (this._pendTick % 5 === 0) this._loadPending(false);
   },
 
   toggleTable(e) {
@@ -258,14 +306,8 @@ Page({
     const table = this.data.filteredTables[idx];
     if (!table) return;
     if (table.status === 'idle') {
-      wx.showModal({
-        title: '使用球桌',
-        content: `确定「${table.tableName}」开始使用吗？`,
-        success: (res) => {
-          if (!res.confirm) return;
-          this.openTable(idx);
-        }
-      });
+      // 开台：弹确认弹窗（可绑定到店球员 + 教学局教练）
+      this._openUseSheet(idx);
     } else {
       const amount = Math.round((table.revenue || 0) * 100) / 100;
       wx.showModal({
@@ -281,12 +323,121 @@ Page({
     }
   },
 
-  openTable(idx) {
+  // 打开"开台确认"弹窗
+  _openUseSheet(idx) {
     const table = this.data.filteredTables[idx];
-    data.createSession({ tableId: table.tableId }).then(() => {
-      wx.showToast({ title: '已开始使用', icon: 'success' });
-      this.loadInit();
+    if (!table) return;
+    this.setData({
+      openSheet: {
+        idx,
+        tableId: table.tableId,
+        tableName: table.tableName,
+        requests: this.data.pendingCheckins,
+        selectedMember: '',
+        isCoaching: false,
+        coachOpenid: ''
+      }
     });
+  },
+
+  closeUseSheet() {
+    this.setData({ openSheet: null });
+  },
+
+  noop() {},
+
+  selectMember(e) {
+    const openid = e.currentTarget.dataset.openid || '';
+    this.setData({ 'openSheet.selectedMember': openid });
+  },
+
+  toggleCoaching(e) {
+    this.setData({ 'openSheet.isCoaching': e.detail.value });
+  },
+
+  selectCoach(e) {
+    this.setData({ 'openSheet.coachOpenid': e.currentTarget.dataset.openid || '' });
+  },
+
+  confirmUse() {
+    const s = this.data.openSheet;
+    if (!s) return;
+    const memberOpenid = s.selectedMember || '';
+    const request = memberOpenid ? (s.requests || []).find((r) => r.memberOpenid === memberOpenid) : null;
+    const coachOpenid = s.isCoaching ? (s.coachOpenid || '') : '';
+    if (s.isCoaching && !coachOpenid) {
+      wx.showToast({ title: '请选择教练', icon: 'none' });
+      return;
+    }
+    this.openTable(s.idx, { memberOpenid, request, coachOpenid, requestId: request && request._id });
+  },
+
+  // 开台：opts = { memberOpenid, request, coachOpenid, requestId }
+  openTable(idx, opts) {
+    opts = opts || {};
+    const table = this.data.filteredTables[idx];
+    if (!table) return;
+    const memberOpenid = opts.memberOpenid || '';
+    const req = opts.request || null;
+    const coachOpenid = opts.coachOpenid || '';
+
+    if (DEMO_MODE) {
+      const now = Date.now();
+      const players = [];
+      if (memberOpenid) {
+        players.push({
+          openid: memberOpenid,
+          nickname: (req && req.nickname) || '球员',
+          avatar: (req && req.avatar) || '',
+          isCoach: false
+        });
+      }
+      let coachNickname = '';
+      if (coachOpenid) {
+        const coach = (this.data.coaches || []).find((c) => c._cid === coachOpenid) || {};
+        coachNickname = coach.nickname || '教练';
+        players.push({
+          openid: coachOpenid, nickname: coachNickname, avatar: coach.avatar || '',
+          isCoach: true, joinedAt: now, teachMs: 0, teachText: ''
+        });
+      }
+      const tables = this.data.tables.map((x) => (
+        x.tableId === table.tableId
+          ? Object.assign({}, x, {
+              status: 'occupied',
+              elapsedMs: 0,
+              elapsedText: '已开桌 ' + formatDuration(0),
+              revenue: 0,
+              revenueText: '',
+              players,
+              memberOpenid,
+              memberNickname: (req && req.nickname) || '',
+              coachOpenid,
+              coachNickname,
+              session: { _id: `demo_session_${table.tableId}`, startedAt: now, memberOpenid, coachOpenid, coachJoinedAt: coachOpenid ? now : null },
+              cardBg: computeCardBg(x.bgColor, 'occupied'),
+              occupiedBorder: computeOccupiedBorder(x.bgColor, 'occupied')
+            })
+          : x
+      ));
+      this.setData({ openSheet: null, tables }, () => this._applyFilters());
+      const after = opts.requestId
+        ? data.resolveCheckin(opts.requestId, 'confirm')
+        : Promise.resolve();
+      after.then(() => this._loadPending());
+      wx.showToast({ title: memberOpenid ? '已开台·已绑定球员' : '已开台', icon: 'success' });
+      return;
+    }
+
+    data.createSession({ tableId: table.tableId, storeId: this.data.currentStoreId, memberOpenid, coachOpenid })
+      .then(() => (opts.requestId ? data.resolveCheckin(opts.requestId, 'confirm') : Promise.resolve()))
+      .then(() => {
+        wx.showToast({ title: '已开台', icon: 'success' });
+        this.setData({ openSheet: null });
+        this._loadPending();
+        this.loadInit();
+      })
+      .catch(() => wx.showToast({ title: '开台失败', icon: 'none' }));
   },
 
   closeTable(idx) {
@@ -301,35 +452,70 @@ Page({
       durationMin: Math.round((table.elapsedMs || 0) / 60000)
     };
     if (DEMO_MODE) {
-      // 演示：记一笔营收 + 本地把该桌转空闲（不 loadInit，避免重置演示数据）
-      data.addTableOrder(order).then(() => {
-        const tables = this.data.tables.map((x) => (
-          x.tableId === table.tableId
-            ? Object.assign({}, x, {
-                status: 'idle',
-                elapsedMs: 0,
-                elapsedText: '',
-                revenue: 0,
-                revenueText: '',
-                players: [],
-                session: null,
-                cardBg: computeCardBg(x.bgColor, 'idle'),
-                occupiedBorder: computeOccupiedBorder(x.bgColor, 'idle')
-              })
-            : x
-        ));
-        this.setData({ tables }, () => this._applyFilters());
-        wx.showToast({ title: `已结账 ¥${amount.toFixed(2)}`, icon: 'success' });
-      }).catch(() => wx.showToast({ title: '结账失败', icon: 'none' }));
+      // 演示：记一笔营收 + 同步训练/课时 + 本地把该桌转空闲（不 loadInit，避免重置演示数据）
+      data.addTableOrder(order)
+        .then(() => this._syncTrainingOnClose(table, order))
+        .then(() => {
+          const tables = this.data.tables.map((x) => (
+            x.tableId === table.tableId
+              ? Object.assign({}, x, {
+                  status: 'idle',
+                  elapsedMs: 0,
+                  elapsedText: '',
+                  revenue: 0,
+                  revenueText: '',
+                  players: [],
+                  memberOpenid: '',
+                  memberNickname: '',
+                  coachOpenid: '',
+                  coachNickname: '',
+                  session: null,
+                  cardBg: computeCardBg(x.bgColor, 'idle'),
+                  occupiedBorder: computeOccupiedBorder(x.bgColor, 'idle')
+                })
+              : x
+          ));
+          this.setData({ tables }, () => this._applyFilters());
+          wx.showToast({ title: `已结账 ¥${amount.toFixed(2)}`, icon: 'success' });
+        }).catch(() => wx.showToast({ title: '结账失败', icon: 'none' }));
       return;
     }
     data.closeSession({ sessionId: table.session && table.session._id })
       .then(() => data.addTableOrder(order))
+      .then(() => this._syncTrainingOnClose(table, order))
       .then(() => {
         wx.showToast({ title: `已结账 ¥${amount.toFixed(2)}`, icon: 'success' });
         this.loadInit();
       })
       .catch(() => wx.showToast({ title: '结账失败', icon: 'none' }));
+  },
+
+  // 结账同步（C）：把该桌实测时长写为绑定球员的"已核验训练" + 教学局教练课时。
+  _syncTrainingOnClose(table, order) {
+    const players = table.players || [];
+    const memberPlayer = players.find((p) => !p.isCoach);
+    const coachPlayer = players.find((p) => p.isCoach);
+    const memberOpenid = table.memberOpenid || (memberPlayer && memberPlayer.openid) || '';
+    if (!memberOpenid) return Promise.resolve();
+    // 地板取 1 分钟：演示中"开台→秒结账"也能写入已核验记录（不足 1 分钟按 1 分钟计）
+    const rawMins = order.durationMin || Math.round((table.elapsedMs || 0) / 60000);
+    const durationMinutes = Math.max(1, rawMins);
+    return data.recordVerifiedTraining({
+      memberOpenid,
+      memberNickname: table.memberNickname || (memberPlayer && memberPlayer.nickname) || '',
+      coachOpenid: table.coachOpenid || (coachPlayer && coachPlayer.openid) || '',
+      coachNickname: table.coachNickname || (coachPlayer && coachPlayer.nickname) || '',
+      hallId: this.data.currentStoreId,
+      hallName: this.data.currentStoreName,
+      durationMinutes,
+      amount: order.amount
+    }).catch(() => {});
+  },
+
+  goCheckinQr() {
+    wx.navigateTo({
+      url: `/pages/shop/checkin-qr/index?storeId=${encodeURIComponent(this.data.currentStoreId || '')}`
+    });
   },
 
   goPlayerProfile(e) {

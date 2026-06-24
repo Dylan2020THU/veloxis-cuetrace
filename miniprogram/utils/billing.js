@@ -71,6 +71,7 @@ const PLANS = {
 //   球员端：全部功能免费（不列入 = 自动放行）
 //   教练端：改为按课时成交抽佣，功能不再用订阅墙拦截（不列入 = 自动放行）
 const FEATURE_TO_PLAN = {
+  'shop.checkin': 'shop_lite',       // 到店打卡核验（启航版起，含）
   'shop.memberMgmt': 'shop_basic',   // 完整会员体系
   'shop.report': 'shop_basic',       // 经营报表导出（标准版起，含）
   'shop.marketing': 'shop_basic',    // 营销工具
@@ -206,6 +207,7 @@ function getPlanEntryPrice(planKey) {
 // 给付费墙组件使用：人类可读的功能名
 function getFeatureLabel(feature) {
   const map = {
+    'shop.checkin': '到店打卡核验',
     'shop.report': '经营数据报表',
     'shop.memberMgmt': '会员管理',
     'shop.coachStats': '教练学员分析',

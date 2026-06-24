@@ -17,7 +17,9 @@ Page({
     linkable: [],
     cloudReady: false,
     showAdd: false,
-    memberCode: ''
+    memberCode: '',
+    lessonCount: 0,
+    lessonHoursText: '0'
   },
 
   onShow() {
@@ -26,6 +28,16 @@ Page({
     }
     this.setData({ cloudReady: getApp().globalData.cloudReady });
     this.loadMembers();
+    this.loadLessons();
+  },
+
+  // 已核验教学课时汇总（到店打卡·教学局结账实测）
+  loadLessons() {
+    data.getCoachLessons().then((lessons) => {
+      const list = lessons || [];
+      const mins = list.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+      this.setData({ lessonCount: list.length, lessonHoursText: (mins / 60).toFixed(1) });
+    }).catch(() => {});
   },
 
   loadMembers() {
