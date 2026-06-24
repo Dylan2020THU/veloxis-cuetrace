@@ -1,19 +1,19 @@
 .page {
   min-height: 100vh;
-  background: #f4f6f8;
+  background: var(--bg);
   padding: 32rpx;
   padding-bottom: 120rpx;
 }
 
 .form {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 20rpx;
   overflow: hidden;
 }
 
 .form-section-title {
   font-size: 24rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   padding: 24rpx 32rpx 0;
   letter-spacing: 2rpx;
 }
@@ -23,7 +23,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 32rpx;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
   min-height: 100rpx;
   box-sizing: border-box;
 }
@@ -34,7 +34,7 @@
 
 .form-label {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
   font-weight: 500;
   width: 160rpx;
   flex-shrink: 0;
@@ -53,14 +53,14 @@
 .form-input {
   flex: 1;
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
   text-align: right;
   min-width: 0;
 }
 
 .form-value {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -68,11 +68,11 @@
 }
 
 .form-value.muted {
-  color: #c4c9ce;
+  color: var(--text-weak);
 }
 
 .arrow {
-  color: #c4c9ce;
+  color: var(--text-weak);
   font-size: 36rpx;
   flex-shrink: 0;
   margin-left: 8rpx;
@@ -148,7 +148,7 @@ picker {
 }
 
 .picker-sep {
-  color: #c4c9ce;
+  color: var(--text-weak);
   font-size: 30rpx;
   margin: 0 4rpx;
   flex-shrink: 0;
@@ -156,7 +156,7 @@ picker {
 }
 
 .muted-hometown {
-  color: #c4c9ce !important;
+  color: var(--text-weak) !important;
 }
 
 .save-btn {
@@ -176,6 +176,6 @@ picker {
 .public-hint {
   padding: 16rpx 32rpx 24rpx;
   font-size: 22rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   line-height: 1.5;
 }

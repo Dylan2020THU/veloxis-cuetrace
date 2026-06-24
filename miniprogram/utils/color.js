@@ -9,6 +9,20 @@ const LEVEL_COLORS = {
   3: 'rgba(6,126,249,1)' // 8 小时以上
 };
 
+// 夜间档位配色（参照 GitHub 夜间贡献格：深灰空格 + 渐亮品牌蓝）
+const EMPTY_DARK = '#2d333b';
+const LEVEL_COLORS_DARK = {
+  0: EMPTY_DARK,
+  1: '#16456f', // 0-3 小时（深蓝）
+  2: '#1f73cc', // 3-8 小时（中蓝）
+  3: '#4aa3ff' // 8 小时以上（亮蓝）
+};
+
+// 按主题取整套档位色（theme: 'dark' | 其它）
+function rampFor(theme) {
+  return theme === 'dark' ? LEVEL_COLORS_DARK : LEVEL_COLORS;
+}
+
 // 依据当日训练总时长（分钟）计算颜色深度等级
 // 0：未训练；1：0-3h；2：3-8h；3：8h 以上
 function levelFromMinutes(totalMinutes) {
@@ -19,8 +33,9 @@ function levelFromMinutes(totalMinutes) {
   return 3;
 }
 
-function colorOfLevel(level) {
-  return LEVEL_COLORS[level] || EMPTY;
+function colorOfLevel(level, theme) {
+  const ramp = rampFor(theme);
+  return ramp[level] || ramp[0];
 }
 
 // 将分钟格式化为「X 小时 Y 分」
@@ -33,4 +48,4 @@ function formatDuration(totalMinutes) {
   return `${min} 分`;
 }
 
-module.exports = { EMPTY, LEVEL_COLORS, levelFromMinutes, colorOfLevel, formatDuration };
+module.exports = { EMPTY, EMPTY_DARK, LEVEL_COLORS, LEVEL_COLORS_DARK, rampFor, levelFromMinutes, colorOfLevel, formatDuration };

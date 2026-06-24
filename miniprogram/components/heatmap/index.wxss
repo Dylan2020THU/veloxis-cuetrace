@@ -112,3 +112,16 @@
   border-radius: 6rpx;
   margin: 0 4rpx;
 }
+
+/* 夜间模式：提示条 / 选中描边 适配深底（格子颜色由 JS 按主题取 ramp） */
+.theme-dark .hm-tooltip {
+  color: #aab1bb;
+  background: #2a2f37;
+}
+.theme-dark .hm-tooltip.show {
+  color: #4aa3ff;
+  background: rgba(74, 163, 255, 0.14);
+}
+.theme-dark .hm-cell.sel {
+  border-color: #e6e8eb;
+}

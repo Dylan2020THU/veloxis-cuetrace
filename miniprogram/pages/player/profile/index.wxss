@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background: #f4f6f8;
+  background: var(--bg);
   padding-bottom: 40rpx;
 }
 
@@ -8,8 +8,8 @@
   display: flex;
   align-items: center;
   padding: 16rpx 32rpx;
-  background: #fff;
-  border-bottom: 1rpx solid #f0f2f4;
+  background: var(--card-bg);
+  border-bottom: 1rpx solid var(--border);
 }
 
 .nav-back {
@@ -97,7 +97,7 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 20rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
@@ -107,7 +107,7 @@
 .card-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
   margin-bottom: 24rpx;
 }
 
@@ -116,7 +116,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .info-row:last-of-type {
@@ -125,12 +125,12 @@
 
 .info-label {
   font-size: 28rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #1f2329;
+  color: var(--text);
   font-weight: 500;
 }
 
@@ -141,7 +141,7 @@
 
 .intro-text {
   font-size: 28rpx;
-  color: #1f2329;
+  color: var(--text);
   line-height: 1.6;
   margin-top: 16rpx;
 }
@@ -177,14 +177,14 @@
 
 .stat-label {
   font-size: 22rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin-top: 6rpx;
 }
 
 .loading {
   padding: 40rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: var(--text-weak);
   font-size: 26rpx;
 }
 
@@ -206,13 +206,13 @@
   font-size: 28rpx;
 }
 .member-status__label {
-  color: #64748B;
+  color: var(--text-sub);
 }
 .member-status__value {
   font-weight: 600;
-  color: #0F172A;
+  color: var(--text);
 }
-.member-status__value.is-free { color: #94A3B8; }
+.member-status__value.is-free { color: var(--text-weak); }
 .member-status__value.is-pro {
   color: #067EF9;
 }
@@ -230,8 +230,8 @@
   line-height: 80rpx;
   text-align: center;
   border-radius: 16rpx;
-  background: #F1F5F9;
-  color: #475569;
+  background: var(--bg-elev);
+  color: var(--text-sub);
   font-size: 28rpx;
   font-weight: 500;
 }

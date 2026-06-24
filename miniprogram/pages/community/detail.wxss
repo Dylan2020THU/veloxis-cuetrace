@@ -1,7 +1,7 @@
 .loading {
   padding: 120rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: var(--text-weak);
   font-size: 26rpx;
 }
 
@@ -31,7 +31,7 @@
 }
 
 .content-card {
-  background: #fff;
+  background: var(--card-bg);
   padding: 28rpx 32rpx;
 }
 
@@ -57,7 +57,7 @@
 }
 image.a-avatar,
 image.c-avatar {
-  background: #f0f1f3;
+  background: var(--border);
 }
 
 .a-info {
@@ -67,12 +67,12 @@ image.c-avatar {
 .a-name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .a-time {
   font-size: 22rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin-top: 4rpx;
 }
 
@@ -86,26 +86,26 @@ image.c-avatar {
 }
 
 .follow-btn.following {
-  background: #f4f6f8;
-  color: #8a9099;
+  background: var(--bg-elev);
+  color: var(--text-weak);
 }
 
 .title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #1f2329;
+  color: var(--text);
   margin-bottom: 16rpx;
 }
 
 .content {
   font-size: 30rpx;
-  color: #2b3138;
+  color: var(--text);
   line-height: 1.7;
   white-space: pre-wrap;
 }
 
 .comments-card {
-  background: #fff;
+  background: var(--card-bg);
   margin-top: 20rpx;
   padding: 28rpx 32rpx;
 }
@@ -113,7 +113,7 @@ image.c-avatar {
 .comments-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
   margin-bottom: 20rpx;
 }
 
@@ -125,7 +125,7 @@ image.c-avatar {
 .comment {
   display: flex;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .comment:last-child {
@@ -137,8 +137,8 @@ image.c-avatar {
   height: 60rpx;
   border-radius: 50%;
   overflow: hidden;
-  background: #eef1f4;
-  color: #8a9099;
+  background: var(--bg-elev);
+  color: var(--text-weak);
   font-size: 26rpx;
   display: flex;
   align-items: center;
@@ -153,19 +153,19 @@ image.c-avatar {
 
 .c-name {
   font-size: 26rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .c-text {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
   margin: 6rpx 0;
   line-height: 1.5;
 }
 
 .c-time {
   font-size: 22rpx;
-  color: #b6bcc2;
+  color: var(--text-weak);
 }
 
 .action-bar {
@@ -176,14 +176,14 @@ image.c-avatar {
   display: flex;
   align-items: center;
   padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: var(--card-bg);
   box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.05);
 }
 
 .comment-input {
   flex: 1;
   height: 72rpx;
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 36rpx;
   padding: 0 28rpx;
   font-size: 28rpx;
@@ -197,7 +197,7 @@ image.c-avatar {
 
 .like-btn .heart {
   font-size: 44rpx;
-  color: #c4c9ce;
+  color: var(--text-weak);
 }
 
 .like-btn.liked .heart {
@@ -206,7 +206,7 @@ image.c-avatar {
 
 .like-num {
   font-size: 24rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin-left: 6rpx;
 }
 

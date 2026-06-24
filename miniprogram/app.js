@@ -98,6 +98,23 @@ App({
         borderStyle: dark ? 'white' : 'black'
       });
     }
+    // 窗口背景（下拉/回弹露出的底色）随主题，避免夜间露白
+    if (wx.setBackgroundColor) {
+      const winBg = dark ? '#0f1115' : '#f4f6f8';
+      wx.setBackgroundColor({ backgroundColor: winBg, backgroundColorTop: winBg, backgroundColorBottom: winBg });
+    }
+    if (wx.setBackgroundTextStyle) {
+      wx.setBackgroundTextStyle({ textStyle: dark ? 'light' : 'dark' });
+    }
+    // 直接把 theme 推送给当前所有在栈页面（最稳）。
+    // 页面 behaviors 的生命周期在部分基础库/写法下不一定触发，导致页面根容器拿不到 theme-dark 类、
+    // 整页不翻黑（只有底栏因组件自身读 globalData 而变黑）。直接 setData 可绕开该不确定性。
+    try {
+      const pages = (typeof getCurrentPages === 'function') ? getCurrentPages() : [];
+      pages.forEach((p) => {
+        if (p && typeof p.setData === 'function') p.setData({ theme });
+      });
+    } catch (e) {}
     this.themeListeners.forEach((fn) => {
       try {
         fn(theme);

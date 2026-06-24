@@ -1,5 +1,5 @@
 const { buildGrid, today } = require('../../utils/date');
-const { colorOfLevel, levelFromMinutes, formatDuration, LEVEL_COLORS } = require('../../utils/color');
+const { colorOfLevel, levelFromMinutes, formatDuration, LEVEL_COLORS, rampFor } = require('../../utils/color');
 
 const STRIDE = 30; // 每个格子占位宽度(rpx)：cell 24 + margin 3*2
 
@@ -16,6 +16,14 @@ Component({
     weeks: {
       type: Number,
       value: 53
+    },
+    // 主题：由父页传入（'light' | 'dark'），切换时重算格子配色
+    theme: {
+      type: String,
+      value: 'light',
+      observer() {
+        this.rebuild();
+      }
     }
   },
 
@@ -40,6 +48,8 @@ Component({
 
   methods: {
     rebuild() {
+      const theme = this.data.theme;
+      const ramp = rampFor(theme);
       const statMap = {};
       (this.data.stats || []).forEach((s) => {
         statMap[s.date] = s;
@@ -62,7 +72,7 @@ Component({
             level,
             totalMinutes,
             sessionCount,
-            color: cell.inRange ? colorOfLevel(level) : 'transparent'
+            color: cell.inRange ? colorOfLevel(level, theme) : 'transparent'
           };
         })
       );
@@ -70,7 +80,11 @@ Component({
       this.setData({
         columns: viewCols,
         months,
-        monthsWidth: columns.length * STRIDE
+        monthsWidth: columns.length * STRIDE,
+        c0: ramp[0],
+        c1: ramp[1],
+        c2: ramp[2],
+        c3: ramp[3]
       });
     },
 

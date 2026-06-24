@@ -10,11 +10,11 @@
 
 .mode {
   font-size: 28rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   padding: 12rpx 40rpx;
   border-radius: 32rpx;
   margin: 0 12rpx;
-  background: #fff;
+  background: var(--card-bg);
 }
 
 .mode.active {
@@ -27,7 +27,7 @@
   font-size: 32rpx;
   font-weight: 600;
   padding: 12rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .content-input {
@@ -59,8 +59,8 @@
 }
 
 .media-add {
-  background: #f4f6f8;
-  color: #c4c9ce;
+  background: var(--bg-elev);
+  color: var(--text-weak);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -113,6 +113,10 @@
   bottom: 0;
   padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.92);
+}
+
+.theme-dark .submit-bar {
+  background: rgba(28, 30, 36, 0.92);
 }
 
 .submit-btn {

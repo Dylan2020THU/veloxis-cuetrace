@@ -11,19 +11,19 @@
   align-items: center;
   justify-content: center;
   height: 84rpx;
-  background: #f4f6f8;
+  background: var(--bg);
 }
 
 .tab {
   position: relative;
   font-size: 30rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   padding: 0 28rpx;
   line-height: 84rpx;
 }
 
 .tab.active {
-  color: #1f2329;
+  color: var(--text);
   font-weight: 700;
   font-size: 32rpx;
 }
@@ -58,7 +58,7 @@
 .loading {
   padding: 120rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: var(--text-weak);
   font-size: 26rpx;
 }
 
@@ -69,7 +69,7 @@
 
 .empty-icon {
   font-size: 64rpx;
-  color: #d4d8dd;
+  color: var(--text-weak);
   margin-bottom: 16rpx;
 }
 
@@ -86,7 +86,7 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16rpx;
   overflow: hidden;
   padding: 0;
@@ -126,7 +126,7 @@
 .card-title {
   font-size: 27rpx;
   font-weight: 500;
-  color: #1f2329;
+  color: var(--text);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -136,7 +136,7 @@
 
 .card-content-2 {
   font-size: 27rpx;
-  color: #1f2329;
+  color: var(--text);
   line-height: 1.45;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -173,12 +173,12 @@
   margin-right: 1rpx;
 }
 image.a-avatar {
-  background: #f0f1f3;
+  background: var(--border);
 }
 
 .a-name {
   font-size: 23rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -197,7 +197,7 @@ image.a-avatar {
 
 .like-num {
   font-size: 23rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .fab {

@@ -22,7 +22,7 @@
     <view class="section-title">训练热力图</view>
     <view class="muted year-tip">近一年 · 单日时长越长颜色越深</view>
     <view wx:if="{{loading}}" class="loading">加载中...</view>
-    <heatmap wx:else stats="{{stats}}" bind:select="onSelectDay"></heatmap>
+    <heatmap wx:else stats="{{stats}}" theme="{{theme}}" bind:select="onSelectDay"></heatmap>
   </view>
 
   <view class="card">

@@ -5,7 +5,7 @@
 }
 .loading {
   text-align: center;
-  color: #9aa0a6;
+  color: var(--text-weak);
   font-size: 28rpx;
   padding: 120rpx 0;
 }
@@ -26,7 +26,7 @@
 }
 .store-addr {
   font-size: 26rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin-top: 10rpx;
   text-align: center;
 }
@@ -54,7 +54,7 @@
 }
 .qr-ph-tip {
   font-size: 22rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
   text-align: center;
   margin-top: 20rpx;
   line-height: 1.5;
@@ -70,7 +70,7 @@
 }
 .qr-hint {
   font-size: 24rpx;
-  color: #6b7075;
+  color: var(--text-sub);
   text-align: center;
   line-height: 1.6;
   margin-top: 8rpx;

@@ -103,6 +103,14 @@ Component({
       }
 
       this.setData({ list, activePath, theme, isShop: role === 'shop' });
+
+      // 顺带把主题同步给当前宿主页面：页面 behaviors 的 onShow 在部分写法下不一定触发，
+      // 而组件 pageLifetimes.show（驱动本 refresh）一定触发，故在此强制对齐页面 theme（最稳）。
+      const pages = (typeof getCurrentPages === 'function') ? getCurrentPages() : [];
+      const cur = pages.length ? pages[pages.length - 1] : null;
+      if (cur && typeof cur.setData === 'function' && cur.data && cur.data.theme !== theme) {
+        cur.setData({ theme });
+      }
     },
 
     onTap(e) {

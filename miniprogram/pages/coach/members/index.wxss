@@ -7,7 +7,7 @@
 
 .count {
   font-size: 28rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .add-link {
@@ -23,7 +23,7 @@
 
 .empty-icon {
   font-size: 56rpx;
-  color: #d4d8dd;
+  color: var(--text-weak);
   margin-bottom: 12rpx;
 }
 
@@ -80,7 +80,7 @@
 }
 /* 人像图片头像 */
 image.m-avatar {
-  background: #f0f1f3;
+  background: var(--border);
 }
 
 .m-avatar.small {
@@ -97,11 +97,11 @@ image.m-avatar {
 .m-name {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .arrow {
-  color: #c4c9ce;
+  color: var(--text-weak);
   font-size: 40rpx;
 }
 
@@ -116,7 +116,7 @@ image.m-avatar {
 
 .sheet {
   width: 100%;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 28rpx 28rpx 0 0;
   padding: 36rpx;
   /* 自定义底栏是独立原生层、始终盖在页面之上（z-index 压不住）。
@@ -136,7 +136,7 @@ image.m-avatar {
 }
 
 .code-input {
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 22rpx 24rpx;
   font-size: 30rpx;
@@ -152,7 +152,7 @@ image.m-avatar {
   display: flex;
   align-items: center;
   padding: 22rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .cand:last-child {
@@ -162,7 +162,7 @@ image.m-avatar {
 .cand-name {
   flex: 1;
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .cand-link {

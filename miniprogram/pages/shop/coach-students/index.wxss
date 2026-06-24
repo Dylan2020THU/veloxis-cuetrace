@@ -7,12 +7,12 @@
 
 .count {
   font-size: 28rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .loading {
   text-align: center;
-  color: #8a9099;
+  color: var(--text-weak);
   padding: 60rpx 0;
   font-size: 28rpx;
 }
@@ -24,7 +24,7 @@
 
 .empty-icon {
   font-size: 56rpx;
-  color: #d4d8dd;
+  color: var(--text-weak);
   margin-bottom: 12rpx;
 }
 
@@ -60,10 +60,10 @@
 .s-name {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .arrow {
-  color: #c4c9ce;
+  color: var(--text-weak);
   font-size: 40rpx;
 }

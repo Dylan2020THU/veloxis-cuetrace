@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  background: #f4f6f8;
+  background: var(--bg);
   padding-bottom: 180rpx; /* 让出 tabBar 高度 + FAB 底部空间 */
 }
 
@@ -10,12 +10,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 24rpx 12rpx;
-  background: #fff;
+  background: var(--card-bg);
 }
 .topbar-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 .mine-entry {
   font-size: 26rpx;
@@ -25,7 +25,7 @@
 /* 顶部三板块 */
 .tabs {
   display: flex;
-  background: #fff;
+  background: var(--card-bg);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -35,7 +35,7 @@
   text-align: center;
   padding: 26rpx 0;
   font-size: 30rpx;
-  color: #6b7075;
+  color: var(--text-sub);
   position: relative;
 }
 .tab.active {
@@ -51,7 +51,7 @@
 .tab-ic {
   width: 32rpx;
   height: 32rpx;
-  background-color: #8a9099;
+  background-color: var(--text-weak);
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center;
@@ -75,13 +75,13 @@
 
 .loading {
   text-align: center;
-  color: #9aa0a6;
+  color: var(--text-weak);
   padding: 60rpx 0;
   font-size: 26rpx;
 }
 .empty {
   text-align: center;
-  color: #9aa0a6;
+  color: var(--text-weak);
   padding: 100rpx 40rpx;
   font-size: 26rpx;
 }
@@ -90,7 +90,7 @@
   padding: 20rpx 24rpx;
 }
 .card {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -113,7 +113,7 @@
 }
 /* 人像图片头像 */
 image.avatar {
-  background: #f0f1f3;
+  background: var(--bg-elev);
 }
 .avatar.big {
   width: 96rpx;
@@ -138,7 +138,7 @@ image.avatar {
 .match-meta .name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 .tag {
   font-size: 22rpx;
@@ -163,7 +163,7 @@ image.avatar {
 }
 .join-num {
   font-size: 22rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
 }
 .row {
   display: flex;
@@ -171,18 +171,18 @@ image.avatar {
   margin-top: 8rpx;
 }
 .row .lbl {
-  color: #9aa0a6;
+  color: var(--text-weak);
   width: 90rpx;
 }
 .row .val {
-  color: #1f2329;
+  color: var(--text);
   flex: 1;
 }
 .note {
   margin-top: 14rpx;
   font-size: 26rpx;
-  color: #4b5056;
-  background: #f7f8fa;
+  color: var(--text-sub);
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 16rpx;
 }
@@ -194,8 +194,8 @@ image.avatar {
 }
 .badge {
   font-size: 22rpx;
-  color: #9aa0a6;
-  background: #f2f3f5;
+  color: var(--text-weak);
+  background: var(--bg-elev);
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
 }
@@ -236,7 +236,7 @@ image.avatar {
   height: 96rpx;
   border-radius: 16rpx;
   flex-shrink: 0;
-  background: #f0f1f3;
+  background: var(--bg-elev);
 }
 .table-avatar.placeholder {
   display: flex;
@@ -254,7 +254,7 @@ image.avatar {
 .name-line .name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 .name-line .price {
   font-size: 26rpx;
@@ -263,15 +263,15 @@ image.avatar {
 }
 .sub {
   font-size: 24rpx;
-  color: #6b7075;
+  color: var(--text-sub);
   margin-top: 8rpx;
 }
 .sub.light {
-  color: #9aa0a6;
+  color: var(--text-weak);
 }
 .intro {
   font-size: 24rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
   margin-top: 6rpx;
 }
 .book-btn {
@@ -318,7 +318,7 @@ image.avatar {
   width: 100%;
   max-width: 640rpx;              /* 新增：最大宽度，防止太宽 */
   max-height: 80vh;               /* 新增：最大高度，超出滚动 */
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 24rpx;           /* 改：全圆角（之前顶部圆角是底部抽屉） */
   padding: 32rpx 32rpx 40rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);  /* 新增：阴影 */
@@ -327,7 +327,7 @@ image.avatar {
 .sheet-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
   text-align: center;
   margin-bottom: 24rpx;
 }
@@ -336,16 +336,16 @@ image.avatar {
   align-items: center;
   justify-content: space-between;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #f0f1f3;
+  border-bottom: 1rpx solid var(--border);
   font-size: 28rpx;
 }
 .sheet-row .lbl {
-  color: #6b7075;
+  color: var(--text-sub);
   min-width: 140rpx;
   flex-shrink: 0;
 }
 .sheet-row .val {
-  color: #1f2329;
+  color: var(--text);
   flex: 1;
   text-align: right;
 }
@@ -367,8 +367,8 @@ image.avatar {
   font-size: 30rpx;
 }
 .btn.ghost {
-  background: #f2f3f5;
-  color: #4b5056;
+  background: var(--bg-elev);
+  color: var(--text-sub);
 }
 .btn.primary {
   background: #067ef9;
@@ -379,7 +379,7 @@ image.avatar {
 .confirm-sheet {
   width: 100%;
   max-width: 600rpx;              /* 新增：最大宽度 */
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 24rpx;           /* 改：全圆角（居中卡片） */
   padding: 36rpx 32rpx 40rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
@@ -388,7 +388,7 @@ image.avatar {
   font-size: 34rpx;
   font-weight: 600;
   text-align: center;
-  color: #1f2329;
+  color: var(--text);
   margin-bottom: 28rpx;
 }
 .confirm-row {
@@ -396,16 +396,16 @@ image.avatar {
   align-items: center;
   justify-content: space-between;
   padding: 18rpx 0;
-  border-bottom: 1rpx solid #f0f1f3;
+  border-bottom: 1rpx solid var(--border);
   font-size: 28rpx;
 }
 .confirm-row .lbl {
-  color: #6b7075;
+  color: var(--text-sub);
   min-width: 120rpx;
   flex-shrink: 0;
 }
 .confirm-row .val {
-  color: #1f2329;
+  color: var(--text);
   flex: 1;
   text-align: right;
 }
@@ -433,7 +433,7 @@ image.avatar {
   justify-content: center;
   gap: 10rpx;
   padding: 22rpx 0;
-  background: #fff;
+  background: var(--card-bg);
   color: #067ef9;
   font-size: 28rpx;
   font-weight: 600;
@@ -487,15 +487,15 @@ image.avatar {
   min-width: 132rpx;
 }
 .book-btn.ghost {
-  background: #f2f3f5;
-  color: #4b5056;
+  background: var(--bg-elev);
+  color: var(--text-sub);
 }
 
 /* ===== 工具区：城市 + 搜索 + 筛选 chip ===== */
 .toolbar {
-  background: #fff;
+  background: var(--card-bg);
   padding: 12rpx 24rpx 16rpx;
-  border-bottom: 1rpx solid #f0f1f3;
+  border-bottom: 1rpx solid var(--border);
 }
 .tool-row {
   display: flex;
@@ -509,48 +509,48 @@ image.avatar {
   display: flex;
   align-items: center;
   gap: 4rpx;
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 32rpx;
   padding: 12rpx 20rpx;
 }
 .city-name {
   font-size: 26rpx;
-  color: #1f2329;
+  color: var(--text);
   max-width: 140rpx;
   overflow: hidden;
   white-space: nowrap;
 }
 .city-arrow {
   font-size: 20rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 .search-box {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 8rpx;
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 32rpx;
   padding: 0 20rpx;
   height: 64rpx;
 }
 .search-ic {
   font-size: 24rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
   flex-shrink: 0;
 }
 .search-input {
   flex: 1;
   font-size: 26rpx;
-  color: #1f2329;
+  color: var(--text);
   height: 64rpx;
 }
 .search-input::placeholder {
-  color: #aab0b6;
+  color: var(--text-weak);
 }
 .search-clear {
   font-size: 30rpx;
-  color: #b4b9bf;
+  color: var(--text-weak);
   padding: 0 6rpx;
   flex-shrink: 0;
 }
@@ -564,8 +564,8 @@ image.avatar {
 .chip {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: #4b5056;
-  background: #f4f6f8;
+  color: var(--text-sub);
+  background: var(--bg-elev);
   border-radius: 28rpx;
   padding: 10rpx 22rpx;
   border: 1rpx solid transparent;
@@ -592,20 +592,20 @@ image.avatar {
   width: 100%;
   max-height: 78vh;
   overflow-y: auto;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 28rpx 28rpx 0 0;
   padding: 32rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
 }
 .filter-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
   text-align: center;
   margin-bottom: 12rpx;
 }
 .fs-label {
   font-size: 26rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin: 24rpx 0 14rpx;
 }
 .fs-chips {
@@ -615,8 +615,8 @@ image.avatar {
 }
 .fs-chip {
   font-size: 26rpx;
-  color: #4b5056;
-  background: #f4f6f8;
+  color: var(--text-sub);
+  background: var(--bg-elev);
   border-radius: 28rpx;
   padding: 12rpx 26rpx;
   border: 1rpx solid transparent;
@@ -628,7 +628,7 @@ image.avatar {
 }
 .fs-empty {
   font-size: 24rpx;
-  color: #c4c9ce;
+  color: var(--text-weak);
   padding: 8rpx 0;
 }
 .fs-actions {
@@ -646,8 +646,8 @@ image.avatar {
 }
 .fs-btn.ghost {
   flex: 1;
-  background: #f2f3f5;
-  color: #4b5056;
+  background: var(--bg-elev);
+  color: var(--text-sub);
 }
 .fs-btn.primary {
   flex: 2;

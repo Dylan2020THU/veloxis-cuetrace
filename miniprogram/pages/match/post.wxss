@@ -1,10 +1,10 @@
 .page {
   min-height: 100vh;
-  background: #f4f6f8;
+  background: var(--bg);
   padding: 24rpx;
 }
 .form {
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16rpx;
   padding: 0 24rpx;
 }
@@ -13,22 +13,22 @@
   align-items: center;
   justify-content: space-between;
   padding: 30rpx 0;
-  border-bottom: 1rpx solid #f0f1f3;
+  border-bottom: 1rpx solid var(--border);
   font-size: 30rpx;
 }
 .row .lbl {
-  color: #6b7075;
+  color: var(--text-sub);
   min-width: 140rpx;
   flex-shrink: 0;
 }
 .row .val {
-  color: #1f2329;
+  color: var(--text);
 }
 .note-box {
   padding: 24rpx 0;
 }
 .note-box .lbl {
-  color: #6b7075;
+  color: var(--text-sub);
   font-size: 30rpx;
 }
 .note-input {
@@ -36,7 +36,7 @@
   width: 100%;
   min-height: 140rpx;
   font-size: 28rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 .submit {
   margin-top: 60rpx;

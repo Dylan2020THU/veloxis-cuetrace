@@ -1,25 +1,25 @@
 .store-bar {
   padding: 16rpx 32rpx;
-  background: #fff;
+  background: var(--card-bg);
 }
 .store-picker {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 18rpx 24rpx;
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 .arrow-icon {
   font-size: 22rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 .tip {
   font-size: 26rpx;
   padding: 16rpx 0 8rpx 8rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
 }
 .empty-tip {
   padding: 16rpx 0;
@@ -30,7 +30,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #f0f1f3;
+  border-bottom: 1rpx solid var(--border);
 }
 .type-item:last-child {
   border-bottom: none;
@@ -45,7 +45,7 @@
   width: 100rpx;
   height: 80rpx;
   border-radius: 8rpx;
-  background: #f0f1f3;
+  background: var(--bg-elev);
   flex-shrink: 0;
 }
 .type-img.placeholder {
@@ -63,7 +63,7 @@
 }
 .type-name {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 .type-price {
   font-size: 26rpx;
@@ -91,7 +91,7 @@
 .img-upload {
   width: 100%;
   height: 200rpx;
-  border: 2rpx dashed #e8e9eb;
+  border: 2rpx dashed var(--border);
   border-radius: 12rpx;
   display: flex;
   align-items: center;
@@ -116,7 +116,7 @@
 }
 .upload-tip {
   font-size: 26rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
 }
 .field {
   margin-bottom: 20rpx;
@@ -124,18 +124,18 @@
 .field-label {
   display: block;
   font-size: 26rpx;
-  color: #6b7075;
+  color: var(--text-sub);
   margin-bottom: 8rpx;
 }
 .field-input {
   width: 100%;
   height: 72rpx;
-  border: 1rpx solid #e8e9eb;
+  border: 1rpx solid var(--border);
   border-radius: 8rpx;
   padding: 0 16rpx;
   font-size: 28rpx;
-  color: #1f2329;
-  background: #fafafa;
+  color: var(--text);
+  background: var(--bg-elev);
   box-sizing: border-box;
 }
 .price-row {
@@ -148,7 +148,7 @@
 }
 .price-unit {
   font-size: 28rpx;
-  color: #6b7075;
+  color: var(--text-sub);
 }
 .color-palette {
   display: flex;
@@ -163,7 +163,7 @@
   transition: border-color 0.15s;
 }
 .color-swatch.selected {
-  border-color: #1f2329;
+  border-color: var(--text);
   box-shadow: 0 0 0 2rpx #fff inset;
 }
 
@@ -184,8 +184,8 @@
   color: #fff;
 }
 .cancel-btn {
-  background: #f0f1f3;
-  color: #6b7075;
+  background: var(--bg-elev);
+  color: var(--text-sub);
 }
 .page {
   padding-bottom: calc(150rpx + env(safe-area-inset-bottom));

@@ -1,4 +1,4 @@
-<view class="hm">
+<view class="hm theme-{{theme}}">
   <view class="hm-tooltip {{tooltip ? 'show' : ''}}">
     {{ tooltip || '点击任意格子查看当日训练总时长' }}
   </view>

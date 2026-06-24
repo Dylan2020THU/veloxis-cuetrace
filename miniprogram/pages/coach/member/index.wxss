@@ -44,7 +44,7 @@
 .loading {
   padding: 60rpx 0;
   text-align: center;
-  color: #8a9099;
+  color: var(--text-weak);
   font-size: 26rpx;
 }
 
@@ -68,7 +68,7 @@
 
 .empty-icon {
   font-size: 56rpx;
-  color: #d4d8dd;
+  color: var(--text-weak);
   margin-bottom: 12rpx;
 }
 
@@ -76,7 +76,7 @@
   display: flex;
   align-items: center;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .detail-item:last-child {
@@ -99,7 +99,7 @@
 .hall {
   font-size: 30rpx;
   font-weight: 500;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .duration {

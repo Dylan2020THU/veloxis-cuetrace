@@ -26,7 +26,7 @@
   width: 160rpx;
   height: 160rpx;
   border-radius: 50%;
-  background: #f4f6f8;
+  background: var(--bg-elev);
   color: #067ef9;
   font-size: 56rpx;
   display: flex;
@@ -37,14 +37,14 @@
 
 .ph-text {
   font-size: 22rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .field {
   display: flex;
   align-items: center;
   padding: 26rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .field.column {
@@ -58,7 +58,7 @@
 
 .field-label {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
   flex: 0 0 160rpx;
 }
 
@@ -79,17 +79,17 @@
 
 .unit {
   font-size: 26rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin-left: 12rpx;
 }
 .field-pick {
   flex: 1;
   font-size: 30rpx;
   text-align: right;
-  color: #1f2329;
+  color: var(--text);
 }
 .field-pick.muted {
-  color: #9aa0a6;
+  color: var(--text-weak);
 }
 .coach-id {
   flex: 1;
@@ -140,8 +140,8 @@
   width: 160rpx;
   height: 160rpx;
   border-radius: 12rpx;
-  background: #f4f6f8;
-  color: #c4c9ce;
+  background: var(--bg-elev);
+  color: var(--text-weak);
   font-size: 64rpx;
   display: flex;
   align-items: center;
@@ -157,12 +157,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .slot-text {
   font-size: 28rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .slot-del {
@@ -177,7 +177,7 @@
 }
 
 .slot-pick {
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 14rpx 20rpx;
   font-size: 28rpx;
@@ -186,7 +186,7 @@
 
 .to {
   font-size: 26rpx;
-  color: #8a9099;
+  color: var(--text-weak);
   margin-right: 12rpx;
 }
 
@@ -210,4 +210,8 @@
 .submit-btn {
   width: 100%;
   height: 88rpx;
+}
+
+.theme-dark .submit-bar {
+  background: rgba(28, 30, 36, 0.92);
 }

@@ -32,7 +32,7 @@
 }
 .sel-card {
   width: 100%;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 28rpx 28rpx 0 0;
   padding: 36rpx 32rpx calc(36rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -8rpx 32rpx rgba(0, 0, 0, 0.12);
@@ -40,11 +40,11 @@
 .sel-name {
   font-size: 34rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 .sel-addr {
   font-size: 26rpx;
-  color: #6b7075;
+  color: var(--text-sub);
   margin-top: 12rpx;
 }
 .sel-meta {
@@ -80,8 +80,8 @@
   color: #fff;
 }
 .sel-btn.ghost {
-  background: #f2f3f5;
-  color: #4b5056;
+  background: var(--bg-elev);
+  color: var(--text-sub);
 }
 
 /* 暗色 */

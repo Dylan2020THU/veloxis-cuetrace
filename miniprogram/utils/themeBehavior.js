@@ -13,8 +13,8 @@ module.exports = Behavior({
     theme: 'light'
   },
 
-  lifetimes: {},
-
+  // 注意：不要加 lifetimes:{} —— 带 lifetimes 时部分基础库会把本 behavior 当"组件行为"解析，
+  // 从而忽略下面的页面级 onLoad/onShow，导致页面拿不到主题（整页不翻黑）。
   // Page 使用 behaviors 时，下列页面生命周期会与页面自身的同名方法一并触发
   onLoad() {
     const app = getApp();

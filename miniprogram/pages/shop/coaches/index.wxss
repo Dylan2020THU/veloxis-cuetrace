@@ -1,20 +1,20 @@
 .store-bar {
   padding: 16rpx 32rpx;
-  background: #fff;
+  background: var(--card-bg);
 }
 .store-picker {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 18rpx 24rpx;
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 .arrow-icon {
   font-size: 22rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 .header {
   display: flex;
@@ -25,7 +25,7 @@
 
 .count {
   font-size: 28rpx;
-  color: #8a9099;
+  color: var(--text-weak);
 }
 
 .add-link {
@@ -41,7 +41,7 @@
 
 .empty-icon {
   font-size: 56rpx;
-  color: #d4d8dd;
+  color: var(--text-weak);
   margin-bottom: 12rpx;
 }
 
@@ -101,12 +101,12 @@
 .c-name {
   font-size: 32rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .c-intro {
   font-size: 26rpx;
-  color: #5a6169;
+  color: var(--text-sub);
   margin-top: 8rpx;
 }
 
@@ -130,7 +130,7 @@
 
 .sheet {
   width: 100%;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 28rpx 28rpx 0 0;
   padding: 36rpx;
   /* 已是 tab 页：抬到自定义底栏(110rpx+安全区)上方，确认按钮不被遮挡 */
@@ -149,7 +149,7 @@
 }
 
 .code-input {
-  background: #f4f6f8;
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 22rpx 24rpx;
   font-size: 30rpx;
@@ -165,7 +165,7 @@
   display: flex;
   align-items: center;
   padding: 22rpx 0;
-  border-bottom: 1rpx solid #f0f2f4;
+  border-bottom: 1rpx solid var(--border);
 }
 
 .cand:last-child {
@@ -180,7 +180,7 @@
 
 .cand-name {
   font-size: 30rpx;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .cand-link {

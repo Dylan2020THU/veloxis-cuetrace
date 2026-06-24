@@ -1,19 +1,19 @@
 .page {
   min-height: 100vh;
-  background: #f4f6f8;
+  background: var(--bg);
   padding-bottom: 140rpx;
 }
 
 .loading, .empty {
   text-align: center;
-  color: #9aa0a6;
+  color: var(--text-weak);
   padding: 100rpx 40rpx;
   font-size: 26rpx;
 }
 
 .detail-card {
   margin: 24rpx;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16rpx;
   padding: 28rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
@@ -51,7 +51,7 @@
 .match-meta .name {
   font-size: 30rpx;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text);
 }
 
 .tag {
@@ -74,7 +74,7 @@
 
 .join-num {
   font-size: 22rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
   flex-shrink: 0;
 }
 
@@ -85,12 +85,12 @@
 }
 
 .row .lbl {
-  color: #9aa0a6;
+  color: var(--text-weak);
   width: 90rpx;
 }
 
 .row .val {
-  color: #1f2329;
+  color: var(--text);
   flex: 1;
 }
 
@@ -103,8 +103,8 @@
 
 .badge {
   font-size: 22rpx;
-  color: #9aa0a6;
-  background: #f2f3f5;
+  color: var(--text-weak);
+  background: var(--bg-elev);
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
 }
@@ -112,8 +112,8 @@
 .note {
   margin-top: 20rpx;
   font-size: 28rpx;
-  color: #4b5056;
-  background: #f7f8fa;
+  color: var(--text-sub);
+  background: var(--bg-elev);
   border-radius: 12rpx;
   padding: 20rpx;
   line-height: 1.6;
@@ -122,12 +122,12 @@
 .joiner-list {
   margin-top: 28rpx;
   padding-top: 24rpx;
-  border-top: 1rpx solid #f0f1f3;
+  border-top: 1rpx solid var(--border);
 }
 
 .joiner-title {
   font-size: 26rpx;
-  color: #9aa0a6;
+  color: var(--text-weak);
   margin-bottom: 16rpx;
 }
 
@@ -141,7 +141,7 @@
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
-  background: #f0f1f3;
+  background: var(--bg-elev);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -168,7 +168,7 @@
   bottom: 0;
   padding: 20rpx 32rpx;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-  background: #fff;
+  background: var(--card-bg);
   box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.06);
 }
 
