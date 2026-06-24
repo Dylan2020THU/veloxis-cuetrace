@@ -1,0 +1,64 @@
+<view class="page theme-{{theme}}">
+  <!-- 账户 -->
+  <view class="card">
+    <view class="entry" bindtap="goMyProfile">
+      <text class="entry-title">个人主页</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="entry" bindtap="goEditProfile">
+      <text class="entry-title">编辑我的信息</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 通用 -->
+  <view class="card">
+    <view class="entry" bindtap="switchTheme">
+      <text class="entry-title">背景模式</text>
+      <view class="entry-right">
+        <text class="entry-val">{{themeModeLabel}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+    <view class="entry" bindtap="clearCache">
+      <text class="entry-title">清理缓存</text>
+      <view class="entry-right">
+        <text class="entry-val">{{cacheText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 关于与法律 -->
+  <view class="card">
+    <view class="entry" bindtap="about">
+      <text class="entry-title">关于强化杆迹</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="entry" bindtap="openPrivacy">
+      <text class="entry-title">隐私政策</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="entry" bindtap="goAgreement">
+      <text class="entry-title">用户服务协议</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="entry" bindtap="goThirdParty">
+      <text class="entry-title">第三方信息共享清单</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 注销账号 -->
+  <view class="card">
+    <view class="entry entry-danger" bindtap="deleteAccount">
+      <text class="entry-title">注销账号</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 退出账号 -->
+  <view class="logout-wrap">
+    <button class="logout-btn" bindtap="logout">退出账号</button>
+  </view>
+</view>

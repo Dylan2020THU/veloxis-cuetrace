@@ -4,6 +4,7 @@
     "pages/checkin/index",
     "pages/training/add",
     "pages/profile/index",
+    "pages/settings/index",
     "pages/coach/profile/index",
     "pages/coach/members/index",
     "pages/coach/member/index",

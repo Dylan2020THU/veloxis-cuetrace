@@ -1,22 +1,16 @@
 <view class="page theme-{{theme}}">
   <!-- 1. 身份头部 -->
   <view class="profile-head">
-    <view class="head-gear" catchtap="openSettings"><view class="gear-ic"></view></view>
+    <view class="head-gear" catchtap="goSettings"><view class="gear-ic"></view></view>
     <image wx:if="{{avatar}}" class="head-avatar" src="{{avatar}}" mode="aspectFill"></image>
     <view wx:else class="head-avatar head-avatar--ph">{{nickname[0]}}</view>
     <view class="head-name">{{nickname}}</view>
     <view class="head-role">大川激流 · {{roleLabel}}</view>
   </view>
 
-  <!-- 2. 训练成就 / 段位卡 -->
-  <view class="card rank-card">
-    <view class="rank-top">
-      <text class="rank-badge">{{rankInfo.label}}</text>
-      <text class="rank-growth">成长值 {{rankInfo.growth}}{{rankInfo.isMax ? '' : ' / ' + rankInfo.nextMin}}</text>
-    </view>
-    <view class="rank-bar"><view class="rank-bar__fill" style="width:{{rankInfo.progress}}%"></view></view>
-    <view class="rank-tip" wx:if="{{!rankInfo.isMax}}">距「{{rankInfo.nextLabel}}」还需训练 {{rankInfo.toNextHoursText}} 小时</view>
-    <view class="rank-tip" wx:else>已达最高段位，继续保持！</view>
+  <!-- 2. 训练统计 -->
+  <view class="card">
+    <view class="card-title">训练统计</view>
     <view class="rank-stats">
       <view class="rank-stat">
         <view class="rank-stat__num">{{summary.totalDays}}</view>
@@ -89,34 +83,5 @@
   <view wx:elif="{{isShop}}" class="card">
     <view class="card-title">店家工作台</view>
     <view class="entry" bindtap="goShopDashboard"><text class="entry-title">店铺管理台</text><text class="arrow">›</text></view>
-  </view>
-
-  <!-- 设置面板（点头部齿轮弹出） -->
-  <view class="settings-mask {{settingsOpen ? 'show' : ''}}" bindtap="closeSettings">
-    <view class="settings-sheet" catchtap="noop">
-      <view class="sheet-handle"></view>
-      <view class="sheet-title">设置</view>
-      <view class="entry" bindtap="goMyProfile"><text class="entry-title">个人主页</text><text class="arrow">›</text></view>
-      <view class="entry" bindtap="switchRole">
-        <text class="entry-title">当前身份</text>
-        <view class="entry-right">
-          <text class="role-tag {{role !== 'member' ? 'active' : ''}}">{{roleLabel}}</text>
-          <text class="switch-text">切换</text>
-        </view>
-      </view>
-      <view class="entry" bindtap="switchTheme">
-        <text class="entry-title">背景模式</text>
-        <view class="entry-right"><text class="theme-val">{{themeModeLabel}}</text><text class="arrow">›</text></view>
-      </view>
-      <view class="entry" bindtap="goEditProfile"><text class="entry-title">编辑我的信息</text><text class="arrow">›</text></view>
-      <button class="entry entry-btn" open-type="feedback"><text class="entry-title">意见反馈</text><text class="arrow">›</text></button>
-      <view class="entry" bindtap="about"><text class="entry-title">关于强化杆迹</text><text class="arrow">›</text></view>
-      <view class="entry" bindtap="openPrivacy"><text class="entry-title">隐私政策</text><text class="arrow">›</text></view>
-      <view class="entry" bindtap="goAgreement"><text class="entry-title">用户服务协议</text><text class="arrow">›</text></view>
-      <view class="entry" bindtap="goThirdParty"><text class="entry-title">第三方信息共享清单</text><text class="arrow">›</text></view>
-      <view class="entry" bindtap="clearCache"><text class="entry-title">清理缓存</text><view class="entry-right"><text class="theme-val">{{cacheText}}</text><text class="arrow">›</text></view></view>
-      <view class="entry entry-danger" bindtap="deleteAccount"><text class="entry-title">注销账号</text><text class="arrow">›</text></view>
-      <view class="sheet-logout"><button class="logout-btn" bindtap="logout">退出账号</button></view>
-    </view>
   </view>
 </view>

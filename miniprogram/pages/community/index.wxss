@@ -203,7 +203,7 @@ image.a-avatar {
 .fab {
   position: fixed;
   right: 40rpx;
-  bottom: calc(40rpx + env(safe-area-inset-bottom));
+  bottom: calc(150rpx + env(safe-area-inset-bottom));
   width: 104rpx;
   height: 104rpx;
   border-radius: 50%;

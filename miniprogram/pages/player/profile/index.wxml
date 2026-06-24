@@ -3,7 +3,7 @@
   <view class="nav-bar">
     <view class="nav-back" bindtap="onBack">
       <text class="back-icon">‹</text>
-      <text class="back-text">返回球厅态势</text>
+      <text class="back-text">返回</text>
     </view>
   </view>
 

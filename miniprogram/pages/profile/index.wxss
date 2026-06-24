@@ -61,49 +61,9 @@
   margin-bottom: 24rpx;
 }
 
-/* 2. 训练成就 / 段位卡 */
-.rank-card {
-  margin-top: -28rpx;
-}
-.rank-top {
-  display: flex;
-  align-items: center;
-}
-.rank-badge {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #067ef9, #2b97ff);
-  padding: 8rpx 22rpx;
-  border-radius: 30rpx 0 30rpx 0;
-}
-.rank-growth {
-  font-size: 24rpx;
-  color: var(--text-weak);
-  margin-left: 16rpx;
-}
-.rank-bar {
-  height: 14rpx;
-  border-radius: 7rpx;
-  background: var(--bg-elev);
-  margin: 22rpx 0 14rpx;
-  overflow: hidden;
-}
-.rank-bar__fill {
-  height: 100%;
-  border-radius: 7rpx;
-  background: linear-gradient(90deg, #067ef9, #2b97ff);
-  transition: width 0.4s ease;
-}
-.rank-tip {
-  font-size: 22rpx;
-  color: var(--text-weak);
-}
+/* 2. 训练统计 */
 .rank-stats {
   display: flex;
-  margin-top: 28rpx;
-  padding-top: 24rpx;
-  border-top: 1rpx solid var(--border);
 }
 .rank-stat {
   flex: 1;
@@ -179,108 +139,7 @@
   font-size: 30rpx;
   color: var(--text);
 }
-.entry-danger .entry-title {
-  color: #e54545;
-}
-.entry-right {
-  display: flex;
-  align-items: center;
-}
 .arrow {
   color: var(--text-weak);
   font-size: 36rpx;
-}
-.theme-val {
-  font-size: 26rpx;
-  color: var(--text-weak);
-  margin-right: 10rpx;
-}
-.role-tag {
-  background: var(--bg-elev);
-  color: var(--text-weak);
-  font-size: 24rpx;
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-}
-.role-tag.active {
-  background: rgba(6, 126, 249, 0.12);
-  color: var(--brand);
-}
-.switch-text {
-  font-size: 24rpx;
-  color: var(--brand);
-  margin-left: 16rpx;
-}
-
-/* 把 button 还原成普通列表行外观 */
-.entry-btn {
-  width: 100%;
-  background: transparent;
-  line-height: normal;
-  text-align: left;
-  padding: 28rpx 0;
-  margin: 0;
-  border-radius: 0;
-  font-weight: normal;
-}
-.entry-btn::after {
-  border: none;
-}
-
-.logout-btn {
-  background: rgba(229, 69, 69, 0.1);
-  color: #e54545;
-  font-size: 30rpx;
-  font-weight: 500;
-  height: 92rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 36rpx 0 36rpx 0;
-}
-
-/* 设置面板（上滑卡片） */
-.settings-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.25s ease;
-  z-index: 100;
-}
-.settings-mask.show {
-  opacity: 1;
-  visibility: visible;
-}
-.settings-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--card-bg);
-  border-radius: 28rpx 28rpx 0 0;
-  padding: 16rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
-  transform: translateY(100%);
-  transition: transform 0.28s ease;
-}
-.settings-mask.show .settings-sheet {
-  transform: translateY(0);
-}
-.sheet-handle {
-  width: 64rpx;
-  height: 8rpx;
-  border-radius: 4rpx;
-  background: var(--border);
-  margin: 8rpx auto 16rpx;
-}
-.sheet-title {
-  text-align: center;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 8rpx;
-}
-.sheet-logout {
-  margin-top: 24rpx;
 }
