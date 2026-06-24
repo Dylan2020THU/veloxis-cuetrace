@@ -118,7 +118,10 @@ image.m-avatar {
   width: 100%;
   background: #fff;
   border-radius: 28rpx 28rpx 0 0;
-  padding: 36rpx 36rpx calc(36rpx + env(safe-area-inset-bottom));
+  padding: 36rpx;
+  /* 自定义底栏是独立原生层、始终盖在页面之上（z-index 压不住）。
+     直接把弹层抬到底栏(110rpx + 安全区)上方，确认按钮才不被遮挡。 */
+  margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
 }
 
 .sheet-title {

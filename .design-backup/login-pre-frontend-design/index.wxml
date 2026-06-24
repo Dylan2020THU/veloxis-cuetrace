@@ -1,34 +1,35 @@
 <view class="page {{theme==='dark'?'theme-dark':''}}">
   <view class="login-wrap">
-    <view class="hero">
-      <image class="hero-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
-      <view class="hero-name">强化杆迹</view>
-      <view class="hero-slogan">没有任何一杆是白打的</view>
-      <view class="hero-sub">{{ step === 1 ? (cloudReady ? '请选择身份，使用微信一键登录' : '请选择登录身份') : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
+    <view class="brand">
+      <image class="brand-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
+      <view class="brand-name">强化杆迹</view>
+      <view class="brand-slogan">没有任何一杆是白打的</view>
+      <view class="brand-sub">{{ step === 1 ? (cloudReady ? '请选择身份，使用微信一键登录' : '请选择登录身份') : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
     </view>
 
-    <!-- 第一步：身份选择（库边瞄准点选择器） -->
+    <!-- 第一步：身份选择（球员 / 教练 / 店主，全宽 AI 海报卡） -->
     <block wx:if="{{step === 1}}">
-      <view class="picker-label">选择你的身份</view>
       <view class="roles">
         <view
           wx:for="{{roles}}"
           wx:key="key"
-          class="role-row {{role===item.key?'active':''}}"
+          class="role-poster {{role===item.key?'active':''}}"
           data-role="{{item.key}}"
           bindtap="selectRole"
         >
-          <view class="sight"></view>
-          <image class="role-thumb" src="{{item.img}}" mode="aspectFill" lazy-load="true"></image>
+          <image class="role-img" src="{{item.img}}" mode="aspectFill" lazy-load="true"></image>
+          <view class="role-mask"></view>
           <view class="role-info">
             <view class="role-label">{{item.label}}</view>
             <view class="role-desc">{{item.desc}}</view>
           </view>
-          <view class="role-arrow">›</view>
+          <view class="role-check">
+            <view class="role-check-dot"></view>
+          </view>
         </view>
       </view>
 
-      <button class="btn-primary next-btn" bindtap="goNext">{{ cloudReady ? ('微信登录 · ' + roleLabel) : ('确认 · ' + roleLabel) }}</button>
+      <button class="btn-primary next-btn" bindtap="goNext">{{ cloudReady ? '微信登录' : '确认角色' }}</button>
     </block>
 
     <!-- 第二步：账号登录 -->
