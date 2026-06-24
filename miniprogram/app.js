@@ -183,7 +183,7 @@ App({
     const plan = (planKey && billing.PLANS[planKey]) || billing.PLANS.free;
     wx.showModal({
       title: '该功能需升级',
-      content: `${plan.label}（¥${plan.price}/年）后可使用`,
+      content: `${plan.label}（¥${billing.getPlanPrice(planKey, 'year')}/年）后可使用`,
       confirmText: '去看看',
       cancelText: '暂不开通',
       success: (res) => typeof cb === 'function' && cb(!!res.confirm),

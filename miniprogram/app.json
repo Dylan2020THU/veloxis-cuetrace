@@ -64,6 +64,22 @@
       {
         "pagePath": "pages/profile/index",
         "text": "我的"
+      },
+      {
+        "pagePath": "pages/shop/hall-status/index",
+        "text": "球厅"
+      },
+      {
+        "pagePath": "pages/shop/coaches/index",
+        "text": "教练"
+      },
+      {
+        "pagePath": "pages/shop/members/index",
+        "text": "会员"
+      },
+      {
+        "pagePath": "pages/shop/table-types/index",
+        "text": "球桌"
       }
     ]
   },

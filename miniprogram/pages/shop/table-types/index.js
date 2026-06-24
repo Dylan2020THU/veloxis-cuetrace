@@ -36,6 +36,12 @@ Page({
     this.loadShop();
   },
 
+  onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
+  },
+
   loadShop() {
     Promise.all([data.getShopStores(), data.getShopProfile()]).then(([stores, shop]) => {
       const currentStoreId = (shop && shop.storeId) ? shop.storeId : (stores.length ? stores[0]._id : '');
@@ -181,7 +187,7 @@ Page({
           getApp().globalData._shopCache.tableTypes = this.data.tableTypes;
         }
         wx.showToast({ title: '已保存', icon: 'success' });
-        setTimeout(() => wx.navigateBack(), 600);
+        // 已是 tab 页：保存后停留并刷新本页（列表已是最新），不再 navigateBack
       })
       .catch(() => {
         wx.showToast({ title: '保存失败', icon: 'none' });

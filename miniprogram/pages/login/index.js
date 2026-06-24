@@ -17,11 +17,11 @@ const ACCOUNTS_KEY = 'dc_accounts';
 const HOME_BY_ROLE = {
   member: '/pages/checkin/index',
   coach: '/pages/checkin/index',
-  shop: '/pages/shop/dashboard/index'
+  shop: '/pages/shop/hall-status/index'
 };
 
 // 属于 tabBar 的落地页需用 switchTab，其余用 reLaunch
-const TAB_HOMES = ['/pages/checkin/index', '/pages/coach/members/index'];
+const TAB_HOMES = ['/pages/checkin/index', '/pages/coach/members/index', '/pages/shop/hall-status/index'];
 
 Page({
   behaviors: [require('../../utils/themeBehavior')],

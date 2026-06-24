@@ -1,6 +1,9 @@
 // 自定义底部导航：根据当前登录身份动态渲染不同的 tab
 // 球员端：打卡 / 社区 / 约球 / 记录 / 我的
 // 教练端：打卡 / 社区 / 记录 / 我的学员 / 我的
+// 店主端：球厅态势 / 教练 / 会员 / 球桌 / 我的
+
+const mock = require('../utils/mock');
 
 // 线性描边图标（参照设计图风格），通过 CSS mask 渲染，颜色由样式控制
 const SVG = {
@@ -15,7 +18,13 @@ const SVG = {
   profile:
     "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>",
   students:
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/><circle cx='9' cy='7' r='4'/><path d='M23 21v-2a4 4 0 0 0-3-3.87'/><path d='M16 3.13a4 4 0 0 1 0 7.75'/></svg>",
+  activity:
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M22 12h-4l-3 9L9 3l-3 9H2'/></svg>",
+  necktie:
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M10 3 L14 3 L13 7 L15 16 L12 21 L9 16 L11 7 Z'/></svg>",
+  layoutgrid:
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='7' height='7' rx='1'/><rect x='14' y='3' width='7' height='7' rx='1'/><rect x='14' y='14' width='7' height='7' rx='1'/><rect x='3' y='14' width='7' height='7' rx='1'/></svg>"
 };
 
 function icon(name) {
@@ -38,6 +47,14 @@ const TABS = {
     { path: '/pages/training/add', text: '记录', icon: icon('record') },
     { path: '/pages/coach/members/index', text: '我的学员', icon: icon('students') },
     { path: '/pages/profile/index', text: '我的', icon: icon('profile') }
+  ],
+  // 店主端：球厅态势 / 教练 / 会员 / 球桌 / 我的
+  shop: [
+    { path: '/pages/shop/hall-status/index', text: '球厅', icon: icon('activity') },
+    { path: '/pages/shop/coaches/index', text: '教练', icon: icon('necktie') },
+    { path: '/pages/shop/members/index', text: '会员', icon: icon('students') },
+    { path: '/pages/shop/table-types/index', text: '球桌', icon: icon('layoutgrid') },
+    { path: '/pages/profile/index', text: '我的', icon: icon('profile') }
   ]
 };
 
@@ -53,7 +70,9 @@ Component({
     list: TABS.member,
     // 用路径标记选中项（避免 wxml 里 index 与 selected 的 === 比较失效）
     activePath: '',
-    theme: 'light'
+    theme: 'light',
+    // 仅店主端显示黄铜菱形选中指示点
+    isShop: false
   },
 
   lifetimes: {
@@ -71,7 +90,9 @@ Component({
   methods: {
     refresh() {
       const app = getApp();
-      const role = (app && app.globalData && app.globalData.role) || 'member';
+      // 角色以持久化的 mock.getRole()(storage 'dc_role') 为准：globalData.role 在 mock 登录态下
+      // 可能未写、冷启动也会丢失，会导致店主底栏错用球员 tab、选中态不跟随。
+      const role = mock.getRole() || (app && app.globalData && app.globalData.role) || 'member';
       const theme = (app && app.globalData && app.globalData.theme) || 'light';
       const list = TABS[role] || TABS.member;
 
@@ -81,7 +102,7 @@ Component({
         activePath = list[0] ? list[0].path : '';
       }
 
-      this.setData({ list, activePath, theme });
+      this.setData({ list, activePath, theme, isShop: role === 'shop' });
     },
 
     onTap(e) {

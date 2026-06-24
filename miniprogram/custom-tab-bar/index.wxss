@@ -17,11 +17,24 @@
 }
 
 .tab-item {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+/* 店主端选中态：顶部黄铜菱形指示点（绝对定位，不挤压图标布局） */
+.tab-diamond {
+  position: absolute;
+  top: 6rpx;
+  left: 50%;
+  width: 10rpx;
+  height: 10rpx;
+  background: #c9a24b;
+  border-radius: 2rpx;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .tab-icon {

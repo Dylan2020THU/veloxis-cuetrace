@@ -76,6 +76,7 @@ Page({
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
+      sourceType: ['album', 'camera'],
       success: (res) => {
         this.setData({ formImage: res.tempFiles[0].tempFilePath });
       }

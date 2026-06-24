@@ -21,7 +21,8 @@
   background: #ffffff;
   border-top-left-radius: 24rpx;
   border-top-right-radius: 24rpx;
-  padding: 0 32rpx 48rpx;
+  /* 底部留白避开自定义底栏(110rpx)，否则 tab 页上 CTA 会被底栏遮住 */
+  padding: 0 32rpx calc(140rpx + env(safe-area-inset-bottom));
   max-height: 88vh;
   overflow-y: auto;
   box-shadow: 0 -8rpx 32rpx rgba(15, 23, 42, 0.12);
@@ -243,6 +244,10 @@
 .pw-agree__txt {
   font-size: 24rpx;
   color: #64748B;
+}
+.pw-agree__link {
+  font-size: 24rpx;
+  color: #067EF9;
 }
 
 /* CTA */

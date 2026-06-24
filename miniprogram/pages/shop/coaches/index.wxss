@@ -116,6 +116,9 @@
   padding: 4rpx 8rpx;
 }
 
+.page {
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
+}
 .mask {
   position: fixed;
   inset: 0;
@@ -129,7 +132,9 @@
   width: 100%;
   background: #fff;
   border-radius: 28rpx 28rpx 0 0;
-  padding: 36rpx 36rpx calc(36rpx + env(safe-area-inset-bottom));
+  padding: 36rpx;
+  /* 已是 tab 页：抬到自定义底栏(110rpx+安全区)上方，确认按钮不被遮挡 */
+  margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
 }
 
 .sheet-title {

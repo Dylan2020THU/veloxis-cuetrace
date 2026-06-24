@@ -143,3 +143,188 @@
   color: var(--text-weak);
   font-size: 36rpx;
 }
+
+/* ============ 店主商家中心（图2 布局） ============ */
+/* 经营数据 hero：略上移贴合蓝色头部 */
+.shop-hero {
+  margin-top: -20rpx;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+.card-head .card-title {
+  margin-bottom: 0;
+}
+.card-more {
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+.tag-soon {
+  font-size: 20rpx;
+  color: #a9750f;
+  background: rgba(201, 162, 75, 0.18);
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  margin-left: 12rpx;
+}
+
+/* 经营数据四指标 */
+.metrics {
+  display: flex;
+}
+.metric {
+  flex: 1;
+  text-align: center;
+}
+/* 高级数字体栈：iOS=DIN Alternate，Windows devtools=Bahnschrift(DIN 风)，优雅回退 */
+.metric-num {
+  font-family: "DIN Alternate", "Bahnschrift", "Bebas Neue", -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 50rpx;
+  font-weight: 700;
+  color: var(--brand);
+  letter-spacing: 0.5rpx;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+/* 货币符号：缩小变轻，大数字唱主角 */
+.cur {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-right: 2rpx;
+  letter-spacing: 0;
+}
+.metric-label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 6rpx;
+}
+
+/* 资金 · 结算 */
+.fund {
+  display: flex;
+  align-items: center;
+}
+.fund-col {
+  flex: 1;
+}
+.fund-num {
+  font-family: "DIN Alternate", "Bahnschrift", "Bebas Neue", -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 52rpx;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5rpx;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.fund-label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 4rpx;
+}
+.fund-btns {
+  display: flex;
+  gap: 14rpx;
+}
+.fund-btn {
+  font-size: 24rpx;
+  color: var(--text-sub);
+  border: 1rpx solid var(--border);
+  border-radius: 30rpx;
+  padding: 8rpx 22rpx;
+}
+.fund-btn--primary {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+/* 经营工具九宫格 */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+}
+.tool {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 0;
+}
+.tool-ic-wrap {
+  position: relative;
+  width: 52rpx;
+  height: 52rpx;
+}
+.tool-ic {
+  width: 52rpx;
+  height: 52rpx;
+  background-color: var(--brand);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 48rpx 48rpx;
+  mask-size: 48rpx 48rpx;
+}
+.tool-dot {
+  position: absolute;
+  top: -2rpx;
+  right: -2rpx;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #ef9f27;
+}
+.tool-label {
+  font-size: 22rpx;
+  color: var(--text);
+  margin-top: 12rpx;
+}
+
+/* 店主版订阅（琥珀卡 + 续费） */
+.sub-card {
+  margin: 24rpx;
+  border-radius: 16rpx;
+  padding: 26rpx 32rpx;
+  background: rgba(201, 162, 75, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sub-main {
+  flex: 1;
+}
+.sub-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #a9750f;
+}
+.sub-sub {
+  font-size: 22rpx;
+  color: #b08a3a;
+  margin-top: 6rpx;
+}
+.sub-btn {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #fff;
+  background: #c9a24b;
+  border-radius: 12rpx;
+  padding: 12rpx 30rpx;
+  margin-left: 20rpx;
+}
+
+/* 深色模式：琥珀字提亮，保证在深底上可读（对比度 ≥4.5:1） */
+.theme-dark .tag-soon {
+  color: #e8c87a;
+}
+.theme-dark .sub-title {
+  color: #ecd089;
+}
+.theme-dark .sub-sub {
+  color: #d4af6a;
+}

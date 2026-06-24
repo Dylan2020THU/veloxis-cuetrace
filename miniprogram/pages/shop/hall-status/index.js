@@ -207,6 +207,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     this.startTimer();
   },
 
@@ -264,9 +267,12 @@ Page({
         }
       });
     } else {
+      const amount = Math.round((table.revenue || 0) * 100) / 100;
       wx.showModal({
-        title: '结束使用',
-        content: `「${table.tableName}」结账离桌？`,
+        title: '结账离桌',
+        content: `「${table.tableName}」${table.elapsedText || ''}，应收 ¥${amount.toFixed(2)}，确认结账？`,
+        confirmText: '确认结账',
+        confirmColor: '#067ef9',
         success: (res) => {
           if (!res.confirm) return;
           this.closeTable(idx);
@@ -285,10 +291,45 @@ Page({
 
   closeTable(idx) {
     const table = this.data.filteredTables[idx];
-    data.closeSession({ sessionId: table.session._id }).then(() => {
-      wx.showToast({ title: '已结束使用', icon: 'success' });
-      this.loadInit();
-    });
+    if (!table) return;
+    const amount = Math.round((table.revenue || 0) * 100) / 100;
+    const order = {
+      amount,
+      storeId: this.data.currentStoreId,
+      tableId: table.tableId,
+      tableName: table.tableName,
+      durationMin: Math.round((table.elapsedMs || 0) / 60000)
+    };
+    if (DEMO_MODE) {
+      // 演示：记一笔营收 + 本地把该桌转空闲（不 loadInit，避免重置演示数据）
+      data.addTableOrder(order).then(() => {
+        const tables = this.data.tables.map((x) => (
+          x.tableId === table.tableId
+            ? Object.assign({}, x, {
+                status: 'idle',
+                elapsedMs: 0,
+                elapsedText: '',
+                revenue: 0,
+                revenueText: '',
+                players: [],
+                session: null,
+                cardBg: computeCardBg(x.bgColor, 'idle'),
+                occupiedBorder: computeOccupiedBorder(x.bgColor, 'idle')
+              })
+            : x
+        ));
+        this.setData({ tables }, () => this._applyFilters());
+        wx.showToast({ title: `已结账 ¥${amount.toFixed(2)}`, icon: 'success' });
+      }).catch(() => wx.showToast({ title: '结账失败', icon: 'none' }));
+      return;
+    }
+    data.closeSession({ sessionId: table.session && table.session._id })
+      .then(() => data.addTableOrder(order))
+      .then(() => {
+        wx.showToast({ title: `已结账 ¥${amount.toFixed(2)}`, icon: 'success' });
+        this.loadInit();
+      })
+      .catch(() => wx.showToast({ title: '结账失败', icon: 'none' }));
   },
 
   goPlayerProfile(e) {

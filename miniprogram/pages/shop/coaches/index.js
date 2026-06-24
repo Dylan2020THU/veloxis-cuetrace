@@ -22,6 +22,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     this.setData({ cloudReady: getApp().globalData.cloudReady });
     this.load();
   },

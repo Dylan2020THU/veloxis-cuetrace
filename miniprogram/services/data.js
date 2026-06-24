@@ -1062,7 +1062,7 @@ function getUserBilling(opts) {
     firstLoginAt,
     plan,
     role,
-    term: (stored && stored.term) || 1,
+    period: (stored && stored.period) || 'year',
     planExpiresAt: (stored && stored.planExpiresAt) || 0,
     isInTrial: billing.isInTrial(),
     trialRemainingMs: billing.trialRemainingMs()
@@ -1117,40 +1117,92 @@ function markFirstLogin(role) {
   return Promise.resolve({ ok: true, firstLoginAt, role: r, plan });
 }
 
-// 升级套餐（per_owner + per_role 存储；后续接 wx.requestPayment 替换云端分支）
-// 入参 term 为年限（1/2/3），默认 1。落表会写 planExpiresAt（到期内可继续使用）。
-function upgradePlan(planKey, term) {
+// 升级/续费套餐（per_owner + per_role 存储；后续接 wx.requestPayment 替换云端分支）
+// 入参 period 为订阅周期 month/quarter/year，默认 year。落表写 planExpiresAt（到期内可继续使用）。
+function upgradePlan(planKey, period) {
   const app = getApp();
   const role = (app && app.globalData && app.globalData.role) || mock.getRole();
   const owner = app && app.globalData && app.globalData.openid ? app.globalData.openid : mock.MOCK_OPENID;
-  const t = Number(term) || 1;
+  const per = billing.PERIOD_MS[period] ? period : 'year';
+  const amount = billing.getPlanPrice(planKey, per);
   if (cloudReady()) {
-    return callCloud('upgradePlan', { planKey, role, term: t }).then((r) => {
-      if (app && app.globalData) app.globalData.plan = planKey;
-      return r || { ok: true, plan: planKey, term: t };
+    return callCloud('upgradePlan', { planKey, role, period: per }).then((r) => {
+      if (app && app.globalData) {
+        app.globalData.plan = planKey;
+        if (r && r.planExpiresAt) app.globalData.planExpiresAt = r.planExpiresAt;
+      }
+      return r || { ok: true, plan: planKey, period: per };
     });
   }
   const stateKey = mock.KEY_BILLING + '_' + owner + '_' + role;
   const stored = mock.readObject(stateKey, null) || {};
   // 续期：若用户已购同套餐且未到期，在原到期日上累加；否则从 now 起算
-  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
   const now = Date.now();
   const base = (stored && stored.plan === planKey && stored.planExpiresAt && stored.planExpiresAt > now)
     ? stored.planExpiresAt
     : now;
-  const planExpiresAt = base + t * ONE_YEAR_MS;
+  const planExpiresAt = base + billing.PERIOD_MS[per];
   const updated = Object.assign({}, stored, {
     plan: planKey,
     role,
-    term: t,
+    period: per,
+    amount,
     planExpiresAt,
     upgradedAt: now
   });
   mock.writeObject(stateKey, updated);
   if (app && app.globalData) {
     app.globalData.plan = planKey;
+    app.globalData.planExpiresAt = planExpiresAt;
   }
-  return Promise.resolve({ ok: true, plan: planKey, term: t, planExpiresAt });
+  return Promise.resolve({ ok: true, plan: planKey, period: per, amount, planExpiresAt });
+}
+
+// ============ 球桌按时计费订单（P1：结账 → 当日营收 → 我的页滚动） ============
+// 演示阶段：mock 落本地，无需部署云函数即可跑通；接真实台桌/支付后改云端。
+function _todayKey() {
+  const d = new Date();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+// 结账：写一笔球桌计费订单（amount = 时长 × 单价，按分钟实算由调用方算好）
+function addTableOrder(order) {
+  const o = order || {};
+  const app = getApp();
+  const owner = app && app.globalData && app.globalData.openid ? app.globalData.openid : mock.MOCK_OPENID;
+  const record = {
+    _owner: owner,
+    amount: Number(o.amount) || 0,
+    storeId: o.storeId || '',
+    tableId: o.tableId || '',
+    tableName: o.tableName || '',
+    durationMin: Number(o.durationMin) || 0,
+    date: _todayKey(),
+    createdAt: Date.now()
+  };
+  if (cloudReady()) {
+    return callCloud('createTableOrder', record).then((r) => r || { ok: true, amount: record.amount });
+  }
+  const KEY = 'dc_shop_orders';
+  const arr = mock.readArray(KEY);
+  arr.push(record);
+  mock.writeArray(KEY, arr);
+  return Promise.resolve({ ok: true, amount: record.amount });
+}
+
+// 今日营收：当前店家今日所有结账订单金额合计（元）
+function getTodayShopRevenue() {
+  if (cloudReady()) {
+    return callCloud('getTodayRevenue', {}).then((r) => (r && r.total) || 0);
+  }
+  const KEY = 'dc_shop_orders';
+  const today = _todayKey();
+  const total = mock.readArray(KEY)
+    .filter((o) => o.date === today)
+    .reduce((s, o) => s + (Number(o.amount) || 0), 0);
+  return Promise.resolve(total);
 }
 
 // 账号注销：删除本人全部数据（云端调用 deleteAccount 云函数；mock 清空本地存储）
@@ -1232,5 +1284,7 @@ module.exports = {
   markFirstLogin,
   upgradePlan,
   deleteAccount,
+  addTableOrder,
+  getTodayShopRevenue,
   isPlanActive
 };

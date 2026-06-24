@@ -56,8 +56,8 @@ module.exports = {
         <view class="pw-card__head">
           <text class="pw-card__name">{{item.label}}</text>
           <view class="pw-card__price">
-            <text class="pw-card__price-num">{{fmt.yuan(item.price)}}</text>
-            <text class="pw-card__price-unit">/年起</text>
+            <text class="pw-card__price-num">{{fmt.yuan(item.entryPrice)}}</text>
+            <text class="pw-card__price-unit">/月起</text>
           </view>
         </view>
         <view class="pw-card__desc">{{item.desc}}</view>
@@ -69,14 +69,14 @@ module.exports = {
       </view>
     </view>
 
-    <!-- 年限 tab（复用 pw-tabs 样式，零 wxss 改动） -->
-    <view class="pw-tabs" wx:if="{{currentPlan.termOptions && currentPlan.termOptions.length > 1}}">
+    <!-- 周期 tab：包月 / 包季 / 包年（复用 pw-tabs 样式） -->
+    <view class="pw-tabs" wx:if="{{currentPlan.periodOptions && currentPlan.periodOptions.length > 1}}">
       <view
-        wx:for="{{currentPlan.termOptions}}"
-        wx:key="term"
-        class="pw-tabs__item {{selectedTerm===item.term?'is-active':''}}"
-        data-term="{{item.term}}"
-        bindtap="onSelectTerm"
+        wx:for="{{currentPlan.periodOptions}}"
+        wx:key="period"
+        class="pw-tabs__item {{selectedPeriod===item.period?'is-active':''}}"
+        data-period="{{item.period}}"
+        bindtap="onSelectPeriod"
         style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12rpx 0;line-height:1.3;"
       >
         <text style="font-size:26rpx;">{{item.label}}</text>
@@ -97,19 +97,23 @@ module.exports = {
     <!-- 协议 -->
     <view class="pw-agree">
       <view class="pw-agree__box {{agreed?'is-on':''}}" bindtap="onToggleAgree"></view>
-      <text class="pw-agree__txt">开通即同意《会员服务协议》</text>
+      <text class="pw-agree__txt">开通即同意</text>
+      <text class="pw-agree__link" catchtap="onOpenAgreement">《会员服务协议》</text>
     </view>
 
     <!-- CTA：根据 sceneMode 切换文案 -->
-    <view class="pw-cta {{!agreed?'is-disabled':''}}" bindtap="onConfirm">
-      <block wx:if="{{sceneMode === 'renew' || sceneMode === 'expired'}}">
-        续费同档 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.termLabel}}
+    <view class="pw-cta {{(!agreed || sceneMode==='downgrade')?'is-disabled':''}}" bindtap="onConfirm">
+      <block wx:if="{{sceneMode === 'downgrade'}}">
+        当前套餐已包含该档
+      </block>
+      <block wx:elif="{{sceneMode === 'renew' || sceneMode === 'expired'}}">
+        续费同档 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
       <block wx:elif="{{sceneMode === 'upgrade'}}">
-        升级到 {{currentPlan.label}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.termLabel}}
+        升级到 {{currentPlan.label}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
       <block wx:else>
-        立即开通 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.termLabel}}
+        立即开通 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
     </view>
     <view class="pw-skip" bindtap="onClose">暂不开通 继续使用免费版</view>

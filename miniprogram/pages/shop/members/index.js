@@ -23,7 +23,7 @@ Page({
   },
 
   onLoad() {
-    this.load();
+    // tab 页：数据加载交给 onShow（每次切入刷新），避免与 onShow 重复请求
   },
 
   load() {
@@ -60,6 +60,9 @@ Page({
   },
 
   onShow() {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().refresh();
+    }
     this.load();
   },
 

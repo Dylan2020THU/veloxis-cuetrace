@@ -187,6 +187,9 @@
   background: #f0f1f3;
   color: #6b7075;
 }
+.page {
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
+}
 .save-wrap {
   margin-top: 40rpx;
   padding: 0 32rpx;

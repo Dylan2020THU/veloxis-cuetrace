@@ -34,12 +34,14 @@ module.exports = Behavior({
     if (!app) return;
     this.setData({ theme: app.globalData.theme });
     applyNavBar(app.globalData.theme);
-    // 驱动自定义底栏刷新（nextTick 确保页面栈与 tabBar 实例已就绪）
+    // 驱动自定义底栏刷新：先同步刷一次（切 tab 时高亮立即对上，避免 nextTick 慢半拍/对不上），
+    // 再 nextTick 兜底一次（确保页面栈与 tabBar 实例已就绪）。
     const syncTabBar = () => {
       if (typeof this.getTabBar !== 'function') return;
       const tabBar = this.getTabBar();
       if (tabBar && typeof tabBar.refresh === 'function') tabBar.refresh();
     };
+    syncTabBar();
     if (typeof wx.nextTick === 'function') {
       wx.nextTick(syncTabBar);
     } else {

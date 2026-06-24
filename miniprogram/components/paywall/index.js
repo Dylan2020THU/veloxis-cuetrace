@@ -5,43 +5,47 @@
 //   3) 或者通过 getApp().paywall(...) 全局方法（见 app.js）
 //
 // 配套：
-//   utils/billing.js   权限判断
+//   utils/billing.js   权限判断（PLANS / 周期 period / 价格）
 //   services/data.js   upgradePlan / getUserBilling
 
-const { getPlanList, getPlanOptions, getPlanPrice, getFeatureLabel, isInTrial, trialRemainingMs, getPlanExpiry } = require('../../utils/billing');
-const { upgradePlan, getUserBilling } = require('../../services/data');
+const { getPlanList, getPlanOptions, getPlanPrice, getPlanEntryPrice, getFeatureLabel, trialRemainingMs, planLevel } = require('../../utils/billing');
+const { upgradePlan } = require('../../services/data');
 
-// 套餐的描述文案（与 utils/billing.js 的 PLANS 对齐）
+// 场景判定：first 首次 / renew 续费同档 / upgrade 升级 / downgrade 降档(已含) / expired 已到期
+function sceneFor(key, ownedPlan, ownedPlanExpired) {
+  if (!ownedPlan) return 'first';
+  if (key === ownedPlan) return ownedPlanExpired ? 'expired' : 'renew';
+  return planLevel(key) > planLevel(ownedPlan) ? 'upgrade' : 'downgrade';
+}
+
+// 套餐描述（与 utils/billing.js 的 PLANS 对齐）
 const PLAN_DESC = {
-  player_pro: '解锁约球桌、约教练、训练数据分析等全部会员能力',
-  coach_pro: '学员管理 · 课时统计 · 营销海报，一站式执教工具',
-  shop_basic: '会员管理 · 基础经营看板，单店适用',
-  shop_pro: '多门店连锁 · 经营报表 · 教练学员分析'
+  shop_lite: '态势看板 · 球桌计费 · 扫码开台，单店开张即用',
+  shop_basic: '完整会员 · 团购对账 · 营销 · 报表导出，中型店利润主力',
+  shop_pro: '多门店连锁 · 跨店报表 · AI 陪练 · 硬件集成与顾问'
 };
 
 const PLAN_FEATURES = {
-  player_pro: [
-    '在线预约球桌与教练',
-    '专属训练数据分析',
-    '社区发帖、约球、组队',
-    '优先客服支持'
-  ],
-  coach_pro: [
-    '学员档案与训练记录',
-    '课时收入统计与导出',
-    '营销海报与约课工具',
-    '学员画像与训练反馈'
+  shop_lite: [
+    '实时球厅态势看板',
+    '球桌智能计费 + 扫码自助开台',
+    '桌台灯控联动省电',
+    '基础会员建档 + 储值扣费',
+    '单门店、无桌数上限'
   ],
   shop_basic: [
-    '球房会员管理',
-    '基础经营看板',
-    '球桌与台型维护'
+    '启航版全部功能',
+    '完整会员体系：储值 / 卡券 / 积分',
+    '美团团购自动对账 + 防转台',
+    '营销：拼桌 / 约球 / 优惠券 / 活动',
+    '经营报表 + 一键导出 Excel'
   ],
   shop_pro: [
-    '多门店与连锁管理',
-    '经营数据深度报表',
-    '教练学员联动分析',
-    '营销活动与卡券工具'
+    '标准版全部功能',
+    '多门店 / 连锁总部驾驶舱',
+    '角色权限分级 + 跨店会员通存通兑',
+    '跨店报表 / 定时推送 / 数据 API',
+    'AI 陪练计费 + 硬件集成 + 专属顾问'
   ]
 };
 
@@ -51,6 +55,8 @@ const ROLE_LABEL = {
   shop: '店主'
 };
 
+const EMPTY_PLAN = { key: '', label: '', entryPrice: 0, periodOptions: [] };
+
 Component({
   options: {
     multipleSlots: false,
@@ -59,46 +65,38 @@ Component({
 
   data: {
     visible: false,
-    mode: 'single',           // 'single' 仅显示当前角色档位 / 'multi' 多端 tab 切换
-    activeTab: 'member',
+    mode: 'single',
+    activeTab: 'shop',
     currentRoleLabel: '',
-    plans: [],                // 当前展示的套餐（含 termOptions）
-    selectedPlan: '',         // 用户选中的套餐 key
-    selectedTerm: 1,          // 当前选中套餐的年限（1/2/3）
-    currentPlan: { key: '', label: '', price: 0, termOptions: [] }, // 选中套餐详情（CTA 展示用）
+    plans: [],
+    selectedPlan: '',
+    selectedPeriod: 'year',     // 当前选中周期：month / quarter / year
+    currentPlan: EMPTY_PLAN,    // 选中套餐 + 周期详情（CTA 展示用）
     agreed: false,
     blockedFeatureLabel: '',
     trialRemaining: 0,
-    // 续费/升级/首次开通 三态区分
-    ownedPlan: '',            // 用户当前已购套餐 key（free 表示未购）
-    ownedPlanExpired: false,  // 已购套餐是否已过期
-    ownedPlanExpiresAt: 0,    // 已购套餐到期时间戳
-    ownedPlanLabel: '',       // 已购套餐的名称
-    sceneMode: 'first'        // 'first' 首次开通 / 'renew' 续费同档 / 'upgrade' 跨档升级 / 'expired' 已到期需续
+    ownedPlan: '',
+    ownedPlanExpired: false,
+    ownedPlanExpiresAt: 0,
+    ownedPlanLabel: '',
+    sceneMode: 'first'          // first 首次开通 / renew 续费同档 / upgrade 跨档升级 / expired 已到期需续
   },
 
   methods: {
-    /**
-     * 显示付费墙
-     * @param {object} opts { feature, planKey, role, title, from, multi, onResult }
-     *   feature      - 被拦的功能 key（可选；为 undefined 时为主动开通入口）
-     *   planKey      - 期望购买的套餐 key
-     *   role         - 当前用户角色 member/coach/shop
-     *   title        - 触发场景标题
-     *   from         - 来源（用于埋点）
-     *   multi        - 是否多端 tab 模式（默认 false）
-     *   onResult(ok) - 回调：true 开通成功 / false 用户关闭或失败
-     */
     show(opts = {}, onResult) {
-      const role = opts.role || 'member';
+      const role = opts.role || 'shop';
       const multi = !!opts.multi;
-      const activeTab = role === 'member' || role === 'coach' || role === 'shop' ? role : 'member';
+      const activeTab = role === 'member' || role === 'coach' || role === 'shop' ? role : 'shop';
       const plans = this._buildPlans(activeTab);
+      // 无可订阅套餐（球员/教练端）：不渲染空墙，直接回调关闭
+      if (!plans.length) {
+        if (typeof onResult === 'function') onResult(false);
+        wx.showToast({ title: '当前身份暂无可订阅套餐', icon: 'none' });
+        return;
+      }
 
-      // 试期剩余毫秒
       const trialRemaining = trialRemainingMs();
 
-      // 读取"已购 + 有效期"三态（确保 globalData.planExpiresAt 已同步）
       const app = getApp();
       const gd = (app && app.globalData) || {};
       const ownedPlan = gd.plan && gd.plan !== 'free' ? gd.plan : '';
@@ -111,29 +109,18 @@ Component({
         return p ? p.label : '';
       })();
 
-      // 被拦场景：focus 到对应 plan
       let focusKey = opts.planKey || (plans[0] && plans[0].key) || '';
-      let focusPlan = (plans.find((p) => p.key === focusKey) || plans[0] || { key: '', label: '', price: 0, termOptions: [] });
+      let focusPlan = plans.find((p) => p.key === focusKey) || plans[0] || EMPTY_PLAN;
 
-      // 三态场景判定：
-      //   - 已购 + 未到期：默认 focus 同档（续费场景）
-      //   - 已购 + 已到期：默认 focus 同档 + sceneMode='expired'
-      //   - 未购：sceneMode='first'，focus 用户想买的 planKey
-      //   - 已购 → 切到更高档：sceneMode='upgrade'
-      let sceneMode = 'first';
-      if (ownedPlan && !ownedPlanExpired) {
-        if (opts.planKey && opts.planKey !== ownedPlan) sceneMode = 'upgrade';
-        else sceneMode = 'renew';
-      } else if (ownedPlan && ownedPlanExpired) {
-        sceneMode = 'expired';
-        if (opts.planKey && opts.planKey !== ownedPlan) {
-          sceneMode = 'upgrade';
-          focusKey = opts.planKey;
-        }
+      // 已购+过期+指定了其它档：focus 到目标档
+      if (ownedPlan && ownedPlanExpired && opts.planKey && opts.planKey !== ownedPlan) {
+        focusKey = opts.planKey;
+        focusPlan = plans.find((p) => p.key === focusKey) || focusPlan;
       }
+      const sceneMode = sceneFor(focusKey, ownedPlan, ownedPlanExpired);
 
-      const initialTerm = Number(opts.term) || 1;
-      const currentPlan = this._composeCurrentPlan(focusPlan, initialTerm);
+      const initialPeriod = opts.period || 'year';
+      const currentPlan = this._composeCurrentPlan(focusPlan, initialPeriod);
 
       this._callback = typeof onResult === 'function' ? onResult : null;
       this._feature = opts.feature || '';
@@ -146,7 +133,7 @@ Component({
         currentRoleLabel: ROLE_LABEL[role] || '用户',
         plans,
         selectedPlan: focusKey,
-        selectedTerm: currentPlan.term,
+        selectedPeriod: currentPlan.period,
         currentPlan,
         agreed: false,
         blockedFeatureLabel: opts.feature ? getFeatureLabel(opts.feature) : '',
@@ -177,13 +164,14 @@ Component({
       if (!tab) return;
       const plans = this._buildPlans(tab);
       const focusKey = (plans[0] && plans[0].key) || '';
-      const focusPlan = plans[0] || { key: '', label: '', price: 0, termOptions: [] };
+      const focusPlan = plans[0] || EMPTY_PLAN;
+      const period = this.data.selectedPeriod || 'year';
       this.setData({
         activeTab: tab,
         plans,
         selectedPlan: focusKey,
-        selectedTerm: focusPlan.termOptions && focusPlan.termOptions[0] ? focusPlan.termOptions[0].term : 1,
-        currentPlan: this._composeCurrentPlan(focusPlan, 1)
+        selectedPeriod: period,
+        currentPlan: this._composeCurrentPlan(focusPlan, period)
       });
     },
 
@@ -191,31 +179,23 @@ Component({
       const key = e.currentTarget.dataset.plan;
       const plan = this.data.plans.find((p) => p.key === key);
       if (!plan) return;
-      const term = plan.termOptions && plan.termOptions[0] ? plan.termOptions[0].term : 1;
-      // 切换套餐时同步更新 sceneMode
-      let sceneMode = this.data.sceneMode;
-      if (this.data.ownedPlan && !this.data.ownedPlanExpired) {
-        sceneMode = key === this.data.ownedPlan ? 'renew' : 'upgrade';
-      } else if (this.data.ownedPlan && this.data.ownedPlanExpired) {
-        sceneMode = key === this.data.ownedPlan ? 'expired' : 'upgrade';
-      } else {
-        sceneMode = 'first';
-      }
+      const period = this.data.selectedPeriod || 'year';
+      const sceneMode = sceneFor(key, this.data.ownedPlan, this.data.ownedPlanExpired);
       this.setData({
         selectedPlan: key,
-        selectedTerm: term,
+        selectedPeriod: period,
         sceneMode,
-        currentPlan: this._composeCurrentPlan(plan, term)
+        currentPlan: this._composeCurrentPlan(plan, period)
       });
     },
 
-    onSelectTerm(e) {
-      const term = Number(e.currentTarget.dataset.term) || 1;
+    onSelectPeriod(e) {
+      const period = e.currentTarget.dataset.period;
       const plan = this.data.plans.find((p) => p.key === this.data.selectedPlan);
-      if (!plan) return;
+      if (!plan || !period) return;
       this.setData({
-        selectedTerm: term,
-        currentPlan: this._composeCurrentPlan(plan, term)
+        selectedPeriod: period,
+        currentPlan: this._composeCurrentPlan(plan, period)
       });
     },
 
@@ -223,13 +203,21 @@ Component({
       this.setData({ agreed: !this.data.agreed });
     },
 
+    onOpenAgreement() {
+      wx.navigateTo({ url: '/pages/legal/index?type=membership' });
+    },
+
     async onConfirm() {
       if (!this.data.agreed) {
         wx.showToast({ title: '请先同意服务协议', icon: 'none' });
         return;
       }
+      if (this.data.sceneMode === 'downgrade') {
+        wx.showToast({ title: '当前套餐已包含该档，无需购买', icon: 'none' });
+        return;
+      }
       const planKey = this.data.selectedPlan;
-      const term = this.data.selectedTerm || 1;
+      const period = this.data.selectedPeriod || 'year';
       if (!planKey) {
         wx.showToast({ title: '请选择套餐', icon: 'none' });
         return;
@@ -238,7 +226,7 @@ Component({
       // TODO: 接 wx.requestPayment 后改为：创建订单 → 调起支付 → 支付回调成功再 upgradePlan
       try {
         wx.showLoading({ title: '开通中...', mask: true });
-        const r = await upgradePlan(planKey, term);
+        const r = await upgradePlan(planKey, period);
         wx.hideLoading();
         if (r && r.ok) {
           wx.showToast({ title: '开通成功', icon: 'success' });
@@ -258,37 +246,37 @@ Component({
       }
     },
 
-    // 构造指定角色下的套餐列表（含描述/特性/价格/年限）
+    // 构造指定角色下的套餐列表（含描述/特性/入门价/周期）
     _buildPlans(role) {
       const list = getPlanList(role) || [];
       return list.map((p, idx) => ({
         key: p.key,
         label: p.label,
-        price: p.price,
-        termOptions: getPlanOptions(p.key),
+        entryPrice: getPlanEntryPrice(p.key),
+        periodOptions: getPlanOptions(p.key),
         desc: PLAN_DESC[p.key] || '',
         features: PLAN_FEATURES[p.key] || [],
-        // 默认推荐 shop_pro（最贵档），其他端推荐唯一档
-        featured: role === 'shop' ? p.key === 'shop_pro' : idx === 0
+        // 店主端默认推荐标准版（利润主力）；其他端推荐唯一档
+        featured: role === 'shop' ? p.key === 'shop_basic' : idx === 0
       }));
     },
 
-    // 组合"当前选中套餐 + 选中年限"的对象，供 CTA / 模板展示实付价
-    _composeCurrentPlan(plan, term) {
-      const t = Number(term) || 1;
-      const price = getPlanPrice(plan.key, t);
-      const termOptions = plan.termOptions && plan.termOptions.length
-        ? plan.termOptions
-        : [{ term: 1, years: 1, price: plan.price || 0, label: '1 年' }];
-      const currentTerm = termOptions.find((o) => o.term === t) || termOptions[0];
+    // 组合"当前选中套餐 + 选中周期"，供 CTA / 模板展示实付价
+    _composeCurrentPlan(plan, period) {
+      const periodOptions = (plan.periodOptions && plan.periodOptions.length)
+        ? plan.periodOptions
+        : [{ period: 'year', price: plan.entryPrice || 0, label: '包年' }];
+      const wanted = period || 'year';
+      const cur = periodOptions.find((o) => o.period === wanted) || periodOptions[periodOptions.length - 1];
+      const monthly = (periodOptions.find((o) => o.period === 'month') || {}).price || 0;
+      const mult = cur.period === 'year' ? 12 : (cur.period === 'quarter' ? 3 : 1);
       return Object.assign({}, plan, {
-        term: currentTerm.term,
-        years: currentTerm.years,
-        price: currentTerm.price, // 实付价
-        originalPrice: (plan.price || 0) * currentTerm.years, // 划线原价
-        termLabel: currentTerm.label,
-        discountLabel: currentTerm.discount || '',
-        termOptions
+        period: cur.period,
+        price: getPlanPrice(plan.key, cur.period) || cur.price,
+        periodLabel: cur.label,
+        discountLabel: cur.discount || '',
+        originalPrice: monthly * mult, // 划线原价（按月价×周期数）
+        periodOptions
       });
     }
   }

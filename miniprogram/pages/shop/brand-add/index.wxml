@@ -90,6 +90,16 @@
           ></view>
         </view>
       </view>
+      <view class="field">
+        <text class="field-label">桌型图片（选填）</text>
+        <view class="img-upload" bindtap="chooseImage">
+          <image wx:if="{{formImage}}" class="upload-img" src="{{formImage}}" mode="aspectFill" />
+          <view wx:else class="upload-placeholder">
+            <text class="upload-icon">+</text>
+            <text class="upload-tip">拍照 / 从相册选择</text>
+          </view>
+        </view>
+      </view>
       <view class="form-btns">
         <view wx:if="{{editingIdx >= 0}}" class="btn cancel-btn" bindtap="cancelEdit">取消</view>
         <view class="btn add-btn" bindtap="addOrUpdateType">{{editingIdx >= 0 ? '保存修改' : '添加桌型'}}</view>

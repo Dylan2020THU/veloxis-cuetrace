@@ -66,7 +66,8 @@
 .field-input {
   background: #f4f6f8;
   border-radius: 12rpx;
-  padding: 22rpx 24rpx;
+  height: 88rpx;
+  padding: 0 24rpx;
   font-size: 30rpx;
   color: #1f2329;
   width: 100%;
