@@ -6,8 +6,9 @@
 //   4) 入口统一在 data.js：本文件不直接读写 storage，便于后续切云端
 //
 // 定价模型（2026 矩阵）：店主三档订阅、球员免费、教练 5% 低抽佣。
-//   店主：启航版 shop_lite < 标准版 shop_basic < 旗舰版 shop_pro（按 level 链式覆盖）
-//   每档支持 包月/包季/包年，期越长越优惠（年付约 8.3 折）；首月免费试用。
+//   店主：启航版 shop_lite < 标准版 shop_basic < 旗舰版 shop_pro < 连锁版 shop_chain（按 level 链式覆盖）
+//   自助三档支持 包月/包季/包年，期越长越优惠（年付约 7 折）；首月免费试用。
+//   连锁版含 5 门店、6 店起面议，按年订阅、不进自助付费墙（getPlanList），由商务侧促成下单。
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,8 +25,8 @@ const PERIOD_MS = {
   year: 365 * DAY_MS
 };
 
-// 店主三档：启航 < 标准 < 旗舰（level 高档含低档全部能力）
-// periodOptions：包月 / 包季 / 包年；年付约 8.3 折（送约 2 个月）。
+// 店主四档：启航 < 标准 < 旗舰 < 连锁（level 高档含低档全部能力）
+// periodOptions：包月 / 包季 / 包年；年付约 7 折（送约 3-4 个月）。
 const PLANS = {
   free: { key: 'free', label: '免费', role: 'shop', level: 0, periodOptions: [] },
   shop_lite: {
@@ -34,9 +35,9 @@ const PLANS = {
     role: 'shop',
     level: 1,
     periodOptions: [
-      { period: 'month', price: 59, label: '包月' },
-      { period: 'quarter', price: 159, label: '包季', discount: '约 9 折' },
-      { period: 'year', price: 588, label: '包年', discount: '约 8.3 折' }
+      { period: 'month', price: 69, label: '包月' },
+      { period: 'quarter', price: 189, label: '包季', discount: '约 9 折' },
+      { period: 'year', price: 588, label: '包年', discount: '约 7 折' }
     ]
   },
   shop_basic: {
@@ -45,9 +46,9 @@ const PLANS = {
     role: 'shop',
     level: 2,
     periodOptions: [
-      { period: 'month', price: 199, label: '包月' },
-      { period: 'quarter', price: 549, label: '包季', discount: '约 9 折' },
-      { period: 'year', price: 1980, label: '包年', discount: '约 8.3 折' }
+      { period: 'month', price: 239, label: '包月' },
+      { period: 'quarter', price: 599, label: '包季', discount: '约 8.5 折' },
+      { period: 'year', price: 1980, label: '包年', discount: '约 7 折' }
     ]
   },
   shop_pro: {
@@ -59,9 +60,19 @@ const PLANS = {
     // 由云端 upgradePlan 按 upgradedAt 与上线日判定生效，前端统一展示新价。
     grandfatherYearPrice: 3980,
     periodOptions: [
-      { period: 'month', price: 499, label: '包月' },
-      { period: 'quarter', price: 1350, label: '包季', discount: '约 9 折' },
-      { period: 'year', price: 4980, label: '包年', discount: '约 8.3 折' }
+      { period: 'month', price: 599, label: '包月' },
+      { period: 'quarter', price: 1499, label: '包季', discount: '约 8.5 折' },
+      { period: 'year', price: 4980, label: '包年', discount: '约 7 折' }
+    ]
+  },
+  shop_chain: {
+    key: 'shop_chain',
+    label: '连锁版',
+    role: 'shop',
+    level: 4,
+    // 连锁版：含 5 门店，6 店起面议；按年订阅。不进自助付费墙（getPlanList），由商务侧促成下单。
+    periodOptions: [
+      { period: 'year', price: 9800, label: '包年', discount: '含 5 门店' }
     ]
   }
 };

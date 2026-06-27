@@ -1,4 +1,5 @@
 .cursorindexingignore
 .specstory/
+.claude/
 deck/
 business files/

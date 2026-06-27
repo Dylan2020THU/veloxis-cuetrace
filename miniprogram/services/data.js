@@ -1395,6 +1395,32 @@ function upgradePlan(planKey, period) {
   return Promise.resolve({ ok: true, plan: planKey, period: per, amount, planExpiresAt });
 }
 
+// 创建虚拟支付订单（服务端下单 + 签名）。
+// 云端：调 createVirtualPayOrder 云函数，返回 { ok, signData, paySig, signature, outTradeNo } 供 wx.requestVirtualPayment。
+// mock/devtools：无法真实支付，返回 { ok:true, mock:true }，由前端走演示发货（upgradePlan）。
+function createVirtualPayOrder(planKey, period, code) {
+  const app = getApp();
+  const role = (app && app.globalData && app.globalData.role) || mock.getRole();
+  const per = billing.PERIOD_MS[period] ? period : 'year';
+  if (cloudReady()) {
+    // code 为 wx.login 票据，服务端 code2Session 取 session_key 做用户态签名
+    return callCloud('createVirtualPayOrder', { planKey, role, period: per, code });
+  }
+  return Promise.resolve({ ok: true, mock: true });
+}
+
+// 基础支付（微信支付·JSAPI）下单：云端 cloudPay 统一下单，返回 { ok, payment, outTradeNo }
+// 供前端 wx.requestPayment(payment)；mock/devtools 返回 { ok:true, mock:true } 走演示发货。
+function createPayOrder(planKey, period) {
+  const app = getApp();
+  const role = (app && app.globalData && app.globalData.role) || mock.getRole();
+  const per = billing.PERIOD_MS[period] ? period : 'year';
+  if (cloudReady()) {
+    return callCloud('createPayOrder', { planKey, role, period: per });
+  }
+  return Promise.resolve({ ok: true, mock: true });
+}
+
 // ============ 球桌按时计费订单（P1：结账 → 当日营收 → 我的页滚动） ============
 // 演示阶段：mock 落本地，无需部署云函数即可跑通；接真实台桌/支付后改云端。
 function _todayKey() {
@@ -1530,6 +1556,8 @@ module.exports = {
   getUserBilling,
   markFirstLogin,
   upgradePlan,
+  createVirtualPayOrder,
+  createPayOrder,
   deleteAccount,
   addTableOrder,
   getTodayShopRevenue,

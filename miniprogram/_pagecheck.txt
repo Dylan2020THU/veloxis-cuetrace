@@ -1,0 +1,7 @@
+=== files containing "大川激流 · 店家" ===
+=== files containing "大川激流 · 店主" ===
+=== files with hero-code (账号编码) ===
+=== files containing "我的" topbar/tab profile-like (hero-sub) ===
+  hero-sub: /pages/checkin/index.wxml
+  hero-sub: /pages/coach/member/index.wxml
+  hero-sub: /pages/login/index.wxml

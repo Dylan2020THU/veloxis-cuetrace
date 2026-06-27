@@ -9,6 +9,10 @@
       <text class="entry-title">编辑我的信息</text>
       <text class="arrow">›</text>
     </view>
+    <view class="entry" bindtap="goMyQrcode">
+      <text class="entry-title">我的二维码</text>
+      <text class="arrow">›</text>
+    </view>
   </view>
 
   <!-- 通用 -->

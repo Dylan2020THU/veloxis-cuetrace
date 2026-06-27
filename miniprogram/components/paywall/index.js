@@ -9,7 +9,7 @@
 //   services/data.js   upgradePlan / getUserBilling
 
 const { getPlanList, getPlanOptions, getPlanPrice, getPlanEntryPrice, getFeatureLabel, trialRemainingMs, planLevel } = require('../../utils/billing');
-const { upgradePlan } = require('../../services/data');
+const { upgradePlan, createVirtualPayOrder, createPayOrder, getUserBilling } = require('../../services/data');
 
 // 场景判定：first 首次 / renew 续费同档 / upgrade 升级 / downgrade 降档(已含) / expired 已到期
 function sceneFor(key, ownedPlan, ownedPlanExpired) {
@@ -222,28 +222,125 @@ Component({
         wx.showToast({ title: '请选择套餐', icon: 'none' });
         return;
       }
-      // 演示阶段：调 upgradePlan（mock 直接落盘，云端走云函数）
-      // TODO: 接 wx.requestPayment 后改为：创建订单 → 调起支付 → 支付回调成功再 upgradePlan
+      // 按设备分流：iOS → 虚拟支付(苹果 IAP)；安卓/其它 → 基础支付(微信支付 cloudPay)；
+      // devtools/mock（cloudReady 为假，下单返回 {mock:true}）→ 演示发货，保证可点测。
+      if (this._platform() === 'ios') {
+        this._payViaVirtual(planKey, period);
+      } else {
+        this._payViaWxpay(planKey, period);
+      }
+    },
+
+    // 当前设备平台：'ios' | 'android' | 'devtools' | 'windows' | 'mac' | ...
+    _platform() {
       try {
-        wx.showLoading({ title: '开通中...', mask: true });
-        const r = await upgradePlan(planKey, period);
+        const info = wx.getDeviceInfo ? wx.getDeviceInfo() : wx.getSystemInfoSync();
+        return (info && info.platform) || '';
+      } catch (e) {
+        return '';
+      }
+    },
+
+    // 安卓/其它：基础支付（微信支付 · cloudPay JSAPI）
+    async _payViaWxpay(planKey, period) {
+      try {
+        wx.showLoading({ title: '处理中...', mask: true });
+        const order = await createPayOrder(planKey, period);
+        wx.hideLoading();
+        if (!order || order.mock) return this._fulfillDemo(planKey, period);
+        if (!order.ok) {
+          wx.showToast({ title: (order && order.msg) || '下单失败', icon: 'none' });
+          return;
+        }
+        if (!wx.requestPayment) {
+          wx.showToast({ title: '请升级微信后再支付', icon: 'none' });
+          return;
+        }
+        wx.requestPayment(Object.assign({}, order.payment, {
+          success: () => this._afterPaid(),
+          fail: (e) => {
+            if (e && /cancel/.test(e.errMsg || '')) return; // 用户取消，不提示
+            console.error('[paywall] requestPayment fail', e);
+            wx.showToast({ title: '支付未完成', icon: 'none' });
+          }
+        }));
+      } catch (err) {
+        wx.hideLoading();
+        console.error('[paywall] wxpay error', err);
+        wx.showToast({ title: '网络异常', icon: 'none' });
+      }
+    },
+
+    // iOS：虚拟支付（苹果 IAP）
+    async _payViaVirtual(planKey, period) {
+      try {
+        wx.showLoading({ title: '处理中...', mask: true });
+        // 取 wx.login 票据，供服务端 code2Session 做用户态签名（mock 路径不需要，传空亦可）
+        const loginRes = await new Promise((resolve) => {
+          wx.login({ success: resolve, fail: () => resolve({}) });
+        });
+        const order = await createVirtualPayOrder(planKey, period, loginRes && loginRes.code);
+        wx.hideLoading();
+        if (!order || order.mock) return this._fulfillDemo(planKey, period);
+        if (!order.ok) {
+          wx.showToast({ title: (order && order.msg) || '下单失败', icon: 'none' });
+          return;
+        }
+        if (!wx.requestVirtualPayment) {
+          wx.showToast({ title: '请升级微信后再开通', icon: 'none' });
+          return;
+        }
+        wx.requestVirtualPayment({
+          signData: order.signData,
+          paySig: order.paySig,
+          signature: order.signature,
+          mode: 'short_series_goods',
+          success: () => this._afterPaid(),
+          fail: (e) => {
+            if (e && /cancel/.test(e.errMsg || '')) return; // 用户取消，不提示
+            console.error('[paywall] requestVirtualPayment fail', e);
+            wx.showToast({ title: '支付未完成', icon: 'none' });
+          }
+        });
+      } catch (err) {
+        wx.hideLoading();
+        console.error('[paywall] virtual pay error', err);
+        wx.showToast({ title: '网络异常', icon: 'none' });
+      }
+    },
+
+    // 演示发货（devtools/mock）：保持张总演示行为不变（开通成功→关闭→回调）
+    _fulfillDemo(planKey, period) {
+      wx.showLoading({ title: '开通中...', mask: true });
+      return upgradePlan(planKey, period).then((r) => {
         wx.hideLoading();
         if (r && r.ok) {
           wx.showToast({ title: '开通成功', icon: 'success' });
           this.setData({ visible: false });
-          if (this._callback) {
-            const cb = this._callback;
-            this._callback = null;
-            cb(true);
-          }
+          if (this._callback) { const cb = this._callback; this._callback = null; cb(true); }
         } else {
           wx.showToast({ title: '开通失败，请重试', icon: 'none' });
         }
-      } catch (err) {
+      }).catch((err) => {
         wx.hideLoading();
-        console.error('[paywall] upgradePlan error', err);
+        console.error('[paywall] demo fulfill error', err);
         wx.showToast({ title: '网络异常', icon: 'none' });
-      }
+      });
+    },
+
+    // 支付成功后：发货以服务端回调为准，此处仅重新拉取订阅状态同步 globalData 后收尾。
+    _afterPaid() {
+      const role = this.data.activeTab || 'shop';
+      getUserBilling({ role }).then(() => {
+        wx.showToast({ title: '开通成功', icon: 'success' });
+        this.setData({ visible: false });
+        if (this._callback) { const cb = this._callback; this._callback = null; cb(true); }
+      }).catch(() => {
+        // 状态拉取失败也提示成功（已付款），引导稍后刷新
+        wx.showToast({ title: '开通处理中，稍后刷新', icon: 'none' });
+        this.setData({ visible: false });
+        if (this._callback) { const cb = this._callback; this._callback = null; cb(true); }
+      });
     },
 
     // 构造指定角色下的套餐列表（含描述/特性/入门价/周期）
