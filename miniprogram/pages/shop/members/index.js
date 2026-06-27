@@ -19,7 +19,12 @@ Page({
     totalHoursText: '0',
     stores: [],
     currentStoreId: '',
-    currentStoreName: ''
+    currentStoreName: '',
+    // 添加会员弹层
+    showAdd: false,
+    memberCode: '',
+    linkable: [],
+    cloudReady: false
   },
 
   onLoad() {
@@ -63,7 +68,85 @@ Page({
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().refresh();
     }
+    this.setData({ cloudReady: getApp().globalData.cloudReady });
     this.load();
+  },
+
+  // ---------- 添加会员（扫码 / 输入编码） ----------
+  openAdd() {
+    const current = (this.data.members || []).map((m) => m.openid);
+    data.getMembers().then((all) => {
+      const linkable = (all || []).filter((m) => current.indexOf(m.openid) === -1);
+      this.setData({ showAdd: true, memberCode: '', linkable });
+    });
+  },
+
+  closeAdd() {
+    this.setData({ showAdd: false });
+  },
+
+  noop() {},
+
+  onCodeInput(e) {
+    this.setData({ memberCode: e.detail.value });
+  },
+
+  // 输入会员编码添加
+  addByCode() {
+    const code = (this.data.memberCode || '').trim();
+    if (!code) {
+      wx.showToast({ title: '请输入会员编码', icon: 'none' });
+      return;
+    }
+    data.resolveAccount(code).then((acc) => {
+      if (!acc || !acc.openid) {
+        wx.showToast({ title: '未找到该编码对应的会员', icon: 'none' });
+        return;
+      }
+      if (acc.role && acc.role !== 'member') {
+        wx.showToast({ title: '请输入会员编码', icon: 'none' });
+        return;
+      }
+      this.doAdd(acc.openid);
+    });
+  },
+
+  // 扫码添加：扫会员出示的「我的二维码」
+  scanAdd() {
+    wx.scanCode({
+      onlyFromCamera: false,
+      success: (res) => {
+        data.resolveAccount(res.result).then((acc) => {
+          if (!acc || !acc.openid) {
+            wx.showToast({ title: '未识别的二维码', icon: 'none' });
+            return;
+          }
+          if (acc.role && acc.role !== 'member') {
+            wx.showToast({ title: '请扫描会员的二维码', icon: 'none' });
+            return;
+          }
+          this.doAdd(acc.openid);
+        });
+      },
+      fail: () => {}
+    });
+  },
+
+  // 演示：从会员列表中选择添加
+  addDemo(e) {
+    this.doAdd(e.currentTarget.dataset.openid);
+  },
+
+  doAdd(memberOpenid) {
+    data.addShopMember(memberOpenid, this.data.currentStoreId).then((r) => {
+      if (r && r.ok === false) {
+        wx.showToast({ title: r.msg || '添加失败', icon: 'none' });
+        return;
+      }
+      wx.showToast({ title: '已添加', icon: 'success' });
+      this.setData({ showAdd: false });
+      this.load();
+    });
   },
 
   onStoreChange(e) {

@@ -27,6 +27,7 @@
     "pages/shop/table-types/index",
     "pages/player/profile/index",
     "pages/player/profile/edit/index",
+    "pages/profile/qrcode/index",
     "pages/legal/index"
   ],
   "window": {

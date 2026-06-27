@@ -154,7 +154,8 @@ function qrcode(typeNumber, errorCorrectLevel) {
     }
   }
   function setupTypeInfo(test, maskPattern) {
-    var data = (1 << 3) | maskPattern; // EC level M = 0b00 -> but Arase uses (ECLevel<<3); M=0 here mapping
+    // 纠错等级 M 的格式信息等级位为 0b00（须与 QRRSBlock 表所用的 M 容量一致，否则扫描端按错误等级解交织会失败）
+    var data = (0 << 3) | maskPattern;
     var bits = getBCHTypeInfo(data);
     for (var i = 0; i < 15; i++) {
       var mod = (!test && ((bits >> i) & 1) === 1);

@@ -113,6 +113,27 @@
   margin: 0 4rpx;
 }
 
+/* 教练双图例：金 / 蓝 两组 */
+.hm-legend2 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 20rpx;
+}
+.lg-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 28rpx;
+}
+.lg-name {
+  font-size: 20rpx;
+  color: #8a9099;
+  margin-right: 8rpx;
+}
+
 /* 夜间模式：提示条 / 选中描边 适配深底（格子颜色由 JS 按主题取 ramp） */
 .theme-dark .hm-tooltip {
   color: #aab1bb;

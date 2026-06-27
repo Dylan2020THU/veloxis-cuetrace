@@ -111,13 +111,30 @@ function getHeatmap({ startKey, endKey, targetOpenid }) {
     .filter((s) => s._openid === ownerOpenid && s.date >= startKey && s.date <= endKey);
   const map = {};
   sessions.forEach((s) => {
-    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0 };
+    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0 };
     map[s.date].totalMinutes += s.durationMinutes || 0;
+    map[s.date].personalMinutes += s.durationMinutes || 0;
     map[s.date].sessionCount += 1;
   });
+
+  // 教练查看自己的杆迹时：叠加「以教练身份计时」的课时（金色），与自主练球/客场打球（蓝色）并存。
+  // 同一天若两种身份都有计时，总时长统一以金色表示（金 > 蓝优先级）。
+  const asCoachOwn = !targetOpenid && mock.getRole() === 'coach';
+  if (asCoachOwn) {
+    mock.readArray(KEY_COACH_LESSONS)
+      .filter((l) => l.coachOpenid === ownerOpenid && l.date >= startKey && l.date <= endKey)
+      .forEach((l) => {
+        if (!map[l.date]) map[l.date] = { date: l.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0 };
+        map[l.date].totalMinutes += l.durationMinutes || 0;
+        map[l.date].coachMinutes += l.durationMinutes || 0;
+        map[l.date].sessionCount += 1;
+      });
+  }
+
   const stats = Object.keys(map).map((k) => {
     const item = map[k];
     item.level = levelFromMinutes(item.totalMinutes);
+    if (asCoachOwn) item.kind = item.coachMinutes > 0 ? 'coach' : 'personal';
     return item;
   });
   return Promise.resolve(stats);
@@ -133,9 +150,27 @@ function getDayDetail(dateKey, targetOpenid) {
   const ownerOpenid = targetOpenid || mock.MOCK_OPENID;
   const sessions = mock
     .readArray(mock.KEY_SESSIONS)
-    .filter((s) => s._openid === ownerOpenid && s.date === dateKey)
-    .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
-  return Promise.resolve(sessions);
+    .filter((s) => s._openid === ownerOpenid && s.date === dateKey);
+
+  // 教练查看自己当日明细：把「教练身份」的课时也列出来（标记 kind:'coach'），与杆迹热力图一致
+  const asCoachOwn = !targetOpenid && mock.getRole() === 'coach';
+  let rows = sessions.map((s) => Object.assign({ kind: 'personal' }, s));
+  if (asCoachOwn) {
+    const lessons = mock.readArray(KEY_COACH_LESSONS)
+      .filter((l) => l.coachOpenid === ownerOpenid && l.date === dateKey)
+      .map((l) => ({
+        _id: l._id,
+        hallName: l.hallName || '教学课时',
+        startTime: l.startTime || '',
+        durationMinutes: l.durationMinutes || 0,
+        verified: true,
+        kind: 'coach',
+        memberNickname: l.memberNickname || ''
+      }));
+    rows = rows.concat(lessons);
+  }
+  rows.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+  return Promise.resolve(rows);
 }
 
 // 新增一条训练记录
@@ -202,6 +237,61 @@ function getMemberProfileByOpenid(openid) {
   }
   const members = mock.readArray(mock.KEY_MEMBERS);
   return Promise.resolve(members.find((m) => m.openid === openid) || null);
+}
+
+// 解析"账号编码 / 二维码内容 / 原始 openid"为账号对象 { openid, role, nickname, avatar, source }。
+// 供「扫码添加」与「手动输入编码添加」统一落地。mock 下在本地集合（教练/会员/当前用户）中按
+// openid 或编码反查；云端模式下若本地查不到，则把原始串当作 openid 透传给云函数处理。
+function resolveAccount(input) {
+  const account = require('../utils/account');
+  const parsed = account.parse(input);
+  if (!parsed) return Promise.resolve(null);
+
+  const lookupLocal = (openid, code) => {
+    const coaches = mock.readArray(mock.KEY_ALL_COACHES);
+    const members = mock.readArray(mock.KEY_MEMBERS);
+    let hit = null;
+    let role = '';
+    if (openid) {
+      hit = coaches.find((c) => c.openid === openid);
+      if (hit) role = 'coach';
+      if (!hit) { hit = members.find((m) => m.openid === openid); if (hit) role = 'member'; }
+    }
+    if (!hit && code) {
+      hit = coaches.find((c) => account.codeOf(c.openid) === code);
+      if (hit) role = 'coach';
+      if (!hit) { hit = members.find((m) => account.codeOf(m.openid) === code); if (hit) role = 'member'; }
+    }
+    if (hit) {
+      return { openid: hit.openid, role, nickname: hit.nickname || '', avatar: hit.avatar || mock.avatarFor(hit.openid) };
+    }
+    // 兜底：当前演示用户自身（单账号演示下扫到自己的码）
+    if ((openid && openid === mock.MOCK_OPENID) || (code && account.codeOf(mock.MOCK_OPENID) === code)) {
+      const app = getApp();
+      const prof = (app && app.globalData && app.globalData.userProfile) || {};
+      return { openid: mock.MOCK_OPENID, role: mock.getRole(), nickname: prof.nickname || '大川会员', avatar: prof.avatar || '' };
+    }
+    return null;
+  };
+
+  if (parsed.source === 'qr') {
+    const local = lookupLocal(parsed.openid, parsed.code);
+    return Promise.resolve({
+      openid: parsed.openid,
+      role: parsed.role || (local && local.role) || '',
+      nickname: parsed.name || (local && local.nickname) || '',
+      avatar: (local && local.avatar) || mock.avatarFor(parsed.openid),
+      source: 'qr'
+    });
+  }
+
+  // 文本：编码反查 → 原始 openid 反查 → 云端透传
+  const local = lookupLocal('', parsed.code) || lookupLocal(parsed.raw, '');
+  if (local) return Promise.resolve(Object.assign({ source: 'text' }, local));
+  if (cloudReady()) {
+    return Promise.resolve({ openid: parsed.raw, role: '', nickname: '', avatar: '', source: 'text' });
+  }
+  return Promise.resolve(null);
 }
 
 function getMemberCheckinsByOpenid(openid) {
@@ -674,6 +764,13 @@ function getShopMembers(storeId) {
     agg[s._openid].days[s.date] = true;
   });
 
+  // 合并店主手动添加（扫码 / 输入编码）的会员：本店尚无训练记录时也应出现，统计计为 0
+  mock.readArray(mock.KEY_SHOP_MEMBERS)
+    .filter((l) => l.memberOpenid && (!l.storeId || l.storeId === targetStoreId))
+    .forEach((l) => {
+      if (!agg[l.memberOpenid]) agg[l.memberOpenid] = { totalMinutes: 0, days: {} };
+    });
+
   const members = Object.keys(agg)
     .map((openid) => ({
       openid,
@@ -685,6 +782,23 @@ function getShopMembers(storeId) {
     .sort((a, b) => b.totalMinutes - a.totalMinutes);
 
   return Promise.resolve(members);
+}
+
+// 店主手动添加会员（扫码 / 输入编码后落地）。mock 写 KEY_SHOP_MEMBERS 关系表（按门店）。
+function addShopMember(memberOpenid, storeId) {
+  if (!memberOpenid) return Promise.resolve({ ok: false, msg: '无效会员' });
+  if (cloudReady()) {
+    return callCloud('addShopMember', { memberOpenid, storeId });
+  }
+  const shop = mock.readObject(mock.KEY_SHOP, null);
+  const sid = storeId || (shop && shop.storeId) || '';
+  const links = mock.readArray(mock.KEY_SHOP_MEMBERS);
+  if (links.some((l) => l.memberOpenid === memberOpenid && (l.storeId || '') === sid)) {
+    return Promise.resolve({ ok: true, msg: '已添加' });
+  }
+  links.push({ shopOpenid: mock.MOCK_OPENID, storeId: sid, memberOpenid, status: 'active', createdAt: Date.now() });
+  mock.writeArray(mock.KEY_SHOP_MEMBERS, links);
+  return Promise.resolve({ ok: true });
 }
 
 // ============ 文件上传 ============
@@ -1495,6 +1609,7 @@ module.exports = {
   getCoachProfile,
   getCoachProfileByOpenid,
   getMemberProfileByOpenid,
+  resolveAccount,
   getMemberCheckins,
   getMemberCheckinsByOpenid,
   saveCoachProfile,
@@ -1519,6 +1634,7 @@ module.exports = {
   removeShopCoach,
   getCoachStudents,
   getShopMembers,
+  addShopMember,
   uploadImage,
   uploadFile,
   getFeed,

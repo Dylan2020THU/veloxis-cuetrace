@@ -100,6 +100,27 @@ Page({
     this.doAdd(code);
   },
 
+  // 扫码添加：扫教练出示的「我的二维码」，解析后加入本店
+  scanAdd() {
+    wx.scanCode({
+      onlyFromCamera: false,
+      success: (res) => {
+        data.resolveAccount(res.result).then((acc) => {
+          if (!acc || !acc.openid) {
+            wx.showToast({ title: '未识别的二维码', icon: 'none' });
+            return;
+          }
+          if (acc.role && acc.role !== 'coach') {
+            wx.showToast({ title: '请扫描教练的二维码', icon: 'none' });
+            return;
+          }
+          this.doAdd(acc.openid);
+        });
+      },
+      fail: () => {}
+    });
+  },
+
   doAdd(coachOpenid) {
     data.addShopCoach(coachOpenid).then((r) => {
       if (r && r.ok === false) {

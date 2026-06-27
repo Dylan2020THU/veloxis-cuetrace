@@ -15,6 +15,7 @@ const KEY_MEMBERS = 'dc_members';
 const KEY_SHOP = 'dc_shop';
 const KEY_SHOP_STORES = 'dc_shop_stores';
 const KEY_SHOP_COACHES = 'dc_shop_coaches';
+const KEY_SHOP_MEMBERS = 'dc_shop_members'; // 店主手动添加（扫码/编码）的会员关系（按门店）
 const KEY_ALL_COACHES = 'dc_all_coaches';
 const KEY_POSTS = 'dc_posts';
 const KEY_POST_LIKES = 'dc_post_likes';
@@ -24,6 +25,7 @@ const KEY_MATCHES = 'dc_matches';
 const KEY_BOOKINGS = 'dc_bookings';
 const KEY_JOINS = 'dc_match_joins';
 const KEY_BILLING = 'dc_billing';
+const KEY_COACH_LESSONS = 'dc_coach_lessons'; // 教练课时（教练身份计时）：热力图金色来源（与 data.js 同名 key）
 
 const MOCK_OPENID = 'local-demo-user';
 
@@ -581,6 +583,50 @@ function generateUserSessions(openid) {
   return sessions;
 }
 
+// 生成当前演示用户「以教练身份计时」的课时记录（热力图金色来源）。
+// 与 generateUserSessions（自主练球·蓝色）并存：部分日期重叠（重叠日热力图取金色），
+// 部分仅教学（金色），其余仅自主练球（蓝色）。约 32% 天有教学。
+function generateCoachLessons(coachOpenid) {
+  const halls = HALLS;
+  const lessons = [];
+  const end = today();
+  let seq = 0;
+
+  for (let i = 0; i < 365; i++) {
+    const r = pseudoRandom(i + 4242);
+    if (r > 0.32) continue; // ~32% 教学日
+
+    const date = addDays(end, -i);
+    const dateKey = toKey(date);
+    const segments = pseudoRandom(i + 2024) < 0.8 ? 1 : 2;
+
+    for (let seg = 0; seg < segments; seg++) {
+      const dur = 60 + Math.floor(pseudoRandom(i + seg * 53 + 333) * 120); // 60~180 分
+      const hall = halls[(i + seg) % halls.length];
+      const member = MEMBERS[(i * 2 + seg) % MEMBERS.length];
+      const hh = 9 + Math.floor(pseudoRandom(i + seg * 71 + 900) * 10);
+      const startTime = (hh < 10 ? '0' + hh : '' + hh) + ':00';
+      lessons.push({
+        _id: `mock_l_seed_${coachOpenid}_${seq++}`,
+        coachOpenid,
+        coachNickname: '我',
+        memberOpenid: member.openid,
+        memberNickname: member.nickname,
+        hallId: hall._id,
+        hallName: hall.name,
+        date: dateKey,
+        startTime,
+        durationMinutes: dur,
+        amount: dur * 5,
+        verified: true,
+        createdAt: Date.now()
+      });
+    }
+  }
+
+  return lessons;
+}
+
 // 演示阶段确定性派生「教练-学员」关系
 function coachStudents(coachOpenid) {
   const members = MEMBERS;
@@ -603,6 +649,13 @@ function ensureSeeded() {
         const userSessions = generateUserSessions(MOCK_OPENID);
         writeArray(KEY_SESSIONS, existing.concat(userSessions));
         console.log('[ensureSeeded] wrote', userSessions.length, 'sessions for MOCK_OPENID');
+      }
+      // 补当前用户「教练身份」课时（热力图金色来源），缺失才补
+      const existingLessons = wx.getStorageSync(KEY_COACH_LESSONS) || [];
+      const hasCoachOwn = existingLessons.some((l) => l.coachOpenid === MOCK_OPENID);
+      if (!hasCoachOwn) {
+        writeArray(KEY_COACH_LESSONS, existingLessons.concat(generateCoachLessons(MOCK_OPENID)));
+        console.log('[ensureSeeded] wrote coach lessons for MOCK_OPENID');
       }
       // 补门店数据
       const existingStores = wx.getStorageSync(KEY_SHOP_STORES) || [];
@@ -651,6 +704,8 @@ function ensureSeeded() {
   // 为当前登录用户生成一年模拟训练记录
   allSessions = allSessions.concat(generateUserSessions(MOCK_OPENID));
   writeArray(KEY_SESSIONS, allSessions);
+  // 当前用户作为「教练身份」的演示课时（热力图金色来源）
+  writeArray(KEY_COACH_LESSONS, generateCoachLessons(MOCK_OPENID));
 
   writeObject(KEY_ROLE, 'member');
   writeObject(KEY_COACH, null);
@@ -721,6 +776,7 @@ module.exports = {
   KEY_SHOP,
   KEY_SHOP_STORES,
   KEY_SHOP_COACHES,
+  KEY_SHOP_MEMBERS,
   KEY_ALL_COACHES,
   KEY_POSTS,
   KEY_POST_LIKES,
@@ -730,6 +786,7 @@ module.exports = {
   KEY_BOOKINGS,
   KEY_JOINS,
   KEY_BILLING,
+  KEY_COACH_LESSONS,
   HALLS,
   BRANDS,
   STORES,
@@ -740,6 +797,7 @@ module.exports = {
   readObject,
   writeObject,
   coachStudents,
+  generateCoachLessons,
   avatarFor,
   getRole,
   setRole,

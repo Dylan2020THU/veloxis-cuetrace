@@ -2,6 +2,7 @@ const mock = require('../../utils/mock');
 const data = require('../../services/data');
 const rank = require('../../utils/rank');
 const billing = require('../../utils/billing.js');
+const account = require('../../utils/account');
 
 const ROLE_LABEL = { member: '会员', coach: '教练', shop: '店家' };
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -44,6 +45,8 @@ Page({
     roleLabel: '会员',
     isCoach: false,
     isShop: false,
+    // 账号编码（由 openid 确定性派生，跨端扫码/手输识别用）
+    accountCode: '',
     // 训练统计（球员 / 教练）
     summary: { totalDays: 0, totalHoursText: '0.0', streak: 0 },
     // 约球计数：我发起 / 我参与 / 约教练 / 约球桌
@@ -77,11 +80,13 @@ Page({
     const app = getApp();
     const role = mock.getRole();
     const profile = app.globalData.userProfile;
+    const openid = (app.globalData && app.globalData.openid) || mock.MOCK_OPENID;
     this.setData({
       role,
       roleLabel: ROLE_LABEL[role] || '会员',
       isCoach: role === 'coach',
       isShop: role === 'shop',
+      accountCode: account.codeOf(openid),
       nickname: (profile && profile.nickname) || '大川会员',
       avatar: (profile && profile.avatar) || ''
     });
@@ -255,6 +260,20 @@ Page({
 
   comingSoon() {
     wx.showToast({ title: '二期上线', icon: 'none' });
+  },
+
+  // ---------- 账号编码 ----------
+  // 点击编码：复制到剪贴板，方便发给对方手动添加
+  copyCode() {
+    if (!this.data.accountCode) return;
+    wx.setClipboardData({
+      data: this.data.accountCode,
+      success: () => wx.showToast({ title: '编码已复制', icon: 'success' })
+    });
+  },
+  // 点击二维码图标：直接打开「我的二维码」
+  goMyQrcode() {
+    wx.navigateTo({ url: '/pages/profile/qrcode/index' });
   },
 
   // ---------- 导航 ----------

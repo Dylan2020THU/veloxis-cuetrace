@@ -8,6 +8,11 @@
     </picker>
   </view>
 
+  <view class="header">
+    <text class="count">本店会员 {{members.length}} 名</text>
+    <view class="add-link" bindtap="openAdd">+ 添加会员</view>
+  </view>
+
   <view class="summary card">
     <view class="sum-item">
       <view class="sum-num">{{members.length}}</view>
@@ -53,6 +58,34 @@
       <text class="td days">{{item.checkinDays}} 天</text>
       <text class="td hours">{{item.hoursText}} h</text>
     </view>
+  </view>
+</view>
+
+<!-- 添加会员弹层（扫码 / 输入编码） -->
+<view wx:if="{{showAdd}}" class="mask" bindtap="closeAdd">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-header">
+      <view class="sheet-title">添加会员</view>
+      <view class="sheet-scan" bindtap="scanAdd">扫码添加</view>
+    </view>
+    <view class="muted sheet-tip">输入会员编码添加，或点右上角「扫码添加」</view>
+    <input class="code-input" placeholder="会员编码（如 CT-XXXXXX）" value="{{memberCode}}" bindinput="onCodeInput" />
+    <button class="btn-primary sheet-btn" bindtap="addByCode">添加</button>
+
+    <block wx:if="{{!cloudReady && linkable.length}}">
+      <view class="muted sheet-tip cand-tip">或从会员列表中选择</view>
+      <scroll-view scroll-y="true" class="cand-list">
+        <view class="cand" wx:for="{{linkable}}" wx:key="openid" data-openid="{{item.openid}}" bindtap="addDemo">
+          <image wx:if="{{item.avatar}}" class="m-avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+          <view wx:else class="m-avatar">{{item.nickname[0]}}</view>
+          <view class="cand-main">
+            <text class="cand-name">{{item.nickname}}</text>
+            <text class="muted">{{item.level}}</text>
+          </view>
+          <text class="cand-link">添加</text>
+        </view>
+      </scroll-view>
+    </block>
   </view>
 </view>
 

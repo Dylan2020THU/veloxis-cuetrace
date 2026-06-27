@@ -137,6 +137,27 @@
   margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
 }
 
+/* 弹层标题行：标题居中，右上角放「扫码添加」 */
+.sheet-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+.sheet-header .sheet-title {
+  margin-bottom: 0;
+}
+.sheet-scan {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--brand);
+}
+
 .sheet-title {
   font-size: 34rpx;
   font-weight: 700;

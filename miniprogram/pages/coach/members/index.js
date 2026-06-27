@@ -97,6 +97,32 @@ Page({
       });
   },
 
+  // 扫码添加：扫会员出示的「我的二维码」，解析后绑定为学员
+  scanAdd() {
+    wx.scanCode({
+      onlyFromCamera: false,
+      success: (res) => {
+        data.resolveAccount(res.result).then((acc) => {
+          if (!acc || !acc.openid) {
+            wx.showToast({ title: '未识别的二维码', icon: 'none' });
+            return;
+          }
+          if (acc.role && acc.role !== 'member') {
+            wx.showToast({ title: '请扫描会员的二维码', icon: 'none' });
+            return;
+          }
+          billing
+            .requirePlan({ feature: 'coach.memberMgmt', title: '学员管理' })
+            .then((ok) => {
+              if (!ok) return;
+              this.doLink(acc.openid);
+            });
+        });
+      },
+      fail: () => {}
+    });
+  },
+
   doLink(memberOpenid) {
     data.linkMember(memberOpenid).then((r) => {
       if (r && r.ok === false) {

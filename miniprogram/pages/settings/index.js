@@ -35,6 +35,10 @@ Page({
   goEditProfile() {
     wx.navigateTo({ url: '/pages/player/profile/edit/index' });
   },
+  // 我的二维码（账号编码的二维码版，供不同端互扫识别）
+  goMyQrcode() {
+    wx.navigateTo({ url: '/pages/profile/qrcode/index' });
+  },
 
   // ---------- 通用 ----------
   switchTheme() {

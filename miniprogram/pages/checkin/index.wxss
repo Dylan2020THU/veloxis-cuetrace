@@ -145,6 +145,22 @@
   vertical-align: middle;
 }
 
+/* 教练身份计时标签（金色，对应热力图金色格） */
+.coach-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: #a9750f;
+  background: rgba(240, 165, 0, 0.16);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  vertical-align: middle;
+}
+.theme-dark .coach-tag {
+  color: #f2c14e;
+  background: rgba(240, 165, 0, 0.18);
+}
+
 /* 夜间模式：底部悬浮操作栏半透明面板 */
 .theme-dark .add-bar {
   background: rgba(28, 30, 36, 0.92);

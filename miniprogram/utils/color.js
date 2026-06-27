@@ -18,8 +18,28 @@ const LEVEL_COLORS_DARK = {
   3: '#4aa3ff' // 8 小时以上（亮蓝）
 };
 
-// 按主题取整套档位色（theme: 'dark' | 其它）
-function rampFor(theme) {
+// 金色档位配色：教练以「教练身份」计时的日子用金色（与大川蓝并列的第二色系）。
+// 优先级 金 > 蓝：同一天若既有教练计时也有自主练球，总时长统一以金色表示。
+const GOLD = '#f0a500';
+const LEVEL_COLORS_GOLD = {
+  0: EMPTY,
+  1: 'rgba(240,165,0,0.40)', // 0-3 小时
+  2: 'rgba(240,165,0,0.70)', // 3-8 小时
+  3: 'rgba(240,165,0,1)' // 8 小时以上
+};
+const LEVEL_COLORS_GOLD_DARK = {
+  0: EMPTY_DARK,
+  1: '#5c4410', // 0-3 小时（深金）
+  2: '#b3891f', // 3-8 小时（中金）
+  3: '#f2c14e' // 8 小时以上（亮金）
+};
+
+// 按主题与身份取整套档位色。
+// theme: 'dark' | 其它；kind: 'coach'（金）| 其它（蓝，含 'personal'/undefined）
+function rampFor(theme, kind) {
+  if (kind === 'coach') {
+    return theme === 'dark' ? LEVEL_COLORS_GOLD_DARK : LEVEL_COLORS_GOLD;
+  }
   return theme === 'dark' ? LEVEL_COLORS_DARK : LEVEL_COLORS;
 }
 
@@ -33,8 +53,8 @@ function levelFromMinutes(totalMinutes) {
   return 3;
 }
 
-function colorOfLevel(level, theme) {
-  const ramp = rampFor(theme);
+function colorOfLevel(level, theme, kind) {
+  const ramp = rampFor(theme, kind);
   return ramp[level] || ramp[0];
 }
 
@@ -48,4 +68,4 @@ function formatDuration(totalMinutes) {
   return `${min} 分`;
 }
 
-module.exports = { EMPTY, EMPTY_DARK, LEVEL_COLORS, LEVEL_COLORS_DARK, rampFor, levelFromMinutes, colorOfLevel, formatDuration };
+module.exports = { EMPTY, EMPTY_DARK, GOLD, LEVEL_COLORS, LEVEL_COLORS_DARK, LEVEL_COLORS_GOLD, LEVEL_COLORS_GOLD_DARK, rampFor, levelFromMinutes, colorOfLevel, formatDuration };

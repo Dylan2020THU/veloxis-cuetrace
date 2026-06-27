@@ -41,7 +41,7 @@
       <view class="detail-item" wx:for="{{detailList}}" wx:key="_id">
         <view class="dot"></view>
         <view class="detail-main">
-          <view class="hall">{{item.hallName || '未知台球厅'}}<text wx:if="{{item.verified}}" class="verified-tag">已核验</text></view>
+          <view class="hall">{{item.hallName || '未知台球厅'}}<text wx:if="{{item.kind === 'coach'}}" class="coach-tag">教练计时</text><text wx:if="{{item.verified}}" class="verified-tag">已核验</text></view>
           <view class="muted">{{item.startTime}} 开始</view>
         </view>
         <view class="duration">{{item.durationText}}</view>

@@ -40,6 +40,7 @@
               data-total="{{cell.totalMinutes}}"
               data-count="{{cell.sessionCount}}"
               data-level="{{cell.level}}"
+              data-kind="{{cell.kind}}"
               data-range="{{cell.inRange}}"
               bindtap="onCellTap"
             ></view>
@@ -49,12 +50,28 @@
     </view>
   </scroll-view>
 
-  <view class="hm-legend">
+  <view class="hm-legend" wx:if="{{!hasGold}}">
     <text class="lg-text">少</text>
     <view class="lg-cell" style="background:{{c0}}"></view>
     <view class="lg-cell" style="background:{{c1}}"></view>
     <view class="lg-cell" style="background:{{c2}}"></view>
     <view class="lg-cell" style="background:{{c3}}"></view>
     <text class="lg-text">多</text>
+  </view>
+
+  <!-- 教练双图例：金=教练身份计时，蓝=自主练球/客场打球 -->
+  <view class="hm-legend2" wx:else>
+    <view class="lg-group">
+      <text class="lg-name">教练计时</text>
+      <view class="lg-cell" style="background:{{g1}}"></view>
+      <view class="lg-cell" style="background:{{g2}}"></view>
+      <view class="lg-cell" style="background:{{g3}}"></view>
+    </view>
+    <view class="lg-group">
+      <text class="lg-name">自主练球</text>
+      <view class="lg-cell" style="background:{{c1}}"></view>
+      <view class="lg-cell" style="background:{{c2}}"></view>
+      <view class="lg-cell" style="background:{{c3}}"></view>
+    </view>
   </view>
 </view>

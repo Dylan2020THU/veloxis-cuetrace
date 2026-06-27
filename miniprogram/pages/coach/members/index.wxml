@@ -40,7 +40,10 @@
 <!-- 添加学员弹层 -->
 <view wx:if="{{showAdd}}" class="mask" bindtap="closeAdd">
   <view class="sheet" catchtap="noop">
-    <view class="sheet-title">添加学员</view>
+    <view class="sheet-header">
+      <view class="sheet-title">添加学员</view>
+      <view class="sheet-scan" bindtap="scanAdd">扫码添加</view>
+    </view>
 
     <block wx:if="{{cloudReady}}">
       <view class="muted sheet-tip">输入会员编码（会员的用户标识）进行绑定</view>
