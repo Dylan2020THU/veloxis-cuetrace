@@ -22,6 +22,9 @@ exports.main = async (event) => {
     lng: typeof store.lng === 'number' ? store.lng : null,
     checkinEnabled: !!store.checkinEnabled,
     tableTypes: Array.isArray(store.tableTypes) ? store.tableTypes : [],
+    // 球厅信息编辑新增字段：营业时间 / 简介
+    businessHours: store.businessHours || '',
+    intro: store.intro || '',
     updatedAt: db.serverDate()
   };
 

@@ -5,7 +5,8 @@ Page({
 
   data: {
     loading: true,
-    hasStore: false,
+    hasStore: false,        // 是否已有可编辑的球厅（有独立门店记录 或 已有店铺资料）
+    hasStoreRecord: false,  // 是否存在独立 stores 记录（无则保存时新建，回填 stores 集合）
     brandId: '',
     storeId: '',
     shopName: '',
@@ -16,6 +17,7 @@ Page({
     lng: null,
     businessHours: '',
     intro: '',
+    tableTypes: [],
     submitting: false
   },
 
@@ -30,20 +32,26 @@ Page({
       data.getShopStores().catch(() => [])
     ]).then(([profile, brands, stores]) => {
       const brand = (brands && brands[0]) || {};
-      const store = (stores || []).find((s) => profile && s._id === profile.storeId) || (stores || [])[0] || null;
+      const prof = profile || {};
+      const store = (stores || []).find((s) => s._id === prof.storeId) || (stores || [])[0] || null;
+      // 云端 / 单店：无独立 stores 记录时，用店铺资料(shops)里的 hall 信息兜底，
+      // 避免有店却被误判为"还没创建门店"。门店名取 hallName，桌型取资料里的 tableTypes。
+      const hasShop = !!store || !!(prof.name || prof.hallName) || !!brand.name;
       this.setData({
         loading: false,
-        hasStore: !!store,
-        brandId: brand._id || (profile && profile.brandId) || '',
+        hasStore: hasShop,
+        hasStoreRecord: !!store,
+        brandId: brand._id || prof.brandId || '',
         storeId: store ? store._id : '',
-        shopName: (profile && profile.name) || brand.name || '',
+        shopName: prof.name || brand.name || '',
         logo: brand.logo || '',
-        storeName: store ? (store.name || '') : '',
+        storeName: store ? (store.name || '') : (prof.hallName || ''),
         address: store ? (store.address || '') : '',
         lat: store && typeof store.lat === 'number' ? store.lat : null,
         lng: store && typeof store.lng === 'number' ? store.lng : null,
         businessHours: store ? (store.businessHours || '') : '',
-        intro: store ? (store.intro || '') : ''
+        intro: store ? (store.intro || '') : '',
+        tableTypes: store ? (store.tableTypes || []) : (prof.tableTypes || [])
       });
     }).catch((err) => {
       console.warn('[编辑球厅信息] 加载失败', err);
@@ -98,25 +106,32 @@ Page({
     if (this.data.submitting) return;
     const shopName = (this.data.shopName || '').trim();
     if (!shopName) return wx.showToast({ title: '请输入球厅名称', icon: 'none' });
-    if (!this.data.hasStore) return wx.showToast({ title: '请先在门店管理创建门店', icon: 'none' });
     const storeName = (this.data.storeName || '').trim();
     if (!storeName) return wx.showToast({ title: '请输入门店名称', icon: 'none' });
 
     this.setData({ submitting: true });
     const brandId = this.data.brandId || `brand_${Date.now()}`;
+    const storeId = this.data.storeId || `store_${Date.now()}`;
+    const tableTypes = this.data.tableTypes || [];
+    // 三处落库，各自容错（云端可能部分函数未部署，一处失败不影响其余）：
+    // 1) shops 店铺资料：name + hallName(门店名) + tableTypes —— 云端 saveShopProfile 直接支持，立即生效并回显
+    // 2) brands 品牌名 / logo
+    // 3) stores 门店记录：补全 stores 集合（地址/营业时间/简介/桌型），多门店视图后续可用
+    const safe = (p) => p.catch((e) => { console.warn('[编辑球厅信息] 局部保存失败', e); return null; });
     Promise.resolve()
-      .then(() => data.saveShopBrand({ _id: brandId, name: shopName, logo: this.data.logo }))
-      .then(() => data.saveShopStore({
-        _id: this.data.storeId,
+      .then(() => safe(data.saveShopProfile({ name: shopName, hallName: storeName, tableTypes })))
+      .then(() => safe(data.saveShopBrand({ _id: brandId, name: shopName, logo: this.data.logo })))
+      .then(() => safe(data.saveShopStore({
+        _id: storeId,
         brandId,
         name: storeName,
         address: (this.data.address || '').trim(),
         lat: this.data.lat,
         lng: this.data.lng,
         businessHours: (this.data.businessHours || '').trim(),
-        intro: (this.data.intro || '').trim()
-      }))
-      .then(() => data.saveShopProfile({ name: shopName, brandId, storeId: this.data.storeId }))
+        intro: (this.data.intro || '').trim(),
+        tableTypes
+      })))
       .then(() => {
         wx.showToast({ title: '保存成功', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 1200);

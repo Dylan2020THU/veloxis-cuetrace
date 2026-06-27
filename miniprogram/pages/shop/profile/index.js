@@ -29,14 +29,26 @@ Page({
       data.getTodayShopRevenue().catch(() => 0)
     ]).then(([profile, brands, stores, coaches, members, revenue]) => {
       const brand = (brands && brands[0]) || {};
-      const shopName = (profile && profile.name) || brand.name || '我的球厅';
-      const list = (stores || []).map((s) => ({
+      const prof = profile || {};
+      const shopName = prof.name || brand.name || '我的球厅';
+      let list = (stores || []).map((s) => ({
         _id: s._id,
         name: s.name || '未命名门店',
         address: s.address || '未填写地址',
         businessHours: s.businessHours || '',
         tableTypeCount: (s.tableTypes && s.tableTypes.length) || 0
       }));
+      // 云端 / 单店兜底：无独立 stores 记录但已有店铺资料时，用 hall 信息合成一个门店展示，
+      // 避免有店却显示"还没有门店"。
+      if (!list.length && (prof.hallName || prof.name || brand.name)) {
+        list = [{
+          _id: prof.storeId || prof.hallId || '',
+          name: prof.hallName || prof.name || brand.name,
+          address: prof.address || '未填写地址',
+          businessHours: prof.businessHours || '',
+          tableTypeCount: (prof.tableTypes && prof.tableTypes.length) || 0
+        }];
+      }
       this.setData({
         loading: false,
         shopName,
