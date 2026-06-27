@@ -82,13 +82,13 @@ App({
   },
 
   // 付费墙统一入口：组件实例由当前页面注册（避免全局多实例）
+  // 注意：paywall 组件暴露的方法是 show(opts, onResult)，回调走第二参（组件内部存为 _callback）。
   paywall(opts, cb) {
     const pages = getCurrentPages();
     const top = pages[pages.length - 1];
     const inst = top && top.selectComponent && top.selectComponent('#paywall');
-    if (inst && inst.open) {
-      inst._cb = cb;
-      inst.open(opts);
+    if (inst && typeof inst.show === 'function') {
+      inst.show(opts, cb);
     } else if (cb) {
       cb(false);
     }
