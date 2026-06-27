@@ -657,6 +657,26 @@ function ensureSeeded() {
         writeArray(KEY_COACH_LESSONS, existingLessons.concat(generateCoachLessons(MOCK_OPENID)));
         console.log('[ensureSeeded] wrote coach lessons for MOCK_OPENID');
       }
+      // 核心集合自愈：标记已播种但某集合为空（老数据 / 异常 / 部分清缓存）时回补演示数据。
+      // 只在「为空」时补，绝不覆盖店主已添加的门店/品牌等；不改 dc_role。
+      // 修复：店主端「球厅主页 / 门店管理」门店、教练、会员全为 0。
+      if (!(wx.getStorageSync(KEY_BRANDS) || []).length) writeArray(KEY_BRANDS, BRANDS);
+      if (!(wx.getStorageSync(KEY_STORES) || []).length) {
+        writeArray(KEY_STORES, STORES.map((s) => Object.assign({}, s)));
+        console.log('[ensureSeeded] backfilled KEY_STORES');
+      }
+      if (!(wx.getStorageSync(KEY_ALL_COACHES) || []).length) writeArray(KEY_ALL_COACHES, COACHES);
+      if (!(wx.getStorageSync(KEY_SHOP_COACHES) || []).length) writeArray(KEY_SHOP_COACHES, SHOP_COACH_LINKS);
+      if (!(wx.getStorageSync(KEY_MEMBERS) || []).length) writeArray(KEY_MEMBERS, MEMBERS);
+      if (!(wx.getStorageSync(KEY_LINKS) || []).length) writeArray(KEY_LINKS, COACH_MEMBER_LINKS);
+      // 会员训练记录（getShopMembers 按门店聚合用）：若 sessions 中无任何会员记录则回补
+      const sessNow = wx.getStorageSync(KEY_SESSIONS) || [];
+      if (!sessNow.some((s) => /^member_/.test(s._openid || ''))) {
+        let memberSessions = [];
+        MEMBERS.forEach((m, idx) => { memberSessions = memberSessions.concat(generateSessions(m.openid, (idx + 1) * 137)); });
+        writeArray(KEY_SESSIONS, sessNow.concat(memberSessions));
+        console.log('[ensureSeeded] backfilled member sessions');
+      }
       // 补门店数据
       const existingStores = wx.getStorageSync(KEY_SHOP_STORES) || [];
       console.log('[ensureSeeded] shop_stores count:', existingStores.length);
@@ -707,7 +727,8 @@ function ensureSeeded() {
   // 当前用户作为「教练身份」的演示课时（热力图金色来源）
   writeArray(KEY_COACH_LESSONS, generateCoachLessons(MOCK_OPENID));
 
-  writeObject(KEY_ROLE, 'member');
+  // 默认身份 member；但若已存在身份（如清缓存仅保留 dc_role）则保留，避免店主被降级
+  if (!wx.getStorageSync(KEY_ROLE)) writeObject(KEY_ROLE, 'member');
   writeObject(KEY_COACH, null);
   // 默认店家资料：storeId 指向第一个门店，用于「本店会员」统计等场景
   writeObject(KEY_SHOP, {

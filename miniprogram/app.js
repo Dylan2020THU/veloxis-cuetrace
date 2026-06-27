@@ -20,8 +20,19 @@ App({
 
   onLaunch() {
     this.initCloud();      // 同步初始化 SDK（不代表云函数已部署）
+    this.ensureSeedData(); // 播种本地 mock 演示数据（清缓存/新装后自愈，避免店主端门店/教练/会员全为 0）
     this.bootstrap();      // 读本地登录态 / 订阅缓存
     this.probeCloud();     // 异步探测云端，通了才切云
+  },
+
+  // 确保本地 mock 数据已播种。ensureSeeded 自身幂等（dc_seeded_v2 标记）：
+  // 已播种只做增量迁移、不覆盖店主已添加的门店；未播种（含清缓存后）才全量补齐演示数据。
+  ensureSeedData() {
+    try {
+      require('./services/data').initData();
+    } catch (e) {
+      console.warn('[CueTrace] 本地数据播种失败', e);
+    }
   },
 
   // 初始化云开发 SDK。仅建立连接，能否真正用云函数由 probeCloud 决定。
