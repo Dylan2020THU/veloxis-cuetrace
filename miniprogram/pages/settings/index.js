@@ -1,6 +1,12 @@
 const data = require('../../services/data');
+const mock = require('../../utils/mock');
 
 const THEME_LABEL = { light: '白天模式', dark: '夜间模式', system: '跟随系统' };
+// 账户区入口文案：店主端按「球厅」口吻，其余沿用「个人 / 我的」
+const ACCOUNT_LABELS = {
+  shop: { profile: '球厅主页', edit: '编辑球厅信息', qr: '球厅二维码' },
+  default: { profile: '个人主页', edit: '编辑我的信息', qr: '我的二维码' }
+};
 
 Page({
   behaviors: [require('../../utils/themeBehavior')],
@@ -12,27 +18,45 @@ Page({
     themeMode: 'system',
     themeModeLabel: '跟随系统',
     // 本地缓存大小
-    cacheText: ''
+    cacheText: '',
+    // 账户区入口文案（按角色：店主→球厅口吻）
+    profileLabel: '个人主页',
+    editLabel: '编辑我的信息',
+    qrLabel: '我的二维码'
   },
 
   onShow() {
     const app = getApp();
     const profile = app.globalData.userProfile;
     const mode = app.globalData.themeMode;
+    const labels = ACCOUNT_LABELS[mock.getRole()] || ACCOUNT_LABELS.default;
     this.setData({
       nickname: (profile && profile.nickname) || '大川会员',
       themeMode: mode,
-      themeModeLabel: THEME_LABEL[mode] || '跟随系统'
+      themeModeLabel: THEME_LABEL[mode] || '跟随系统',
+      profileLabel: labels.profile,
+      editLabel: labels.edit,
+      qrLabel: labels.qr
     });
     this.refreshCacheSize();
   },
 
   // ---------- 账户 ----------
   goMyProfile() {
+    // 店主端走专属「球厅主页」；球员/教练沿用个人主页
+    if (mock.getRole() === 'shop') {
+      wx.navigateTo({ url: '/pages/shop/profile/index' });
+      return;
+    }
     const nickname = encodeURIComponent(this.data.nickname || '');
     wx.navigateTo({ url: `/pages/player/profile/index?isCurrentUser=1&nickname=${nickname}` });
   },
   goEditProfile() {
+    // 店主端走专属「编辑球厅信息」；球员/教练沿用编辑我的信息
+    if (mock.getRole() === 'shop') {
+      wx.navigateTo({ url: '/pages/shop/profile/edit/index' });
+      return;
+    }
     wx.navigateTo({ url: '/pages/player/profile/edit/index' });
   },
   // 我的二维码（账号编码的二维码版，供不同端互扫识别）

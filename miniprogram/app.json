@@ -25,6 +25,8 @@
     "pages/shop/hall-status/index",
     "pages/shop/checkin-qr/index",
     "pages/shop/table-types/index",
+    "pages/shop/profile/index",
+    "pages/shop/profile/edit/index",
     "pages/player/profile/index",
     "pages/player/profile/edit/index",
     "pages/profile/qrcode/index",

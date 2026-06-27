@@ -22,6 +22,10 @@ Page({
     const openid = (app.globalData && app.globalData.openid) || mock.MOCK_OPENID;
     const profile = (app.globalData && app.globalData.userProfile) || {};
     const code = account.codeOf(openid);
+    // 店主端按「球厅」口吻显示标题
+    if (role === 'shop') {
+      wx.setNavigationBarTitle({ title: '球厅二维码' });
+    }
     const base = {
       roleLabel: ROLE_LABEL[role] || '会员',
       accountCode: code,

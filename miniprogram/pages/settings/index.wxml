@@ -2,15 +2,15 @@
   <!-- 账户 -->
   <view class="card">
     <view class="entry" bindtap="goMyProfile">
-      <text class="entry-title">个人主页</text>
+      <text class="entry-title">{{profileLabel}}</text>
       <text class="arrow">›</text>
     </view>
     <view class="entry" bindtap="goEditProfile">
-      <text class="entry-title">编辑我的信息</text>
+      <text class="entry-title">{{editLabel}}</text>
       <text class="arrow">›</text>
     </view>
     <view class="entry" bindtap="goMyQrcode">
-      <text class="entry-title">我的二维码</text>
+      <text class="entry-title">{{qrLabel}}</text>
       <text class="arrow">›</text>
     </view>
   </view>

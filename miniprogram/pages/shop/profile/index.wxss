@@ -1,0 +1,137 @@
+.page {
+  min-height: 100vh;
+  padding-bottom: calc(60rpx + env(safe-area-inset-bottom));
+}
+
+/* 头部 */
+.hero {
+  background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
+  color: #fff;
+  padding: 56rpx 40rpx 52rpx;
+  text-align: center;
+}
+.hero-logo {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 28rpx;
+  margin: 0 auto 16rpx;
+  display: block;
+  border: 4rpx solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.25);
+}
+.hero-logo--ph {
+  line-height: 124rpx;
+  font-size: 56rpx;
+  font-weight: 700;
+}
+.hero-name {
+  font-size: 38rpx;
+  font-weight: 700;
+}
+.hero-badge {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 6rpx;
+}
+
+.loading {
+  padding: 80rpx 0;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 24rpx;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+.card-head .card-title {
+  margin-bottom: 0;
+}
+.card-more {
+  font-size: 24rpx;
+  color: var(--brand);
+}
+
+/* 概览四指标 */
+.metrics {
+  display: flex;
+}
+.metric {
+  flex: 1;
+  text-align: center;
+}
+.metric-num {
+  font-family: "DIN Alternate", "Bahnschrift", -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 46rpx;
+  font-weight: 700;
+  color: var(--brand);
+  line-height: 1.05;
+}
+.cur {
+  font-size: 26rpx;
+  font-weight: 600;
+  margin-right: 2rpx;
+}
+.metric-label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 6rpx;
+}
+
+/* 门店列表 */
+.store-row {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.store-row:last-child {
+  border-bottom: none;
+}
+.store-main {
+  flex: 1;
+}
+.store-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--text);
+}
+.store-addr {
+  margin-top: 4rpx;
+}
+.store-tail {
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+.empty {
+  padding: 20rpx 0;
+}
+
+/* 操作项 */
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.entry:last-child {
+  border-bottom: none;
+}
+.entry-title {
+  font-size: 30rpx;
+  color: var(--text);
+}
+.arrow {
+  color: var(--text-weak);
+  font-size: 36rpx;
+}
