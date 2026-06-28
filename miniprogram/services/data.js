@@ -528,6 +528,7 @@ function closeSession({ sessionId }) {
 // 演示阶段 mock 落本地 'dc_checkin_requests'；接真实云端改 callCloud（云函数待部署）。
 const KEY_CHECKIN = 'dc_checkin_requests';
 const KEY_COACH_LESSONS = 'dc_coach_lessons';
+const KEY_COACH_SETTLEMENTS = 'dc_coach_settlements';
 
 function _currentOpenid() {
   const app = getApp();
@@ -674,6 +675,101 @@ function getCoachLessons(coachOpenid) {
   // 演示为单账号（openid 恒为 local-demo-user），教学局里选的教练是 coach_xx，
   // 与当前 openid 不一致会看不到课时；mock 下若本人无匹配则回退展示全部，便于验收 D 期。
   return Promise.resolve(mine.length ? mine : all);
+}
+
+// ============ 教练结算（店主结算本店教练课时费） ============
+
+function _fmtKey(d) { const m = d.getMonth() + 1, day = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day); }
+// 周期 → 日期区间（含端点）。week=本周一~今天；month=本月1号~今天；all=不限
+function _periodRange(period) {
+  const end = new Date(); end.setHours(0, 0, 0, 0);
+  if (period === 'all') return { fromKey: '', toKey: '' };
+  if (period === 'week') {
+    const day = end.getDay(); const back = day === 0 ? 6 : day - 1;
+    const from = new Date(end.getTime()); from.setDate(end.getDate() - back);
+    return { fromKey: _fmtKey(from), toKey: _fmtKey(end) };
+  }
+  const from = new Date(end.getFullYear(), end.getMonth(), 1);
+  return { fromKey: _fmtKey(from), toKey: _fmtKey(end) };
+}
+function _inPeriod(date, range) { if (!range.fromKey) return true; return date >= range.fromKey && date <= range.toKey; }
+// 本店归属：本店教练 openid 集合 + 本店门店 _id 集合
+function _shopScope() {
+  const shop = mock.readObject(mock.KEY_SHOP, null) || {};
+  const coachOpenids = mock.readArray(mock.KEY_SHOP_COACHES).map((l) => l.coachOpenid);
+  const storeIds = mock.readArray(mock.KEY_STORES).map((s) => s._id);
+  if (shop.storeId && storeIds.indexOf(shop.storeId) === -1) storeIds.push(shop.storeId);
+  return { coachOpenids, storeIds };
+}
+const _r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+// 店主端：本店各教练在指定周期的结算概览
+function getShopCoachSettlement(period) {
+  if (cloudReady()) return callCloud('getShopCoachSettlement', { period }).then((r) => r || { totalPendingNet: 0, pendingCoachCount: 0, coaches: [] });
+  const range = _periodRange(period);
+  const { coachOpenids, storeIds } = _shopScope();
+  const lessons = mock.readArray(KEY_COACH_LESSONS).filter((l) =>
+    coachOpenids.indexOf(l.coachOpenid) !== -1 && storeIds.indexOf(l.hallId) !== -1 && _inPeriod(l.date, range));
+  const allCoaches = mock.readArray(mock.KEY_ALL_COACHES);
+  const agg = {};
+  lessons.forEach((l) => {
+    if (!agg[l.coachOpenid]) agg[l.coachOpenid] = { pendingGross: 0, pendingCount: 0, settledGross: 0 };
+    const a = Number(l.amount) || 0;
+    if (l.settled) agg[l.coachOpenid].settledGross += a;
+    else { agg[l.coachOpenid].pendingGross += a; agg[l.coachOpenid].pendingCount += 1; }
+  });
+  let totalPendingNet = 0, pendingCoachCount = 0;
+  const coaches = coachOpenids.map((openid) => {
+    const g = agg[openid] || { pendingGross: 0, pendingCount: 0, settledGross: 0 };
+    const c = allCoaches.find((x) => x.openid === openid) || {};
+    const pendingCommission = billing.calcCoachCommission(g.pendingGross);
+    const pendingNet = _r2(g.pendingGross - pendingCommission);
+    const settledNet = _r2(g.settledGross - billing.calcCoachCommission(g.settledGross));
+    if (g.pendingCount > 0) { totalPendingNet += pendingNet; pendingCoachCount += 1; }
+    return { coachOpenid: openid, nickname: c.nickname || '教练', avatar: c.avatar || mock.avatarFor(openid),
+      pendingCount: g.pendingCount, pendingGross: g.pendingGross, pendingCommission, pendingNet, settledNet };
+  }).sort((a, b) => b.pendingNet - a.pendingNet || b.settledNet - a.settledNet);
+  return Promise.resolve({ totalPendingNet: _r2(totalPendingNet), pendingCoachCount, coaches });
+}
+
+// 店主端：单个教练在指定周期的结算明细（待/已结算课时 + 待结算汇总）
+function getCoachSettlementDetail(coachOpenid, period) {
+  if (cloudReady()) return callCloud('getCoachSettlementDetail', { coachOpenid, period }).then((r) => r || { pending: [], settled: [], summary: { gross: 0, commission: 0, net: 0 } });
+  const range = _periodRange(period);
+  const { storeIds } = _shopScope();
+  const lessons = mock.readArray(KEY_COACH_LESSONS)
+    .filter((l) => l.coachOpenid === coachOpenid && storeIds.indexOf(l.hallId) !== -1 && _inPeriod(l.date, range))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const pending = lessons.filter((l) => !l.settled);
+  const settled = lessons.filter((l) => l.settled);
+  const gross = pending.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const commission = billing.calcCoachCommission(gross);
+  const c = mock.readArray(mock.KEY_ALL_COACHES).find((x) => x.openid === coachOpenid) || {};
+  return Promise.resolve({ coachOpenid, nickname: c.nickname || '教练', summary: { gross, commission, net: _r2(gross - commission) }, pending, settled });
+}
+
+// 店主端：结清某教练当前周期的待结算课时（标记 settled + 写一笔结算流水）。幂等。
+function settleCoach(coachOpenid, period) {
+  if (cloudReady()) return callCloud('settleCoach', { coachOpenid, period });
+  const range = _periodRange(period);
+  const { storeIds } = _shopScope();
+  const all = mock.readArray(KEY_COACH_LESSONS);
+  const targets = all.filter((l) => l.coachOpenid === coachOpenid && !l.settled && storeIds.indexOf(l.hallId) !== -1 && _inPeriod(l.date, range));
+  if (!targets.length) return Promise.resolve({ ok: false, msg: '无待结算课时' });
+  const gross = targets.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const commission = billing.calcCoachCommission(gross);
+  const net = _r2(gross - commission);
+  const c = mock.readArray(mock.KEY_ALL_COACHES).find((x) => x.openid === coachOpenid) || {};
+  const settlementId = `stl_${Date.now()}`;
+  const now = Date.now();
+  const settlements = mock.readArray(mock.KEY_COACH_SETTLEMENTS);
+  settlements.push({ _id: settlementId, shopOpenid: mock.MOCK_OPENID, coachOpenid, coachNickname: c.nickname || '教练',
+    lessonCount: targets.length, grossAmount: gross, commission, netAmount: net, periodFrom: range.fromKey, periodTo: range.toKey, createdAt: now });
+  mock.writeArray(mock.KEY_COACH_SETTLEMENTS, settlements);
+  const ids = {}; targets.forEach((t) => { ids[t._id] = true; });
+  all.forEach((l) => { if (ids[l._id]) { l.settled = true; l.settledAt = now; l.settlementId = settlementId; } });
+  mock.writeArray(KEY_COACH_LESSONS, all);
+  return Promise.resolve({ ok: true, netAmount: net, lessonCount: targets.length });
 }
 
 // ============ 球员列表（按 openid 查昵称/头像，供 hall-status 渲染） ============
@@ -1654,6 +1750,9 @@ module.exports = {
   getMyCheckinStatus,
   recordVerifiedTraining,
   getCoachLessons,
+  getShopCoachSettlement,
+  getCoachSettlementDetail,
+  settleCoach,
   genStoreCheckinCode,
   getMatchPosts,
   createMatchPost,
