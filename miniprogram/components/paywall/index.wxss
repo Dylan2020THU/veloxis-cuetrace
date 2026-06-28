@@ -40,11 +40,34 @@
 
 /* 顶部 banner */
 .pw-hero {
+  position: relative;
   margin: 0 -32rpx 24rpx;
   padding: 48rpx 32rpx 56rpx;
   background: linear-gradient(135deg, #067EF9 0%, #4DA3FF 100%);
   color: #ffffff;
   text-align: center;
+}
+/* 左上角返回（关闭付费墙、退回上一层） */
+.pw-back {
+  position: absolute;
+  left: 16rpx;
+  top: 20rpx;
+  display: flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 20rpx 0 12rpx;
+  font-size: 28rpx;
+  color: #ffffff;
+  z-index: 2;
+}
+.pw-back__ic {
+  font-size: 42rpx;
+  line-height: 1;
+  margin-right: 4rpx;
+  font-weight: 600;
+}
+.pw-back:active {
+  opacity: 0.7;
 }
 .pw-hero__title {
   font-size: 40rpx;

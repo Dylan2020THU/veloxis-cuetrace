@@ -23,6 +23,9 @@ module.exports = {
   <view class="pw-sheet">
     <!-- 顶部：渐变 banner -->
     <view class="pw-hero">
+      <view class="pw-back" bindtap="onClose">
+        <text class="pw-back__ic">‹</text>返回
+      </view>
       <view class="pw-hero__title">开通会员 解锁更多</view>
       <view class="pw-hero__sub">专业记录 · 智能分析 · 经营提效</view>
       <!-- 试期内显示剩余天数 -->
@@ -116,6 +119,6 @@ module.exports = {
         立即开通 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
     </view>
-    <view class="pw-skip" bindtap="onClose">暂不开通 继续使用免费版</view>
+    <view class="pw-skip" bindtap="onClose">返回，继续使用免费版</view>
   </view>
 </view>
