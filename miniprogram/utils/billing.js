@@ -87,7 +87,8 @@ const FEATURE_TO_PLAN = {
   'shop.report': 'shop_basic',       // 经营报表导出（标准版起，含）
   'shop.marketing': 'shop_basic',    // 营销工具
   'shop.multiStore': 'shop_pro',     // 多门店 / 连锁
-  'shop.coachStats': 'shop_pro'      // 教练学员深度分析
+  'shop.coachStats': 'shop_pro',     // 教练学员深度分析
+  'shop.coachSettle': 'shop_basic'   // 教练结算（标准版起）
 };
 
 // 读取全局状态：firstLoginAt / plan / planExpiresAt 由 app.js / data.js 维护
@@ -223,7 +224,8 @@ function getFeatureLabel(feature) {
     'shop.memberMgmt': '会员管理',
     'shop.coachStats': '教练学员分析',
     'shop.multiStore': '多门店与连锁',
-    'shop.marketing': '营销工具'
+    'shop.marketing': '营销工具',
+    'shop.coachSettle': '教练结算'
   };
   return map[feature] || feature;
 }

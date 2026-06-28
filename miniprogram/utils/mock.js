@@ -26,6 +26,7 @@ const KEY_BOOKINGS = 'dc_bookings';
 const KEY_JOINS = 'dc_match_joins';
 const KEY_BILLING = 'dc_billing';
 const KEY_COACH_LESSONS = 'dc_coach_lessons'; // 教练课时（教练身份计时）：热力图金色来源（与 data.js 同名 key）
+const KEY_COACH_SETTLEMENTS = 'dc_coach_settlements'; // 教练结算流水（店主结算教练）
 
 const MOCK_OPENID = 'local-demo-user';
 
@@ -627,6 +628,41 @@ function generateCoachLessons(coachOpenid) {
   return lessons;
 }
 
+// 给本店教练 coach_01..10 在各自门店补种课时（带 amount = 时长 × 单价），供「教练结算」演示。
+// 确定性生成，约 30% 天有课；settled 默认 false。
+function generateShopCoachLessons() {
+  const lessons = [];
+  const end = today();
+  let seq = 0;
+  COACHES.forEach((c, ci) => {
+    const students = MEMBERS.filter((m) => (m.hallIds || []).indexOf(c.hallId) !== -1);
+    for (let i = 0; i < 60; i++) {
+      if (pseudoRandom(i + ci * 97 + 313) > 0.3) continue; // ~30% 天有课
+      const dateKey = toKey(addDays(end, -i));
+      const dur = 60 + Math.floor(pseudoRandom(i + ci * 31 + 700) * 60); // 60~120 分
+      const member = students.length ? students[(i + ci) % students.length] : MEMBERS[(i + ci) % MEMBERS.length];
+      const price = c.pricePerMinute || 4;
+      lessons.push({
+        _id: `mock_l_shop_${c.openid}_${seq++}`,
+        coachOpenid: c.openid,
+        coachNickname: c.nickname,
+        memberOpenid: member.openid,
+        memberNickname: member.nickname,
+        hallId: c.hallId,
+        hallName: c.hallName,
+        date: dateKey,
+        startTime: '15:00',
+        durationMinutes: dur,
+        amount: dur * price,
+        verified: true,
+        settled: false,
+        createdAt: Date.now()
+      });
+    }
+  });
+  return lessons;
+}
+
 // 演示阶段确定性派生「教练-学员」关系
 function coachStudents(coachOpenid) {
   const members = MEMBERS;
@@ -656,6 +692,12 @@ function ensureSeeded() {
       if (!hasCoachOwn) {
         writeArray(KEY_COACH_LESSONS, existingLessons.concat(generateCoachLessons(MOCK_OPENID)));
         console.log('[ensureSeeded] wrote coach lessons for MOCK_OPENID');
+      }
+      // 补本店教练课时（教练结算演示），缺失才补
+      const lessonsNow = wx.getStorageSync(KEY_COACH_LESSONS) || [];
+      if (!lessonsNow.some((l) => /^coach_/.test(l.coachOpenid || ''))) {
+        writeArray(KEY_COACH_LESSONS, lessonsNow.concat(generateShopCoachLessons()));
+        console.log('[ensureSeeded] backfilled shop coach lessons');
       }
       // 核心集合自愈：标记已播种但某集合为空（老数据 / 异常 / 部分清缓存）时回补演示数据。
       // 只在「为空」时补，绝不覆盖店主已添加的门店/品牌等；不改 dc_role。
@@ -724,8 +766,8 @@ function ensureSeeded() {
   // 为当前登录用户生成一年模拟训练记录
   allSessions = allSessions.concat(generateUserSessions(MOCK_OPENID));
   writeArray(KEY_SESSIONS, allSessions);
-  // 当前用户作为「教练身份」的演示课时（热力图金色来源）
-  writeArray(KEY_COACH_LESSONS, generateCoachLessons(MOCK_OPENID));
+  // 当前用户作为「教练身份」的演示课时（热力图金色来源）+ 本店教练课时（教练结算）
+  writeArray(KEY_COACH_LESSONS, generateCoachLessons(MOCK_OPENID).concat(generateShopCoachLessons()));
 
   // 默认身份 member；但若已存在身份（如清缓存仅保留 dc_role）则保留，避免店主被降级
   if (!wx.getStorageSync(KEY_ROLE)) writeObject(KEY_ROLE, 'member');
@@ -808,6 +850,7 @@ module.exports = {
   KEY_JOINS,
   KEY_BILLING,
   KEY_COACH_LESSONS,
+  KEY_COACH_SETTLEMENTS,
   HALLS,
   BRANDS,
   STORES,
@@ -819,6 +862,7 @@ module.exports = {
   writeObject,
   coachStudents,
   generateCoachLessons,
+  generateShopCoachLessons,
   avatarFor,
   getRole,
   setRole,
