@@ -31,7 +31,7 @@ const SHOP_TOOLS = [
   { label: '球桌定价', icon: icon('yuan'), act: 'tables', dot: false },
   { label: '营销推广', icon: icon('speaker'), act: 'soon', dot: true },
   { label: '评价管理', icon: icon('star'), act: 'soon', dot: true },
-  { label: '店铺信息', icon: icon('store'), act: 'soon', dot: false },
+  { label: '店铺信息', icon: icon('store'), act: 'shopInfo', dot: false },
   { label: '门店管理', icon: icon('pin'), act: 'stores', dot: false }
 ];
 
@@ -252,6 +252,9 @@ Page({
         break;
       case 'stores':
         wx.navigateTo({ url: '/pages/shop/brand-add/index' });
+        break;
+      case 'shopInfo':
+        wx.navigateTo({ url: '/pages/shop/profile/edit/index' });
         break;
       case 'coachSettle':
         billing.requirePlan({ feature: 'shop.coachSettle', title: '教练结算' }).then((ok) => {
