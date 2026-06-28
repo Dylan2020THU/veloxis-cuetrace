@@ -1,0 +1,9 @@
+{
+  "name": "getCoachSettlementDetail",
+  "version": "1.0.0",
+  "description": "大川激流 - 店主端单个教练结算明细（按周期）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
