@@ -43,7 +43,12 @@ exports.main = async (event) => {
   const memSet = {}, memTodaySet = {};
   if (storeIds.length) {
     const sess = await fetchAll('training_sessions', { hallId: _.in(storeIds), date: dateRange });
-    sess.forEach((s) => { if (!inR(s.date)) return; memSet[s._openid] = 1; if (s.date === todayKey) memTodaySet[s._openid] = 1; });
+    sess.forEach((s) => {
+      if (!inR(s.date)) return;
+      // 只数会员：排除店主自己与本店教练在店内的训练记录
+      if (s._openid === OPENID || coachOpenids.indexOf(s._openid) !== -1) return;
+      memSet[s._openid] = 1; if (s.date === todayKey) memTodaySet[s._openid] = 1;
+    });
   }
 
   // 教练课时（本店教练 ∩ 本店门店）
