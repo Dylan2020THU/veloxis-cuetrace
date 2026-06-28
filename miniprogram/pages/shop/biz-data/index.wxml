@@ -1,0 +1,38 @@
+<view class="page theme-{{theme}}">
+  <view class="card snap">
+    <view class="snap-title">今日</view>
+    <view class="metrics">
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{today.revenue}}</view><view class="m-lbl">营收</view></view>
+      <view class="metric"><view class="m-num">{{today.opens}}</view><view class="m-lbl">开台</view></view>
+      <view class="metric"><view class="m-num">{{today.activeMembers}}</view><view class="m-lbl">活跃会员</view></view>
+      <view class="metric"><view class="m-num">{{today.lessons}}</view><view class="m-lbl">课时</view></view>
+    </view>
+  </view>
+
+  <view class="seg">
+    <view class="seg-item {{rangeDays===item.key?'on':''}}" wx:for="{{ranges}}" wx:key="key" data-key="{{item.key}}" bindtap="onRange">{{item.label}}</view>
+  </view>
+
+  <view class="card">
+    <view class="metrics">
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{range.revenue}}</view><view class="m-lbl">营收合计</view></view>
+      <view class="metric"><view class="m-num">{{range.opens}}</view><view class="m-lbl">开台数</view></view>
+      <view class="metric"><view class="m-num">{{range.activeMembers}}</view><view class="m-lbl">活跃会员</view></view>
+      <view class="metric"><view class="m-num">{{range.lessons}}</view><view class="m-lbl">教练课时</view></view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="chart-head">
+      <text class="chart-title">营收趋势</text>
+      <text class="chart-tip">{{tip || '点柱看当天营收'}}</text>
+    </view>
+    <view wx:if="{{loading}}" class="loading">加载中…</view>
+    <view wx:elif="{{range.revenue===0}}" class="empty muted">暂无营收数据</view>
+    <view wx:else class="chart">
+      <view class="bar-wrap" wx:for="{{bars}}" wx:key="date" data-i="{{index}}" bindtap="onBar">
+        <view class="bar" style="height:{{item.h}}%"></view>
+      </view>
+    </view>
+  </view>
+</view>

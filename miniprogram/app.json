@@ -26,6 +26,7 @@
     "pages/shop/checkin-qr/index",
     "pages/shop/table-types/index",
     "pages/shop/coach-settlement/index",
+    "pages/shop/biz-data/index",
     "pages/shop/profile/index",
     "pages/shop/profile/edit/index",
     "pages/player/profile/index",

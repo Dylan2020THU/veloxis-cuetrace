@@ -25,7 +25,7 @@ function icon(name) {
 
 // 经营工具：act 为路由动作（'soon' = 二期占位，点了 toast）；dot = 右上角"新功能"小点
 const SHOP_TOOLS = [
-  { label: '经营数据', icon: icon('chart'), act: 'soon', dot: false },
+  { label: '经营数据', icon: icon('chart'), act: 'bizData', dot: false },
   { label: '会员运营', icon: icon('users'), act: 'members', dot: false },
   { label: '教练结算', icon: icon('wallet'), act: 'coachSettle', dot: false },
   { label: '球桌定价', icon: icon('yuan'), act: 'tables', dot: false },
@@ -256,6 +256,9 @@ Page({
       case 'shopInfo':
         wx.navigateTo({ url: '/pages/shop/profile/edit/index' });
         break;
+      case 'bizData':
+        this.goBizData();
+        break;
       case 'coachSettle':
         billing.requirePlan({ feature: 'shop.coachSettle', title: '教练结算' }).then((ok) => {
           if (!ok) return;
@@ -265,6 +268,14 @@ Page({
       default:
         this.comingSoon();
     }
+  },
+
+  // 经营数据看板（挂订阅墙：标准版起）
+  goBizData() {
+    billing.requirePlan({ feature: 'shop.report', title: '经营数据' }).then((ok) => {
+      if (!ok) return;
+      wx.navigateTo({ url: '/pages/shop/biz-data/index' });
+    });
   },
 
   comingSoon() {

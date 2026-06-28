@@ -19,7 +19,7 @@
     <view class="card shop-hero">
       <view class="card-head">
         <text class="card-title">经营数据</text>
-        <text class="card-more" bindtap="comingSoon">今日 ›</text>
+        <text class="card-more" bindtap="goBizData">今日 ›</text>
       </view>
       <view class="metrics">
         <view class="metric">
