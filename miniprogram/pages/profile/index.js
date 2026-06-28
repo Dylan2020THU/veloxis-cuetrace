@@ -27,7 +27,7 @@ function icon(name) {
 const SHOP_TOOLS = [
   { label: '经营数据', icon: icon('chart'), act: 'soon', dot: false },
   { label: '会员运营', icon: icon('users'), act: 'members', dot: false },
-  { label: '教练结算', icon: icon('wallet'), act: 'soon', dot: false },
+  { label: '教练结算', icon: icon('wallet'), act: 'coachSettle', dot: false },
   { label: '球桌定价', icon: icon('yuan'), act: 'tables', dot: false },
   { label: '营销推广', icon: icon('speaker'), act: 'soon', dot: true },
   { label: '评价管理', icon: icon('star'), act: 'soon', dot: true },
@@ -252,6 +252,12 @@ Page({
         break;
       case 'stores':
         wx.navigateTo({ url: '/pages/shop/brand-add/index' });
+        break;
+      case 'coachSettle':
+        billing.requirePlan({ feature: 'shop.coachSettle', title: '教练结算' }).then((ok) => {
+          if (!ok) return;
+          wx.navigateTo({ url: '/pages/shop/coach-settlement/index' });
+        });
         break;
       default:
         this.comingSoon();
