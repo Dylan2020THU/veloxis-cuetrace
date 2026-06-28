@@ -772,6 +772,55 @@ function settleCoach(coachOpenid, period) {
   return Promise.resolve({ ok: true, netAmount: net, lessonCount: targets.length });
 }
 
+// ============ 经营数据看板（今日快照 + 近 rangeDays 天关键数 + 营收按天趋势） ============
+
+function _emptyBiz(days) {
+  const dates = []; const base = new Date(); base.setHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) { const d = new Date(base.getTime()); d.setDate(base.getDate() - i); dates.push(_fmtKey(d)); }
+  return { today: { revenue: 0, opens: 0, activeMembers: 0, lessons: 0 }, range: { revenue: 0, opens: 0, activeMembers: 0, lessons: 0 }, trend: dates.map((d) => ({ date: d, revenue: 0 })) };
+}
+
+function getShopBizOverview(rangeDays) {
+  const days = rangeDays === 30 ? 30 : 7;
+  if (cloudReady()) return callCloud('getShopBizOverview', { rangeDays: days }).then((r) => r || _emptyBiz(days));
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  const todayKey = _fmtKey(base);
+  const dates = [];
+  for (let i = days - 1; i >= 0; i--) { const d = new Date(base.getTime()); d.setDate(base.getDate() - i); dates.push(_fmtKey(d)); }
+  const fromKey = dates[0];
+  const inR = (dk) => dk >= fromKey && dk <= todayKey;
+  const { coachOpenids, storeIds } = _shopScope();
+  const memberOpenids = mock.readArray(mock.KEY_MEMBERS).map((m) => m.openid);
+
+  const byDay = {};
+  let revenue = 0, opens = 0, todayRevenue = 0, todayOpens = 0;
+  mock.readArray('dc_shop_orders').forEach((o) => {
+    if (!inR(o.date)) return;
+    const a = Number(o.amount) || 0;
+    revenue += a; opens += 1; byDay[o.date] = (byDay[o.date] || 0) + a;
+    if (o.date === todayKey) { todayRevenue += a; todayOpens += 1; }
+  });
+  const trend = dates.map((d) => ({ date: d, revenue: Math.round(byDay[d] || 0) }));
+
+  const memSet = {}, memTodaySet = {};
+  mock.readArray(mock.KEY_SESSIONS).forEach((s) => {
+    if (!inR(s.date) || storeIds.indexOf(s.hallId) === -1 || memberOpenids.indexOf(s._openid) === -1) return;
+    memSet[s._openid] = 1; if (s.date === todayKey) memTodaySet[s._openid] = 1;
+  });
+
+  let lessons = 0, todayLessons = 0;
+  mock.readArray(KEY_COACH_LESSONS).forEach((l) => {
+    if (!inR(l.date) || coachOpenids.indexOf(l.coachOpenid) === -1 || storeIds.indexOf(l.hallId) === -1) return;
+    lessons += 1; if (l.date === todayKey) todayLessons += 1;
+  });
+
+  return Promise.resolve({
+    today: { revenue: Math.round(todayRevenue), opens: todayOpens, activeMembers: Object.keys(memTodaySet).length, lessons: todayLessons },
+    range: { revenue: Math.round(revenue), opens, activeMembers: Object.keys(memSet).length, lessons },
+    trend
+  });
+}
+
 // ============ 球员列表（按 openid 查昵称/头像，供 hall-status 渲染） ============
 
 function getMembers() {
@@ -1753,6 +1802,7 @@ module.exports = {
   getShopCoachSettlement,
   getCoachSettlementDetail,
   settleCoach,
+  getShopBizOverview,
   genStoreCheckinCode,
   getMatchPosts,
   createMatchPost,

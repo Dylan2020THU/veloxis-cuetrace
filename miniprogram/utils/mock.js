@@ -663,6 +663,33 @@ function generateShopCoachLessons() {
   return lessons;
 }
 
+// 给本店门店补种近 35 天结账订单（dc_shop_orders），供经营数据看板营收/开台/趋势演示
+function generateShopOrders() {
+  const orders = [];
+  const end = today();
+  const stores = STORES;
+  for (let i = 0; i < 35; i++) {
+    const dateKey = toKey(addDays(end, -i));
+    const cnt = Math.floor(pseudoRandom(i + 555) * 8); // 0~7 笔/天
+    for (let k = 0; k < cnt; k++) {
+      const s = stores[(i + k) % stores.length];
+      const tt = (s.tableTypes && s.tableTypes[(i + k) % s.tableTypes.length]) || { name: '球桌', pricePerHour: 60 };
+      const hours = 1 + Math.floor(pseudoRandom(i * 7 + k + 900) * 3); // 1~3 小时
+      orders.push({
+        _owner: MOCK_OPENID,
+        amount: (tt.pricePerHour || 60) * hours,
+        storeId: s._id,
+        tableId: `t_${((i + k) % 8) + 1}`,
+        tableName: tt.name,
+        durationMin: hours * 60,
+        date: dateKey,
+        createdAt: Date.now() - i * 86400000
+      });
+    }
+  }
+  return orders;
+}
+
 // 演示阶段确定性派生「教练-学员」关系
 function coachStudents(coachOpenid) {
   const members = MEMBERS;
@@ -698,6 +725,11 @@ function ensureSeeded() {
       if (!lessonsNow.some((l) => /^coach_/.test(l.coachOpenid || ''))) {
         writeArray(KEY_COACH_LESSONS, lessonsNow.concat(generateShopCoachLessons()));
         console.log('[ensureSeeded] backfilled shop coach lessons');
+      }
+      // 补演示订单（经营数据看板），缺失才补
+      if (!(wx.getStorageSync('dc_shop_orders') || []).length) {
+        writeArray('dc_shop_orders', generateShopOrders());
+        console.log('[ensureSeeded] backfilled shop orders');
       }
       // 核心集合自愈：标记已播种但某集合为空（老数据 / 异常 / 部分清缓存）时回补演示数据。
       // 只在「为空」时补，绝不覆盖店主已添加的门店/品牌等；不改 dc_role。
@@ -768,6 +800,8 @@ function ensureSeeded() {
   writeArray(KEY_SESSIONS, allSessions);
   // 当前用户作为「教练身份」的演示课时（热力图金色来源）+ 本店教练课时（教练结算）
   writeArray(KEY_COACH_LESSONS, generateCoachLessons(MOCK_OPENID).concat(generateShopCoachLessons()));
+  // 演示订单（经营数据看板营收/开台/趋势）
+  writeArray('dc_shop_orders', generateShopOrders());
 
   // 默认身份 member；但若已存在身份（如清缓存仅保留 dc_role）则保留，避免店主被降级
   if (!wx.getStorageSync(KEY_ROLE)) writeObject(KEY_ROLE, 'member');
@@ -863,6 +897,7 @@ module.exports = {
   coachStudents,
   generateCoachLessons,
   generateShopCoachLessons,
+  generateShopOrders,
   avatarFor,
   getRole,
   setRole,
