@@ -403,6 +403,86 @@ function saveShopProfile({ name, hallId, hallName, tableTypes, brandId, storeId 
   return Promise.resolve({ ok: true });
 }
 
+// ============ 店主资质审核（营业执照） ============
+
+// 提交 / 重新提交店主资质申请（营业执照 + 关键字段）。状态置为 pending。
+function submitShopApplication({ ownerPhone, ownerWechat, ownerQQ, ownerEmail, licenseFileID }) {
+  if (cloudReady()) {
+    return callCloud('submitShopApplication', { ownerPhone, ownerWechat, ownerQQ, ownerEmail, licenseFileID });
+  }
+  const owner = mock.MOCK_OPENID;
+  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS);
+  const now = Date.now();
+  const idx = list.findIndex((a) => a._openid === owner);
+  const record = {
+    _id: idx !== -1 ? list[idx]._id : 'app_' + now,
+    _openid: owner,
+    ownerPhone: ownerPhone || '',
+    ownerWechat: ownerWechat || '',
+    ownerQQ: ownerQQ || '',
+    ownerEmail: ownerEmail || '',
+    licenseFileID: licenseFileID || '',
+    status: 'pending',
+    reason: '',
+    createdAt: idx !== -1 ? list[idx].createdAt : now,
+    updatedAt: now
+  };
+  if (idx !== -1) list[idx] = record;
+  else list.push(record);
+  mock.writeArray(mock.KEY_SHOP_APPLICATIONS, list);
+  return Promise.resolve({ ok: true, status: 'pending', _id: record._id });
+}
+
+// 查询当前用户店主资质状态：'none' | 'pending' | 'approved' | 'rejected'
+// 老店主豁免：已有店铺资料(KEY_SHOP) 但无申请记录 → 视为 approved。
+function getShopApplicationStatus() {
+  if (cloudReady()) {
+    return callCloud('getShopApplicationStatus', {}).then((r) => r || { status: 'none', application: null });
+  }
+  const owner = mock.MOCK_OPENID;
+  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS);
+  const app = list.find((a) => a._openid === owner);
+  if (app) return Promise.resolve({ status: app.status || 'pending', application: app });
+  const shop = mock.readObject(mock.KEY_SHOP, null);
+  if (shop && shop._openid === owner) return Promise.resolve({ status: 'approved', application: null, legacy: true });
+  return Promise.resolve({ status: 'none', application: null });
+}
+
+// 管理员：拉取资质申请列表。status: 'pending'(默认) | 'approved' | 'rejected' | 'all'
+function getPendingShopApplications(status = 'pending') {
+  if (cloudReady()) {
+    return callCloud('getPendingShopApplications', { status }).then((r) => {
+      // 服务端白名单拒绝时抛出 FORBIDDEN，供页面区分「无权限」与「空队列」
+      if (r && r.ok === false && r.code === 'FORBIDDEN') {
+        const e = new Error('FORBIDDEN');
+        e.code = 'FORBIDDEN';
+        throw e;
+      }
+      return (r && r.applications) || [];
+    });
+  }
+  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS).slice();
+  const filtered = status === 'all' ? list : list.filter((a) => (a.status || 'pending') === status);
+  return Promise.resolve(filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+}
+
+// 管理员：审核（approve=true 通过 / false 驳回；驳回写 reason）
+function reviewShopApplication({ applicationId, approve, reason }) {
+  if (cloudReady()) {
+    return callCloud('reviewShopApplication', { applicationId, approve, reason });
+  }
+  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS);
+  const idx = list.findIndex((a) => a._id === applicationId);
+  if (idx === -1) return Promise.resolve({ ok: false, msg: '申请不存在' });
+  list[idx] = Object.assign({}, list[idx], {
+    status: approve ? 'approved' : 'rejected',
+    reason: approve ? '' : (reason || '资料未通过核验'),
+    reviewedAt: Date.now()
+  });
+  mock.writeArray(mock.KEY_SHOP_APPLICATIONS, list);
+  return Promise.resolve({ ok: true, status: approve ? 'approved' : 'rejected' });
+}
+
 // ============ 品牌管理 ============
 
 // 获取全系统品牌（系统级，所有人可见）
@@ -1763,6 +1843,10 @@ module.exports = {
   linkMember,
   getShopProfile,
   saveShopProfile,
+  submitShopApplication,
+  getShopApplicationStatus,
+  getPendingShopApplications,
+  reviewShopApplication,
   getBrands,
   saveShopBrand,
   getShopBrands,

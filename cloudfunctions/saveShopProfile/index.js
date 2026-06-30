@@ -22,6 +22,26 @@ exports.main = async (event) => {
 
   const shops = db.collection('shops');
   const existing = await shops.where({ _openid: OPENID }).get();
+
+  // 资质门控：无既有店铺记录者，必须持有"已通过"的营业执照资质申请方可创建店铺，
+  // 防止未审核用户直接调用本云函数自助建店 / 自升店主、绕过营业执照审核。
+  // 已有店铺记录的存量/已建店主可继续更新（豁免）。shops 集合的唯一写入口即此处。
+  if (!existing.data.length) {
+    let approved = false;
+    try {
+      const appRes = await db
+        .collection('shop_applications')
+        .where({ _openid: OPENID, status: 'approved' })
+        .get();
+      approved = appRes.data.length > 0;
+    } catch (e) {
+      // shop_applications 集合不存在 → 视为未通过
+    }
+    if (!approved) {
+      return { ok: false, code: 'NOT_APPROVED', msg: '店主资质未通过审核，无法创建店铺' };
+    }
+  }
+
   if (existing.data.length) {
     await shops.doc(existing.data[0]._id).update({ data: profile });
   } else {

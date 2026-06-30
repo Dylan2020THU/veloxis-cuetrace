@@ -1,0 +1,9 @@
+{
+  "name": "submitShopApplication",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 店主提交营业执照资质申请",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

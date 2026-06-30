@@ -50,9 +50,20 @@ Page({
   },
 
   onLoad() {
+    this.syncCloudReady();
+    // probeCloud 是异步的，onLoad 时可能尚未完成；补一次延迟同步以纠正按钮文案
+    this._cloudTimer = setTimeout(() => this.syncCloudReady(), 1500);
+  },
+
+  onShow() {
+    this.syncCloudReady();
+  },
+
+  // 以 globalData 的实时云端就绪态为准，避免探测未完成时误判为"未连云"而退回演示表单
+  syncCloudReady() {
     const app = getApp();
     const cloudReady = !!(app && app.globalData && app.globalData.cloudReady);
-    this.setData({ cloudReady });
+    if (cloudReady !== this.data.cloudReady) this.setData({ cloudReady });
   },
 
   goHome(role) {
@@ -72,6 +83,8 @@ Page({
 
   // 第一步 → 第二步（云端模式直接微信登录，跳过演示账号表单）
   goNext() {
+    // 以实时云端就绪态为准（onLoad 快照可能因探测未完成而偏旧，导致误退回演示表单）
+    this.syncCloudReady();
     if (this.data.cloudReady) {
       this.doLogin(this.data.role);
       return;
@@ -80,6 +93,11 @@ Page({
   },
 
   doLogin(role) {
+    // 店主需先通过营业执照资质审核，单独走带状态网关的登录流程
+    if (role === 'shop') {
+      this.doShopLogin();
+      return;
+    }
     wx.showLoading({ title: '登录中', mask: true });
     data
       .login(role)
@@ -88,6 +106,30 @@ Page({
       .then(() => {
         wx.hideLoading();
         this.goHome(role);
+      })
+      .catch(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+      });
+  },
+
+  // 店主登录网关：登录后查资质状态。approved → 进店主端；其余（未申请/待审核/已驳回）→ 资质核验页。
+  doShopLogin() {
+    wx.showLoading({ title: '登录中', mask: true });
+    data
+      .login('shop')
+      .then(() => data.getUserProfile())
+      .then(() => data.getShopApplicationStatus())
+      .then((res) => {
+        const status = (res && res.status) || 'none';
+        if (status === 'approved') {
+          return data.markFirstLogin('shop').then(() => {
+            wx.hideLoading();
+            this.goHome('shop');
+          });
+        }
+        wx.hideLoading();
+        wx.reLaunch({ url: '/pages/shop/apply/index' });
       })
       .catch(() => {
         wx.hideLoading();
@@ -207,6 +249,10 @@ Page({
     if (this._timer) {
       clearInterval(this._timer);
       this._timer = null;
+    }
+    if (this._cloudTimer) {
+      clearTimeout(this._cloudTimer);
+      this._cloudTimer = null;
     }
   }
 });

@@ -16,6 +16,7 @@ const KEY_SHOP = 'dc_shop';
 const KEY_SHOP_STORES = 'dc_shop_stores';
 const KEY_SHOP_COACHES = 'dc_shop_coaches';
 const KEY_SHOP_MEMBERS = 'dc_shop_members'; // 店主手动添加（扫码/编码）的会员关系（按门店）
+const KEY_SHOP_APPLICATIONS = 'dc_shop_applications'; // 店主资质申请（营业执照审核）：每个 openid 一条
 const KEY_ALL_COACHES = 'dc_all_coaches';
 const KEY_POSTS = 'dc_posts';
 const KEY_POST_LIKES = 'dc_post_likes';
@@ -874,6 +875,7 @@ module.exports = {
   KEY_SHOP_STORES,
   KEY_SHOP_COACHES,
   KEY_SHOP_MEMBERS,
+  KEY_SHOP_APPLICATIONS,
   KEY_ALL_COACHES,
   KEY_POSTS,
   KEY_POST_LIKES,

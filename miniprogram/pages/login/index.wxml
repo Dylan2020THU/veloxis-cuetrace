@@ -29,6 +29,8 @@
       </view>
 
       <button class="btn-primary next-btn" bindtap="goNext">{{ cloudReady ? ('微信登录 · ' + roleLabel) : ('确认 · ' + roleLabel) }}</button>
+
+      <view wx:if="{{role==='shop'}}" class="shop-tip">店主注册需核验「营业执照」等信息，提交后经平台审核通过方可使用</view>
     </block>
 
     <!-- 第二步：账号登录 -->

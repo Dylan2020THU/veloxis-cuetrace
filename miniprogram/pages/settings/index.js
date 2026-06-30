@@ -1,5 +1,6 @@
 const data = require('../../services/data');
 const mock = require('../../utils/mock');
+const { isAdmin } = require('../../utils/admin');
 
 const THEME_LABEL = { light: '白天模式', dark: '夜间模式', system: '跟随系统' };
 // 账户区入口文案：店主端按「球厅」口吻，其余沿用「个人 / 我的」
@@ -22,7 +23,9 @@ Page({
     // 账户区入口文案（按角色：店主→球厅口吻）
     profileLabel: '个人主页',
     editLabel: '编辑我的信息',
-    qrLabel: '我的二维码'
+    qrLabel: '我的二维码',
+    // 系统管理员：显示「店主资质审核」入口
+    isAdmin: false
   },
 
   onShow() {
@@ -36,7 +39,8 @@ Page({
       themeModeLabel: THEME_LABEL[mode] || '跟随系统',
       profileLabel: labels.profile,
       editLabel: labels.edit,
-      qrLabel: labels.qr
+      qrLabel: labels.qr,
+      isAdmin: isAdmin((app.globalData && app.globalData.openid) || '')
     });
     this.refreshCacheSize();
   },
@@ -62,6 +66,11 @@ Page({
   // 我的二维码（账号编码的二维码版，供不同端互扫识别）
   goMyQrcode() {
     wx.navigateTo({ url: '/pages/profile/qrcode/index' });
+  },
+
+  // 系统管理员：进入店主资质审核
+  goShopReview() {
+    wx.navigateTo({ url: '/pages/shop/admin/review/index' });
   },
 
   // ---------- 通用 ----------

@@ -11,6 +11,10 @@
 const { getPlanList, getPlanOptions, getPlanPrice, getPlanEntryPrice, getFeatureLabel, trialRemainingMs, planLevel } = require('../../utils/billing');
 const { upgradePlan, createVirtualPayOrder, createPayOrder, getUserBilling } = require('../../services/data');
 
+// ⚠️【临时·仅沙箱测试】强制走虚拟支付分支，方便在安卓真机测虚拟支付（正常逻辑是安卓→微信支付）。
+// 虚拟支付沙箱测试结束后，务必改回 false（或删掉本行与下方使用处），恢复按平台分流。
+const FORCE_VIRTUAL_PAY_FOR_TEST = true;
+
 // 场景判定：first 首次 / renew 续费同档 / upgrade 升级 / downgrade 降档(已含) / expired 已到期
 function sceneFor(key, ownedPlan, ownedPlanExpired) {
   if (!ownedPlan) return 'first';
@@ -224,7 +228,7 @@ Component({
       }
       // 按设备分流：iOS → 虚拟支付(苹果 IAP)；安卓/其它 → 基础支付(微信支付 cloudPay)；
       // devtools/mock（cloudReady 为假，下单返回 {mock:true}）→ 演示发货，保证可点测。
-      if (this._platform() === 'ios') {
+      if (FORCE_VIRTUAL_PAY_FOR_TEST || this._platform() === 'ios') {
         this._payViaVirtual(planKey, period);
       } else {
         this._payViaWxpay(planKey, period);

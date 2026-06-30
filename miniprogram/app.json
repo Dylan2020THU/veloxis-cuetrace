@@ -29,6 +29,8 @@
     "pages/shop/biz-data/index",
     "pages/shop/profile/index",
     "pages/shop/profile/edit/index",
+    "pages/shop/apply/index",
+    "pages/shop/admin/review/index",
     "pages/player/profile/index",
     "pages/player/profile/edit/index",
     "pages/profile/qrcode/index",

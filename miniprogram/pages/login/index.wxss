@@ -128,6 +128,15 @@
   border-radius: 36rpx 0 36rpx 0;
 }
 
+/* 店主身份：登录按钮下方的资质核验提示 */
+.shop-tip {
+  margin: 24rpx 16rpx 0;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #e54545;
+  text-align: center;
+}
+
 /* 第二步：顶部返回 + 当前身份 */
 .step2-head {
   display: flex;

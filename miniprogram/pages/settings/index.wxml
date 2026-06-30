@@ -15,6 +15,14 @@
     </view>
   </view>
 
+  <!-- 系统管理员：店主资质审核 -->
+  <view wx:if="{{isAdmin}}" class="card">
+    <view class="entry" bindtap="goShopReview">
+      <text class="entry-title">店主资质审核</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
   <!-- 通用 -->
   <view class="card">
     <view class="entry" bindtap="switchTheme">
