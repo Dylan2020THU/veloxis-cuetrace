@@ -75,13 +75,55 @@ function getUserProfile() {
   return Promise.resolve(user);
 }
 
-function saveUserProfile({ nickname, avatar, gender, birthDate, phone, locationCity, hometown, years, level }) {
+function saveUserProfile({
+  nickname,
+  avatar,
+  gender,
+  birthDate,
+  phone,
+  locationCity,
+  hometown,
+  years,
+  level,
+  canSeeGender,
+  canSeeBirthDate,
+  canSeeHometown,
+  canSeePhone
+}) {
   if (cloudReady()) {
-    return callCloud('saveUserProfile', { nickname, avatar, gender, birthDate, phone, locationCity, hometown, years, level });
+    return callCloud('saveUserProfile', {
+      nickname,
+      avatar,
+      gender,
+      birthDate,
+      phone,
+      locationCity,
+      hometown,
+      years,
+      level,
+      canSeeGender,
+      canSeeBirthDate,
+      canSeeHometown,
+      canSeePhone
+    });
   }
   const key = 'dc_user_profile';
   const existing = mock.readObject(key, null) || {};
-  const updated = Object.assign({}, existing, { nickname, avatar, gender, birthDate, phone, locationCity, hometown, years, level });
+  const updated = Object.assign({}, existing, {
+    nickname,
+    avatar,
+    gender,
+    birthDate,
+    phone,
+    locationCity,
+    hometown,
+    years,
+    level,
+    canSeeGender,
+    canSeeBirthDate,
+    canSeeHometown,
+    canSeePhone
+  });
   mock.writeObject(key, updated);
   if (getApp().globalData) {
     getApp().globalData.userProfile = updated;

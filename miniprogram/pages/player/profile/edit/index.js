@@ -254,7 +254,8 @@ Page({
       level: levels[levelIndex],
       canSeeGender: this.data.canSeeGender,
       canSeeBirthDate: this.data.canSeeBirthDate,
-      canSeeHometown: this.data.canSeeHometown
+      canSeeHometown: this.data.canSeeHometown,
+      canSeePhone: this.data.canSeePhone
     };
     data.saveUserProfile(payload).then((r) => {
       if (r && r.ok === false) {

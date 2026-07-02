@@ -14,9 +14,22 @@ exports.main = async () => {
     const res = await users.where({ _openid: OPENID }).get();
     if (res.data.length) {
       const u = res.data[0];
-      user.role = u.role || 'member';
-      user.nickname = u.nickname || '';
-      user.avatar = u.avatar || '';
+      user = Object.assign(user, {
+        role: u.role || 'member',
+        nickname: u.nickname || '',
+        avatar: u.avatar || '',
+        gender: u.gender || '',
+        birthDate: u.birthDate || '',
+        phone: u.phone || '',
+        locationCity: u.locationCity || '',
+        hometown: Array.isArray(u.hometown) ? u.hometown : [],
+        years: u.years || '',
+        level: u.level || '',
+        canSeeGender: u.canSeeGender !== undefined ? !!u.canSeeGender : true,
+        canSeeBirthDate: u.canSeeBirthDate !== undefined ? !!u.canSeeBirthDate : true,
+        canSeeHometown: u.canSeeHometown !== undefined ? !!u.canSeeHometown : true,
+        canSeePhone: u.canSeePhone !== undefined ? !!u.canSeePhone : false
+      });
     } else {
       return { user: null };
     }
