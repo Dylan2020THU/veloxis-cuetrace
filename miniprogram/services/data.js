@@ -5,6 +5,7 @@
 const mock = require('../utils/mock');
 const { levelFromMinutes } = require('../utils/color');
 const billing = require('../utils/billing');
+const adminAuth = require('../utils/adminAuth');
 
 function cloudReady() {
   // onLaunch 期间 getApp() 可能尚未就绪，访问 .globalData 会抛 TypeError。
@@ -111,10 +112,12 @@ function getHeatmap({ startKey, endKey, targetOpenid }) {
     .filter((s) => s._openid === ownerOpenid && s.date >= startKey && s.date <= endKey);
   const map = {};
   sessions.forEach((s) => {
-    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0 };
+    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0, verifiedCount: 0, unverifiedCount: 0 };
     map[s.date].totalMinutes += s.durationMinutes || 0;
     map[s.date].personalMinutes += s.durationMinutes || 0;
     map[s.date].sessionCount += 1;
+    if (s.verified) map[s.date].verifiedCount += 1;
+    else map[s.date].unverifiedCount += 1;
   });
 
   // 教练查看自己的杆迹时：叠加「以教练身份计时」的课时（金色），与自主练球/客场打球（蓝色）并存。
@@ -124,16 +127,18 @@ function getHeatmap({ startKey, endKey, targetOpenid }) {
     mock.readArray(KEY_COACH_LESSONS)
       .filter((l) => l.coachOpenid === ownerOpenid && l.date >= startKey && l.date <= endKey)
       .forEach((l) => {
-        if (!map[l.date]) map[l.date] = { date: l.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0 };
+        if (!map[l.date]) map[l.date] = { date: l.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0, verifiedCount: 0, unverifiedCount: 0 };
         map[l.date].totalMinutes += l.durationMinutes || 0;
         map[l.date].coachMinutes += l.durationMinutes || 0;
         map[l.date].sessionCount += 1;
+        map[l.date].verifiedCount += 1;
       });
   }
 
   const stats = Object.keys(map).map((k) => {
     const item = map[k];
     item.level = levelFromMinutes(item.totalMinutes);
+    item.hasVerified = item.verifiedCount > 0;
     if (asCoachOwn) item.kind = item.coachMinutes > 0 ? 'coach' : 'personal';
     return item;
   });
@@ -187,6 +192,7 @@ function addTraining({ hallId, hallName, date, startTime, durationMinutes }) {
     date,
     startTime,
     durationMinutes,
+    verified: false,
     createdAt: Date.now()
   });
   mock.writeArray(mock.KEY_SESSIONS, sessions);
@@ -446,6 +452,22 @@ function getShopApplicationStatus() {
   const shop = mock.readObject(mock.KEY_SHOP, null);
   if (shop && shop._openid === owner) return Promise.resolve({ status: 'approved', application: null, legacy: true });
   return Promise.resolve({ status: 'none', application: null });
+}
+
+function getAdminStatus() {
+  if (cloudReady()) {
+    return callCloud('getAdminStatus', {}).then((r) => r || { ok: true, isAdmin: false });
+  }
+  const app = getApp();
+  const openid = (app && app.globalData && app.globalData.openid) || mock.MOCK_OPENID;
+  const admins = mock.readArray(mock.KEY_ADMINS);
+  const bootstrapOpenids = [mock.MOCK_OPENID].concat(adminAuth.BOOTSTRAP_ADMIN_OPENIDS);
+  const isAdmin = adminAuth.canAdmin(openid, admins, bootstrapOpenids);
+  return Promise.resolve({
+    ok: true,
+    isAdmin,
+    bootstrap: adminAuth.shouldBootstrapAdmin(openid, admins, bootstrapOpenids)
+  });
 }
 
 // 管理员：拉取资质申请列表。status: 'pending'(默认) | 'approved' | 'rejected' | 'all'
@@ -1066,12 +1088,14 @@ function getFeed({ page = 0, pageSize = 20, tab = 'discover', region = '' } = {}
     );
   }
   let posts = mock.readArray(mock.KEY_POSTS).slice();
+  const currentOpenid = (getApp().globalData && getApp().globalData.openid) || mock.MOCK_OPENID;
   if (tab === 'follow') {
     const follows = mock.readArray(mock.KEY_FOLLOWS);
-    posts = posts.filter((p) => follows.indexOf(p._openid) !== -1);
+    posts = posts.filter((p) => isFollowing(follows, currentOpenid, p._openid));
   } else if (tab === 'region') {
     posts = posts.filter((p) => p.region === region);
   }
+  posts = posts.filter((p) => canViewPost(p, currentOpenid, region));
   posts.sort((a, b) => b.createdAt - a.createdAt);
   return Promise.resolve(posts.slice(page * pageSize, (page + 1) * pageSize));
 }
@@ -1082,7 +1106,13 @@ function getFollows() {
   if (cloudReady()) {
     return callCloud('getFollows', {}).then((r) => (r && r.follows) || []);
   }
-  return Promise.resolve(mock.readArray(mock.KEY_FOLLOWS));
+  const currentOpenid = (getApp().globalData && getApp().globalData.openid) || mock.MOCK_OPENID;
+  return Promise.resolve(
+    mock.readArray(mock.KEY_FOLLOWS)
+      .filter((item) => isFollowFrom(item, currentOpenid))
+      .map((item) => followTarget(item))
+      .filter(Boolean)
+  );
 }
 
 function toggleFollow(authorOpenid) {
@@ -1090,13 +1120,14 @@ function toggleFollow(authorOpenid) {
     return callCloud('toggleFollow', { authorOpenid });
   }
   const follows = mock.readArray(mock.KEY_FOLLOWS);
-  const idx = follows.indexOf(authorOpenid);
+  const currentOpenid = (getApp().globalData && getApp().globalData.openid) || mock.MOCK_OPENID;
+  const idx = follows.findIndex((item) => isFollowRelation(item, currentOpenid, authorOpenid));
   let following;
   if (idx !== -1) {
     follows.splice(idx, 1);
     following = false;
   } else {
-    follows.push(authorOpenid);
+    follows.push({ _openid: currentOpenid, authorOpenid, createdAt: Date.now() });
     following = true;
   }
   mock.writeArray(mock.KEY_FOLLOWS, follows);
@@ -1171,6 +1202,55 @@ function distanceKm(lat1, lng1, lat2, lng2) {
   const a = sinLat * sinLat + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinLng * sinLng;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c * 10) / 10;
+}
+
+function resolveCityFromLocation(lat, lng) {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return '';
+  return nearestCity(lat, lng);
+}
+
+function followSource(item) {
+  if (typeof item === 'string') return mock.MOCK_OPENID;
+  return item && item._openid;
+}
+
+function followTarget(item) {
+  if (typeof item === 'string') return item;
+  return item && item.authorOpenid;
+}
+
+function isFollowFrom(item, openid) {
+  return followSource(item) === openid;
+}
+
+function isFollowRelation(item, fromOpenid, toOpenid) {
+  return followSource(item) === fromOpenid && followTarget(item) === toOpenid;
+}
+
+function isFollowing(follows, fromOpenid, toOpenid) {
+  return follows.some((item) => isFollowRelation(item, fromOpenid, toOpenid));
+}
+
+function isMutualFollow(follows, openidA, openidB) {
+  return isFollowing(follows, openidA, openidB) && isFollowing(follows, openidB, openidA);
+}
+
+function normalizeVisibility(visibility) {
+  return ['public', 'region', 'mutual', 'private'].indexOf(visibility) !== -1 ? visibility : 'public';
+}
+
+function canViewPost(post, currentOpenid, region) {
+  const visibility = normalizeVisibility(post && post.visibility);
+  if (!post) return false;
+  if (post._openid === currentOpenid) return true;
+  if (visibility === 'private') return false;
+  if (visibility === 'region') {
+    return !!(region && post.region === region);
+  }
+  if (visibility === 'mutual') {
+    return isMutualFollow(mock.readArray(mock.KEY_FOLLOWS), currentOpenid, post._openid);
+  }
+  return true;
 }
 
 // 按门店 region 找城市中心坐标兜底
@@ -1489,11 +1569,15 @@ function createBooking({ type, targetId, targetName, hallName, datetime, note, p
   return Promise.resolve({ ok: true, id });
 }
 
-function getPostDetail(postId) {
+function getPostDetail(postId, opts = {}) {
   if (cloudReady()) {
-    return callCloud('getPostDetail', { postId }).then((r) => r || { post: null });
+    return callCloud('getPostDetail', { postId, region: opts.region || '' }).then((r) => r || { post: null });
   }
   const post = mock.readArray(mock.KEY_POSTS).find((p) => p._id === postId) || null;
+  const currentOpenid = (getApp().globalData && getApp().globalData.openid) || mock.MOCK_OPENID;
+  if (post && !canViewPost(post, currentOpenid, opts.region || '')) {
+    return Promise.resolve({ post: null, liked: false, comments: [], following: false });
+  }
   const liked = mock
     .readArray(mock.KEY_POST_LIKES)
     .some((l) => l.postId === postId && l._openid === mock.MOCK_OPENID);
@@ -1502,12 +1586,12 @@ function getPostDetail(postId) {
     .filter((c) => c.postId === postId)
     .sort((a, b) => a.createdAt - b.createdAt);
   const following = post
-    ? mock.readArray(mock.KEY_FOLLOWS).indexOf(post._openid) !== -1
+    ? isFollowing(mock.readArray(mock.KEY_FOLLOWS), currentOpenid, post._openid)
     : false;
   return Promise.resolve({ post, liked, comments, following });
 }
 
-function createPost({ type, title, content, images, video, cover }) {
+function createPost({ type, title, content, images, video, cover, topics, location, region, visibility }) {
   const info = getCurrentUserInfo();
   if (cloudReady()) {
     return callCloud('createPost', {
@@ -1517,6 +1601,10 @@ function createPost({ type, title, content, images, video, cover }) {
       images,
       video,
       cover,
+      topics,
+      location,
+      region,
+      visibility,
       authorName: info.authorName,
       authorAvatar: info.authorAvatar
     });
@@ -1534,6 +1622,10 @@ function createPost({ type, title, content, images, video, cover }) {
     images: images || [],
     video: video || '',
     cover: cover || (images && images[0]) || '',
+    topics: Array.isArray(topics) ? topics : [],
+    location: location || null,
+    region: region || '',
+    visibility: normalizeVisibility(visibility),
     likeCount: 0,
     commentCount: 0,
     createdAt: Date.now()
@@ -1845,6 +1937,7 @@ module.exports = {
   saveShopProfile,
   submitShopApplication,
   getShopApplicationStatus,
+  getAdminStatus,
   getPendingShopApplications,
   reviewShopApplication,
   getBrands,
@@ -1874,6 +1967,7 @@ module.exports = {
   getFollows,
   toggleFollow,
   resolveCity,
+  resolveCityFromLocation,
   getUserLatLng,
   distanceKm,
   getStoreById,
