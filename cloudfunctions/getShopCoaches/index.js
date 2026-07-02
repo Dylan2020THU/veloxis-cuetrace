@@ -26,8 +26,20 @@ exports.main = async () => {
     map[c._openid] = c;
   });
 
-  const coaches = coachOpenids.map((openid) =>
-    Object.assign({ openid }, map[openid] || { nickname: '教练' })
+  const coaches = linkRes.data.map((link) =>
+    Object.assign(
+      {
+        openid: link.coachOpenid,
+        hallId: link.storeId || '',
+        hallName: link.storeName || '',
+        linkId: link._id
+      },
+      map[link.coachOpenid] || { nickname: '教练' },
+      {
+        hallId: link.storeId || (map[link.coachOpenid] && map[link.coachOpenid].hallId) || '',
+        hallName: link.storeName || (map[link.coachOpenid] && map[link.coachOpenid].hallName) || ''
+      }
+    )
   );
 
   return { coaches };

@@ -4,23 +4,22 @@
     <view class="mode {{mode === 'video' ? 'active' : ''}}" data-mode="video" bindtap="switchMode">视频</view>
   </view>
 
-  <view class="card">
-    <input class="title-input" placeholder="填写标题会更受欢迎哦" value="{{title}}" bindinput="onTitleInput" maxlength="30" />
-    <textarea class="content-input" placeholder="分享你的训练心得、技巧、打卡..." value="{{content}}" bindinput="onContentInput" maxlength="500" />
-
-    <!-- 图文模式 -->
-    <view wx:if="{{mode === 'image'}}" class="media-grid">
-      <view class="media-item" wx:for="{{images}}" wx:key="*this">
-        <image class="media-img" src="{{item}}" mode="aspectFill"></image>
-        <view class="media-del" data-index="{{index}}" catchtap="removeImage">×</view>
-      </view>
-      <view wx:if="{{images.length < 9}}" class="media-add" bindtap="chooseImages">
-        <text class="add-plus">+</text>
-        <text class="add-text">添加图片</text>
-      </view>
+  <view class="post-editor">
+    <view wx:if="{{mode === 'image'}}" class="media-strip">
+      <scroll-view class="media-scroll" scroll-x="true" enable-flex="true">
+        <view class="media-row">
+          <view class="media-item" wx:for="{{images}}" wx:key="*this">
+            <image class="media-img" src="{{item}}" mode="aspectFill"></image>
+            <view class="media-del" data-index="{{index}}" catchtap="removeImage">×</view>
+          </view>
+          <view wx:if="{{images.length < 9}}" class="media-add" bindtap="chooseImages">
+            <text class="add-plus">+</text>
+            <text class="add-text">添加图片</text>
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
-    <!-- 视频模式 -->
     <view wx:else class="video-area">
       <view wx:if="{{video}}" class="video-item">
         <video class="video-preview" src="{{video}}" poster="{{videoCover}}"></video>
@@ -31,11 +30,82 @@
         <text class="add-text">添加视频</text>
       </view>
     </view>
+
+    <input class="title-input" placeholder="添加标题" value="{{title}}" bindinput="onTitleInput" maxlength="30" />
+    <textarea class="content-input" placeholder="添加正文，分享训练心得、技巧、打卡..." value="{{content}}" bindinput="onContentInput" maxlength="500" />
+
+    <scroll-view class="suggest-scroll" scroll-x="true" enable-flex="true">
+      <view class="suggest-row">
+        <view
+          class="suggest-chip"
+          wx:for="{{suggestedTopics}}"
+          wx:key="*this"
+          data-topic="{{item}}"
+          bindtap="addSuggestedTopic"
+        >#{{item}}</view>
+      </view>
+    </scroll-view>
+
+    <view class="tool-row">
+      <view class="tool-chip" bindtap="openTopicInput">
+        <text class="tool-icon">#</text>
+        <text>话题</text>
+      </view>
+    </view>
+
+    <view wx:if="{{topics.length}}" class="selected-topics">
+      <view class="topic-chip" wx:for="{{topics}}" wx:key="*this">
+        <text>#{{item}}</text>
+        <text class="topic-remove" data-index="{{index}}" catchtap="removeTopic">×</text>
+      </view>
+    </view>
+
+    <view class="option-list">
+      <view class="option-row" bindtap="chooseLocation">
+        <view class="option-icon">⌖</view>
+        <view class="option-main">
+          <view class="option-title">{{location ? location.name : '标记地点'}}</view>
+          <view class="option-desc">{{location ? location.address : '让附近球友看到你的训练现场'}}</view>
+        </view>
+        <view wx:if="{{location}}" class="option-clear" catchtap="clearLocation">×</view>
+        <view wx:else class="option-arrow">›</view>
+      </view>
+
+      <view class="option-row" bindtap="chooseVisibility">
+        <view class="option-icon">◎</view>
+        <view class="option-main">
+          <view class="option-title">{{visibilityLabel}}</view>
+          <view class="option-desc">{{visibilityDesc}}</view>
+        </view>
+        <view class="option-arrow">›</view>
+      </view>
+    </view>
   </view>
 
   <view class="submit-bar">
     <button class="btn-primary submit-btn" disabled="{{submitting}}" bindtap="submit">
-      {{ submitting ? '发布中...' : '发布' }}
+      {{ submitting ? '发布中...' : '发布动态' }}
     </button>
+  </view>
+
+  <view wx:if="{{visibilitySheetVisible}}" class="sheet-mask" catchtap="closeVisibilitySheet">
+    <view class="visibility-sheet" catchtap="noop">
+      <view class="sheet-handle"></view>
+      <view
+        class="visibility-item"
+        wx:for="{{visibilityOptions}}"
+        wx:key="key"
+        data-key="{{item.key}}"
+        bindtap="selectVisibility"
+      >
+        <view class="visibility-icon">{{item.icon}}</view>
+        <view class="visibility-main">
+          <view class="visibility-title">{{item.label}}</view>
+          <view class="visibility-desc">{{item.desc}}</view>
+        </view>
+        <view wx:if="{{visibility === item.key}}" class="visibility-check">✓</view>
+        <view wx:else class="visibility-arrow">›</view>
+      </view>
+    </view>
   </view>
 </view>

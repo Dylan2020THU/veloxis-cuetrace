@@ -1,5 +1,4 @@
 const data = require('../../../../services/data');
-const { isAdmin } = require('../../../../utils/admin');
 
 const TABS = [
   { key: 'pending', label: '待审核' },
@@ -19,13 +18,20 @@ Page({
   },
 
   onLoad() {
-    const app = getApp();
-    const openid = (app && app.globalData && app.globalData.openid) || '';
-    if (!isAdmin(openid)) {
-      this.setData({ authorized: false, loading: false });
-      return;
-    }
-    this.load();
+    this.checkAdmin();
+  },
+
+  checkAdmin() {
+    data
+      .getAdminStatus()
+      .then((r) => {
+        if (!(r && r.isAdmin)) {
+          this.setData({ authorized: false, loading: false });
+          return;
+        }
+        this.setData({ authorized: true }, () => this.load());
+      })
+      .catch(() => this.setData({ authorized: false, loading: false }));
   },
 
   switchTab(e) {

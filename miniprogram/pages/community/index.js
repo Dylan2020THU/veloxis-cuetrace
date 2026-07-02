@@ -96,7 +96,7 @@ Page({
 
   openDetail(e) {
     const id = e.currentTarget.dataset.id;
-    wx.navigateTo({ url: `/pages/community/detail?id=${id}` });
+    wx.navigateTo({ url: `/pages/community/detail?id=${id}&region=${encodeURIComponent(this.data.city || '')}` });
   },
 
   goPost() {

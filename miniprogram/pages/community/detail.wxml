@@ -36,6 +36,13 @@
 
     <view wx:if="{{post.title}}" class="title">{{post.title}}</view>
     <view class="content">{{post.content}}</view>
+    <view wx:if="{{post.topics && post.topics.length}}" class="topic-row">
+      <view class="topic-chip" wx:for="{{post.topics}}" wx:key="*this">#{{item}}</view>
+    </view>
+    <view wx:if="{{post.location && post.location.name}}" class="location-row">
+      <text class="location-icon">⌖</text>
+      <text>{{post.location.name}}</text>
+    </view>
   </view>
 
   <!-- 评论区 -->

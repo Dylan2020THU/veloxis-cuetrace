@@ -161,7 +161,6 @@
     <!-- 教练工作台 -->
     <view wx:if="{{isCoach}}" class="card">
       <view class="card-title">教练工作台</view>
-      <view class="entry" bindtap="goCoachProfile"><text class="entry-title">我的教练资料</text><text class="arrow">›</text></view>
       <view class="entry" bindtap="goCoachMembers"><text class="entry-title">我的学员</text><text class="arrow">›</text></view>
       <view class="entry" bindtap="goCoachBookings"><text class="entry-title">谁约了我</text><text class="arrow">›</text></view>
     </view>

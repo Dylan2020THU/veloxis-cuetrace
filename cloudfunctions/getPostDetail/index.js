@@ -3,14 +3,38 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
+async function canViewPost(post, currentOpenid, region) {
+  const visibility = (post && post.visibility) || 'public';
+  if (!post) return false;
+  if (post._openid === currentOpenid) return true;
+  if (visibility === 'private') return false;
+  if (visibility === 'region') return !!(region && post.region === region);
+  if (visibility === 'mutual') {
+    const followRes = await db
+      .collection('user_follows')
+      .where({ _openid: currentOpenid, authorOpenid: post._openid })
+      .get();
+    if (!followRes.data.length) return false;
+    const reverseRes = await db
+      .collection('user_follows')
+      .where({ _openid: post._openid, authorOpenid: currentOpenid })
+      .get();
+    return reverseRes.data.length > 0;
+  }
+  return true;
+}
+
 // 帖子详情：返回帖子、当前用户是否点赞、评论列表
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
-  const { postId } = event;
+  const { postId, region = '' } = event;
   if (!postId) return { post: null };
 
   const postRes = await db.collection('posts').doc(postId).get();
   const post = postRes.data;
+  if (!(await canViewPost(post, OPENID, region))) {
+    return { post: null, liked: false, comments: [], following: false };
+  }
 
   const likeRes = await db
     .collection('post_likes')

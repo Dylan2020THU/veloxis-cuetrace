@@ -982,7 +982,16 @@ function getShopCoaches() {
   const links = mock.readArray(mock.KEY_SHOP_COACHES);
   const linkedOpenids = links.map((l) => l.coachOpenid);
   const allCoaches = mock.readArray(mock.KEY_ALL_COACHES);
-  const filtered = allCoaches.filter((c) => linkedOpenids.indexOf(c.openid) !== -1);
+  const filtered = allCoaches
+    .filter((c) => linkedOpenids.indexOf(c.openid) !== -1)
+    .map((c) => {
+      const link = links.find((l) => l.coachOpenid === c.openid) || {};
+      return Object.assign({}, c, {
+        hallId: link.storeId || c.hallId || '',
+        hallName: link.storeName || c.hallName || '',
+        linkId: link._id || ''
+      });
+    });
   console.log('[getShopCoaches] links:', links.length, 'openids:', linkedOpenids, 'coaches:', filtered.length);
   return Promise.resolve(filtered);
 }
@@ -1001,17 +1010,118 @@ function getLinkableCoaches() {
   );
 }
 
-function addShopCoach(coachOpenid) {
+function addShopCoach(coachOpenid, store) {
   if (cloudReady()) {
-    return callCloud('addShopCoach', { coachOpenid });
+    return callCloud('addShopCoach', { coachOpenid, storeId: store && store.storeId, storeName: store && store.storeName });
   }
   const links = mock.readArray(mock.KEY_SHOP_COACHES);
   if (links.some((l) => l.coachOpenid === coachOpenid)) {
     return Promise.resolve({ ok: true, msg: '已添加' });
   }
-  links.push({ shopOpenid: mock.MOCK_OPENID, coachOpenid, status: 'active', createdAt: Date.now() });
+  links.push({
+    _id: 'mock_scl_' + Date.now(),
+    shopOpenid: mock.MOCK_OPENID,
+    coachOpenid,
+    storeId: (store && store.storeId) || '',
+    storeName: (store && store.storeName) || '',
+    status: 'active',
+    source: 'shop_add',
+    createdAt: Date.now()
+  });
   mock.writeArray(mock.KEY_SHOP_COACHES, links);
   return Promise.resolve({ ok: true });
+}
+
+function applyCoachShopBinding({ storeId, coachNickname, coachAvatar }) {
+  if (cloudReady()) {
+    return callCloud('applyCoachShopBinding', { storeId, coachNickname, coachAvatar });
+  }
+  if (!storeId) return Promise.resolve({ ok: false, msg: '请选择球厅' });
+  const store = mock.readArray(mock.KEY_STORES).find((s) => s._id === storeId);
+  if (!store) return Promise.resolve({ ok: false, msg: '球厅不存在' });
+  const apps = mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS);
+  const now = Date.now();
+  const idx = apps.findIndex((a) => a.coachOpenid === mock.MOCK_OPENID && a.storeId === storeId);
+  const record = {
+    _id: idx !== -1 ? apps[idx]._id : 'mock_csa_' + now,
+    _openid: mock.MOCK_OPENID,
+    coachOpenid: mock.MOCK_OPENID,
+    coachNickname: coachNickname || '',
+    coachAvatar: coachAvatar || '',
+    shopOpenid: store._openid || mock.MOCK_OPENID,
+    storeId,
+    storeName: store.name || '',
+    status: 'pending',
+    reason: '',
+    createdAt: idx !== -1 ? apps[idx].createdAt : now,
+    updatedAt: now
+  };
+  if (idx !== -1) apps[idx] = record;
+  else apps.push(record);
+  mock.writeArray(mock.KEY_COACH_SHOP_APPLICATIONS, apps);
+  return Promise.resolve({ ok: true, id: record._id, status: 'pending' });
+}
+
+function getMyCoachShopBindingStatus() {
+  if (cloudReady()) {
+    return callCloud('getMyCoachShopBindingStatus', {}).then((r) => r || { ok: true, status: 'none' });
+  }
+  const link = mock.readArray(mock.KEY_SHOP_COACHES).find((l) => l.coachOpenid === mock.MOCK_OPENID && l.status === 'active');
+  if (link) return Promise.resolve({ ok: true, status: 'approved', link, application: null });
+  const apps = mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS)
+    .filter((a) => a.coachOpenid === mock.MOCK_OPENID)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const application = apps[0] || null;
+  return Promise.resolve({ ok: true, status: application ? application.status : 'none', link: null, application });
+}
+
+function getCoachBindingApplications(status = 'pending') {
+  if (cloudReady()) {
+    return callCloud('getCoachBindingApplications', { status }).then((r) => (r && r.applications) || []);
+  }
+  const list = mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS)
+    .filter((a) => a.shopOpenid === mock.MOCK_OPENID && (status === 'all' || a.status === status))
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return Promise.resolve(list);
+}
+
+function reviewCoachBindingApplication({ applicationId, approve, reason }) {
+  if (cloudReady()) {
+    return callCloud('reviewCoachBindingApplication', { applicationId, approve, reason });
+  }
+  const apps = mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS);
+  const idx = apps.findIndex((a) => a._id === applicationId);
+  if (idx === -1) return Promise.resolve({ ok: false, msg: '申请不存在' });
+  const app = apps[idx];
+  if (app.shopOpenid !== mock.MOCK_OPENID) return Promise.resolve({ ok: false, msg: '无权审核该申请' });
+  app.status = approve ? 'approved' : 'rejected';
+  app.reason = approve ? '' : (reason || '店家未通过绑定申请');
+  app.reviewedBy = mock.MOCK_OPENID;
+  app.reviewedAt = Date.now();
+  app.updatedAt = Date.now();
+  apps[idx] = app;
+  mock.writeArray(mock.KEY_COACH_SHOP_APPLICATIONS, apps);
+
+  if (approve) {
+    const links = mock.readArray(mock.KEY_SHOP_COACHES);
+    const linkIdx = links.findIndex((l) => l.shopOpenid === mock.MOCK_OPENID && l.coachOpenid === app.coachOpenid && l.storeId === app.storeId);
+    const link = {
+      _id: linkIdx !== -1 ? links[linkIdx]._id : 'mock_scl_' + Date.now(),
+      shopOpenid: mock.MOCK_OPENID,
+      coachOpenid: app.coachOpenid,
+      storeId: app.storeId,
+      storeName: app.storeName || '',
+      status: 'active',
+      source: 'coach_apply',
+      applicationId,
+      createdAt: linkIdx !== -1 ? links[linkIdx].createdAt : Date.now(),
+      updatedAt: Date.now()
+    };
+    if (linkIdx !== -1) links[linkIdx] = link;
+    else links.push(link);
+    mock.writeArray(mock.KEY_SHOP_COACHES, links);
+  }
+  return Promise.resolve({ ok: true, status: app.status });
 }
 
 function removeShopCoach(coachOpenid) {
@@ -1995,6 +2105,10 @@ module.exports = {
   getShopCoaches,
   getLinkableCoaches,
   addShopCoach,
+  applyCoachShopBinding,
+  getMyCoachShopBindingStatus,
+  getCoachBindingApplications,
+  reviewCoachBindingApplication,
   removeShopCoach,
   getCoachStudents,
   getShopMembers,

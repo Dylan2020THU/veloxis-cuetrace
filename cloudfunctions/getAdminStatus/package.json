@@ -1,0 +1,9 @@
+{
+  "name": "getAdminStatus",
+  "version": "1.0.0",
+  "description": "大川激流 - 查询当前用户管理员权限",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

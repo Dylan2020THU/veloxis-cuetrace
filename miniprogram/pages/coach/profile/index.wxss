@@ -73,7 +73,9 @@
   text-align: left;
   width: 100%;
   margin-top: 16rpx;
-  min-height: 80rpx;
+  height: 40rpx;
+  min-height: 40rpx;
+  line-height: 40rpx;
   font-size: 28rpx;
 }
 
@@ -98,6 +100,54 @@
   color: #067ef9;
   font-weight: 700;
   letter-spacing: 2rpx;
+}
+
+.binding-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -8rpx;
+  padding: 0 0 22rpx 160rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+  border-bottom: 1rpx solid var(--border);
+  gap: 16rpx;
+}
+
+.binding-status-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 42rpx;
+}
+
+.binding-status.status-pending {
+  color: #d97706;
+}
+
+.binding-status.status-approved {
+  color: #16a34a;
+}
+
+.binding-status.status-rejected {
+  color: #dc2626;
+}
+
+.binding-apply-btn {
+  margin: 0;
+  width: 132rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  border-radius: 22rpx;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 23rpx;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.binding-apply-btn[disabled] {
+  background: var(--bg-elev);
+  color: var(--text-weak);
 }
 
 .cert-tip {

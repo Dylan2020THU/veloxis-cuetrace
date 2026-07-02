@@ -1,4 +1,5 @@
 const data = require('../../../services/data');
+const coachBinding = require('../../../utils/coachBinding');
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
@@ -60,15 +61,25 @@ Page({
     hallList: [],
     selectedHallId: '',
     selectedHallName: '',
+    selectedHallIndex: 0,
+    approvedStoreId: '',
+    approvedStoreName: '',
+    bindingStatus: 'none',
+    bindingLabel: '未申请',
+    bindingReason: '',
+    bindingStoreId: '',
+    bindingStoreName: '',
     coachId: '',
     slotWeekday: 0,
     slotStart: '18:00',
     slotEnd: '21:00',
-    submitting: false
+    submitting: false,
+    bindingSubmitting: false
   },
 
   onLoad() {
-    this.loadHalls();
+    this.loadStores();
+    this.loadBindingStatus();
     data.getCoachProfile().then((p) => {
       if (!p) return;
       this.setData({
@@ -84,13 +95,44 @@ Page({
         selectedHallName: p.hallName || '',
         coachId: p.coachId || ''
       });
+      this.syncSelectedHallIndex();
     });
   },
 
-  loadHalls() {
-    data.getHalls().then((halls) => {
-      this.setData({ hallList: halls || [] });
+  loadStores() {
+    data.getStores().then((stores) => {
+      const app = getApp();
+      const isCloud = app && app.globalData && app.globalData.cloudReady;
+      const list = (stores || []).filter((s) => !s.isSeed && (!isCloud || s._openid));
+      this.setData({ hallList: list }, () => this.syncSelectedHallIndex());
     });
+  },
+
+  loadBindingStatus() {
+    data.getMyCoachShopBindingStatus().then((r) => {
+      const application = (r && r.application) || null;
+      const link = (r && r.link) || null;
+      const status = (r && r.status) || 'none';
+      const selectedHallId = link ? link.storeId : (application ? application.storeId : this.data.selectedHallId);
+      const selectedHallName = link ? link.storeName : (application ? application.storeName : this.data.selectedHallName);
+      const bindingStoreId = link ? link.storeId : (application ? application.storeId : '');
+      this.setData({
+        bindingStatus: status,
+        bindingLabel: coachBinding.statusLabel({ status }),
+        bindingReason: application ? (application.reason || '') : '',
+        bindingStoreId: bindingStoreId || '',
+        bindingStoreName: selectedHallName || '',
+        approvedStoreId: link ? link.storeId : this.data.approvedStoreId,
+        approvedStoreName: link ? link.storeName : this.data.approvedStoreName,
+        selectedHallId: selectedHallId || '',
+        selectedHallName: selectedHallName || ''
+      }, () => this.syncSelectedHallIndex());
+    });
+  },
+
+  syncSelectedHallIndex() {
+    const idx = this.data.hallList.findIndex((h) => h._id === this.data.selectedHallId);
+    if (idx >= 0 && idx !== this.data.selectedHallIndex) this.setData({ selectedHallIndex: idx });
   },
 
   onHallChange(e) {
@@ -213,12 +255,17 @@ Page({
         intro,
         availability: this.data.availability,
         pricePerMinute,
-        hallId: this.data.selectedHallId,
-        hallName: this.data.selectedHallName,
+        hallId: this.data.approvedStoreId,
+        hallName: this.data.approvedStoreName,
         coachId: this.data.coachId
       })
-      .then(() => {
+      .then((r) => {
+        if (r && r.ok === false) {
+          wx.showToast({ title: r.msg || '保存失败', icon: 'none' });
+          return;
+        }
         wx.showToast({ title: '已保存', icon: 'success' });
+        this.loadBindingStatus();
         setTimeout(() => wx.navigateBack(), 600);
       })
       .catch((err) => {
@@ -226,5 +273,42 @@ Page({
         wx.showToast({ title: '保存失败', icon: 'none' });
       })
       .finally(() => this.setData({ submitting: false }));
+  },
+
+  applyBinding() {
+    if (this.data.bindingSubmitting) return;
+    const { selectedHallId, approvedStoreId, bindingStatus, bindingStoreId, nickname, avatar } = this.data;
+    if (!selectedHallId) {
+      wx.showToast({ title: '请选择球厅', icon: 'none' });
+      return;
+    }
+    if (selectedHallId === approvedStoreId) {
+      wx.showToast({ title: '已绑定该球厅', icon: 'none' });
+      return;
+    }
+    if (bindingStatus === 'pending' && selectedHallId === bindingStoreId) {
+      wx.showToast({ title: '已提交申请', icon: 'none' });
+      return;
+    }
+    this.setData({ bindingSubmitting: true });
+    data
+      .applyCoachShopBinding({
+        storeId: selectedHallId,
+        coachNickname: nickname,
+        coachAvatar: avatar
+      })
+      .then((r) => {
+        if (r && r.ok === false) {
+          wx.showToast({ title: r.msg || '申请失败', icon: 'none' });
+          return;
+        }
+        wx.showToast({ title: '已提交绑定申请', icon: 'success' });
+        this.loadBindingStatus();
+      })
+      .catch((err) => {
+        console.error('申请绑定失败', err);
+        wx.showToast({ title: '申请失败', icon: 'none' });
+      })
+      .finally(() => this.setData({ bindingSubmitting: false }));
   }
 });

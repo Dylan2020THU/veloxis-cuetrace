@@ -32,6 +32,16 @@ Page({
     this.loadProfile(openid, isCoach, isCurrentUser);
   },
 
+  onShow() {
+    if (!this.data.isCurrentUser) return;
+    this.loadProfile(this.data.openid, this.data.isCoach, true);
+  },
+
+  syncProfileHeader(nickname) {
+    const title = nickname || this.data.nickname || (this.data.isCoach ? '教练信息' : '球员信息');
+    wx.setNavigationBarTitle({ title });
+  },
+
   loadProfile(openid, isCoach, isCurrentUser) {
     if (isCurrentUser) {
       if (isCoach) {
@@ -51,8 +61,9 @@ Page({
   loadCurrentCoach() {
     data.getCoachProfile().then((p) => {
       if (!p) { this.setData({ loading: false }); return; }
+      const nickname = p.nickname || this.data.nickname;
       this.setData({
-        nickname: p.nickname || this.data.nickname,
+        nickname,
         avatar: p.avatar || '',
         coachYears: p.coachYears || '',
         intro: p.intro || '',
@@ -60,12 +71,17 @@ Page({
         certificates: p.certificates || [],
         loading: false
       });
+      this.syncProfileHeader(nickname);
     });
   },
 
   loadCurrentMember() {
     data.getUserProfile().then((u) => {
-      if (u) this.setData({ nickname: u.nickname || this.data.nickname, avatar: u.avatar || '' });
+      if (u) {
+        const nickname = u.nickname || this.data.nickname;
+        this.setData({ nickname, avatar: u.avatar || '' });
+        this.syncProfileHeader(nickname);
+      }
       data.getMemberCheckins().then((stats) => {
         const summary = this._computeSummary(stats);
         this.setData({
@@ -82,8 +98,9 @@ Page({
   loadCoachProfile(openid) {
     data.getCoachProfileByOpenid(openid).then((p) => {
       if (!p) { this.setData({ loading: false }); return; }
+      const nickname = p.nickname || this.data.nickname;
       this.setData({
-        nickname: p.nickname || this.data.nickname,
+        nickname,
         avatar: p.avatar || '',
         coachYears: p.coachYears || '',
         intro: p.intro || '',
@@ -91,12 +108,17 @@ Page({
         certificates: p.certificates || [],
         loading: false
       });
+      this.syncProfileHeader(nickname);
     }).catch(() => this.setData({ loading: false }));
   },
 
   loadMemberProfile(openid) {
     data.getMemberProfileByOpenid(openid).then((m) => {
-      if (m) this.setData({ nickname: m.nickname || this.data.nickname, avatar: m.avatar || '' });
+      if (m) {
+        const nickname = m.nickname || this.data.nickname;
+        this.setData({ nickname, avatar: m.avatar || '' });
+        this.syncProfileHeader(nickname);
+      }
       data.getMemberCheckinsByOpenid(openid).then((stats) => {
         const summary = this._computeSummary(stats);
         this.setData({

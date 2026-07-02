@@ -4,7 +4,7 @@
       <image class="hero-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
       <view class="hero-name">强化杆迹</view>
       <view class="hero-slogan">没有任何一杆是白打的</view>
-      <view class="hero-sub">{{ step === 1 ? (cloudReady ? '请选择身份，使用微信一键登录' : '请选择登录身份') : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
+      <view class="hero-sub">{{ step === 1 ? '请选择身份，使用账号或手机号登录' : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
     </view>
 
     <!-- 第一步：身份选择（库边瞄准点选择器） -->
@@ -28,7 +28,7 @@
         </view>
       </view>
 
-      <button class="btn-primary next-btn" bindtap="goNext">{{ cloudReady ? ('微信登录 · ' + roleLabel) : ('确认 · ' + roleLabel) }}</button>
+      <button class="btn-primary next-btn" bindtap="goNext">登录 · {{roleLabel}}</button>
 
       <view wx:if="{{role==='shop'}}" class="shop-tip">店主注册需核验「营业执照」等信息，提交后经平台审核通过方可使用</view>
     </block>
@@ -48,12 +48,12 @@
           class="seg-item {{loginType==='password'?'active':''}}"
           data-type="password"
           bindtap="switchType"
-        >账号密码登录</view>
+        >账号登录</view>
         <view
           class="seg-item {{loginType==='sms'?'active':''}}"
           data-type="sms"
           bindtap="switchType"
-        >手机验证码登录</view>
+        >手机号登录</view>
       </view>
 
       <!-- 账号密码登录 -->
@@ -117,6 +117,22 @@
       <view class="alt-line">
         <text class="alt-text">还没有账号？</text>
         <text class="alt-link" bindtap="goRegister">注册账号</text>
+      </view>
+
+      <view class="other-login">
+        <view class="other-title">其他登录方式</view>
+        <button class="wechat-icon-btn" bindtap="wechatLogin">
+          <view class="wechat-logo" aria-hidden="true">
+            <view class="wechat-logo-bubble main">
+              <view class="wechat-dot dot-a"></view>
+              <view class="wechat-dot dot-b"></view>
+            </view>
+            <view class="wechat-logo-bubble sub">
+              <view class="wechat-dot dot-c"></view>
+              <view class="wechat-dot dot-d"></view>
+            </view>
+          </view>
+        </button>
       </view>
       </block>
 

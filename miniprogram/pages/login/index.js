@@ -81,15 +81,14 @@ Page({
     this.setData({ role, roleLabel: found ? found.label : '' });
   },
 
-  // 第一步 → 第二步（云端模式直接微信登录，跳过演示账号表单）
+  // 第一步 → 第二步：所有身份都先进入账号/手机号登录
   goNext() {
-    // 以实时云端就绪态为准（onLoad 快照可能因探测未完成而偏旧，导致误退回演示表单）
-    this.syncCloudReady();
-    if (this.data.cloudReady) {
-      this.doLogin(this.data.role);
-      return;
-    }
     this.setData({ step: 2 });
+  },
+
+  wechatLogin() {
+    this.syncCloudReady();
+    this.doLogin(this.data.role);
   },
 
   doLogin(role) {
@@ -224,22 +223,20 @@ Page({
   },
 
   submit() {
-    const { loginType, role, cloudReady } = this.data;
-    if (!cloudReady) {
-      if (loginType === 'password') {
-        if (!(this.data.account || '').trim()) {
-          return wx.showToast({ title: '请输入账号', icon: 'none' });
-        }
-        if (!this.data.password) {
-          return wx.showToast({ title: '请输入密码', icon: 'none' });
-        }
-      } else {
-        if (!PHONE_RE.test((this.data.phone || '').trim())) {
-          return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
-        }
-        if (!(this.data.code || '').trim()) {
-          return wx.showToast({ title: '请输入验证码', icon: 'none' });
-        }
+    const { loginType, role } = this.data;
+    if (loginType === 'password') {
+      if (!(this.data.account || '').trim()) {
+        return wx.showToast({ title: '请输入账号', icon: 'none' });
+      }
+      if (!this.data.password) {
+        return wx.showToast({ title: '请输入密码', icon: 'none' });
+      }
+    } else {
+      if (!PHONE_RE.test((this.data.phone || '').trim())) {
+        return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+      }
+      if (!(this.data.code || '').trim()) {
+        return wx.showToast({ title: '请输入验证码', icon: 'none' });
       }
     }
     this.doLogin(role);

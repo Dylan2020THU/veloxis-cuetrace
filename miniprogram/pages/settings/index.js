@@ -1,11 +1,10 @@
 const data = require('../../services/data');
 const mock = require('../../utils/mock');
-const { isAdmin } = require('../../utils/admin');
 
-const THEME_LABEL = { light: '白天模式', dark: '夜间模式', system: '跟随系统' };
 // 账户区入口文案：店主端按「球厅」口吻，其余沿用「个人 / 我的」
 const ACCOUNT_LABELS = {
   shop: { profile: '球厅主页', edit: '编辑球厅信息', qr: '球厅二维码' },
+  coach: { profile: '个人主页', edit: '编辑教练资料', qr: '我的二维码' },
   default: { profile: '个人主页', edit: '编辑我的信息', qr: '我的二维码' }
 };
 
@@ -15,9 +14,6 @@ Page({
   data: {
     // 个人主页跳转需要昵称
     nickname: '大川会员',
-    // 背景模式展示
-    themeMode: 'system',
-    themeModeLabel: '跟随系统',
     // 本地缓存大小
     cacheText: '',
     // 账户区入口文案（按角色：店主→球厅口吻）
@@ -31,18 +27,23 @@ Page({
   onShow() {
     const app = getApp();
     const profile = app.globalData.userProfile;
-    const mode = app.globalData.themeMode;
     const labels = ACCOUNT_LABELS[mock.getRole()] || ACCOUNT_LABELS.default;
     this.setData({
       nickname: (profile && profile.nickname) || '大川会员',
-      themeMode: mode,
-      themeModeLabel: THEME_LABEL[mode] || '跟随系统',
       profileLabel: labels.profile,
       editLabel: labels.edit,
       qrLabel: labels.qr,
-      isAdmin: isAdmin((app.globalData && app.globalData.openid) || '')
+      isAdmin: false
     });
     this.refreshCacheSize();
+    this.refreshAdminStatus();
+  },
+
+  refreshAdminStatus() {
+    data
+      .getAdminStatus()
+      .then((r) => this.setData({ isAdmin: !!(r && r.isAdmin) }))
+      .catch(() => this.setData({ isAdmin: false }));
   },
 
   // ---------- 账户 ----------
@@ -56,9 +57,13 @@ Page({
     wx.navigateTo({ url: `/pages/player/profile/index?isCurrentUser=1&nickname=${nickname}` });
   },
   goEditProfile() {
-    // 店主端走专属「编辑球厅信息」；球员/教练沿用编辑我的信息
+    // 店主端走专属「编辑球厅信息」；教练端走「编辑教练资料」；球员沿用编辑我的信息
     if (mock.getRole() === 'shop') {
       wx.navigateTo({ url: '/pages/shop/profile/edit/index' });
+      return;
+    }
+    if (mock.getRole() === 'coach') {
+      wx.navigateTo({ url: '/pages/coach/profile/index' });
       return;
     }
     wx.navigateTo({ url: '/pages/player/profile/edit/index' });
@@ -74,19 +79,6 @@ Page({
   },
 
   // ---------- 通用 ----------
-  switchTheme() {
-    const modes = ['light', 'dark', 'system'];
-    wx.showActionSheet({
-      itemList: ['白天模式', '夜间模式', '跟随系统'],
-      success: (res) => {
-        const mode = modes[res.tapIndex];
-        const app = getApp();
-        app.setThemeMode(mode);
-        this.setData({ themeMode: mode, themeModeLabel: THEME_LABEL[mode] });
-      }
-    });
-  },
-
   // 统计本地缓存大小
   refreshCacheSize() {
     try {
@@ -97,7 +89,7 @@ Page({
     }
   },
 
-  // 清理缓存：清除本地缓存，但保留登录身份与主题设置
+  // 清理缓存：清除本地缓存，但保留登录身份
   clearCache() {
     wx.showModal({
       title: '清理缓存',
@@ -105,7 +97,7 @@ Page({
       confirmText: '清理',
       success: (res) => {
         if (!res.confirm) return;
-        const keep = { dc_role: 1, dc_theme_mode: 1 };
+        const keep = { dc_role: 1 };
         try {
           const info = wx.getStorageInfoSync();
           (info.keys || []).forEach((k) => {

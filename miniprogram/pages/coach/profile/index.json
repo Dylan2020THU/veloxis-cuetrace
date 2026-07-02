@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "教练资料",
+  "navigationBarTitleText": "编辑教练资料",
   "usingComponents": {
     "paywall": "/components/paywall/index"
   }

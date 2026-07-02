@@ -41,6 +41,7 @@
               data-count="{{cell.sessionCount}}"
               data-level="{{cell.level}}"
               data-kind="{{cell.kind}}"
+              data-verified="{{cell.hasVerified}}"
               data-range="{{cell.inRange}}"
               bindtap="onCellTap"
             ></view>

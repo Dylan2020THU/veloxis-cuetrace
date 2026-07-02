@@ -5,7 +5,7 @@ const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 
 // 临时演示模式：设为 true 则用模拟数据展示完整占用态，改为 false 恢复真数据
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 
 // 单场最长时长（超过则提示"超时请结账"，仅提醒不自动扣费，防跑表误账）
 const MAX_SESSION_MS = 6 * 60 * 60 * 1000;

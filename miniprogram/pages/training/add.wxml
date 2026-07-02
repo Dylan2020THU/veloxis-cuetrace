@@ -1,13 +1,13 @@
 <view class="page theme-{{theme}}">
   <view class="card">
-    <view class="section-title">记录一次训练</view>
-    <view class="muted form-tip">填写后将自动点亮当天的打卡格子</view>
+    <view class="section-title">补记一次训练</view>
+    <view class="muted form-tip">保存后将显示为未核验训练</view>
 
     <view class="field">
       <view class="field-label">台球厅</view>
       <picker mode="selector" range="{{hallNames}}" value="{{hallIndex}}" bindchange="onHallChange">
         <view class="field-value">
-          {{ hallNames.length ? hallNames[hallIndex] : '暂无可选台球厅' }}
+          {{ hallNames.length ? hallNames[hallIndex] : '其他球厅' }}
           <text class="arrow">›</text>
         </view>
       </picker>
@@ -50,6 +50,7 @@
 
   <view class="card tips-card">
     <view class="muted">颜色深度说明</view>
+    <view class="tip-row"><view class="tip-cell manual"></view><text>未核验补记</text></view>
     <view class="tip-row"><view class="tip-cell l1"></view><text>0-3 小时</text></view>
     <view class="tip-row"><view class="tip-cell l2"></view><text>3-8 小时</text></view>
     <view class="tip-row"><view class="tip-cell l3"></view><text>8 小时以上</text></view>
@@ -57,7 +58,7 @@
 
   <view class="submit-bar">
     <button class="btn-primary submit-btn" disabled="{{submitting}}" bindtap="submit">
-      {{ submitting ? '提交中...' : '保存记录' }}
+      {{ submitting ? '提交中...' : '保存补记' }}
     </button>
   </view>
 </view>

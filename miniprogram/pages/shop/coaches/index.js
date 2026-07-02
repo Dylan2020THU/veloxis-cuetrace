@@ -18,7 +18,8 @@ Page({
     coachCode: '',
     stores: [],
     currentStoreId: '',
-    currentStoreName: ''
+    currentStoreName: '',
+    pendingApplications: []
   },
 
   onShow() {
@@ -43,8 +44,16 @@ Page({
           .filter((c) => !capturedStoreId || c.hallId === capturedStoreId)
           .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
         this.setData({ coaches: list });
+        return this.loadApplications(capturedStoreId);
       });
     });
+  },
+
+  loadApplications(storeId) {
+    return data.getCoachBindingApplications('pending').then((applications) => {
+      const list = (applications || []).filter((item) => !storeId || item.storeId === storeId);
+      this.setData({ pendingApplications: list });
+    }).catch(() => this.setData({ pendingApplications: [] }));
   },
 
   onStoreChange(e) {
@@ -58,6 +67,7 @@ Page({
         .filter((c) => c.hallId === newStoreId)
         .map((c) => Object.assign({}, c, { online: hashCode(c.openid || '') % 2 === 0 }));
       this.setData({ coaches: list });
+      this.loadApplications(newStoreId);
     });
   },
 
@@ -122,7 +132,7 @@ Page({
   },
 
   doAdd(coachOpenid) {
-    data.addShopCoach(coachOpenid).then((r) => {
+    data.addShopCoach(coachOpenid, { storeId: this.data.currentStoreId, storeName: this.data.currentStoreName }).then((r) => {
       if (r && r.ok === false) {
         wx.showToast({ title: r.msg || '添加失败', icon: 'none' });
         return;
@@ -131,6 +141,44 @@ Page({
       this.setData({ showAdd: false });
       this.load();
     });
+  },
+
+  approveApplication(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({
+      title: '通过绑定',
+      content: '确认该教练加入本店？',
+      confirmText: '通过',
+      success: (res) => {
+        if (!res.confirm) return;
+        this.reviewApplication(id, true, '');
+      }
+    });
+  },
+
+  rejectApplication(e) {
+    const id = e.currentTarget.dataset.id;
+    wx.showModal({
+      title: '驳回申请',
+      editable: true,
+      placeholderText: '填写驳回原因（教练可见）',
+      confirmText: '驳回',
+      success: (res) => {
+        if (!res.confirm) return;
+        this.reviewApplication(id, false, (res.content || '').trim() || '店家未通过绑定申请');
+      }
+    });
+  },
+
+  reviewApplication(applicationId, approve, reason) {
+    data.reviewCoachBindingApplication({ applicationId, approve, reason }).then((r) => {
+      if (r && r.ok === false) {
+        wx.showToast({ title: r.msg || '操作失败', icon: 'none' });
+        return;
+      }
+      wx.showToast({ title: approve ? '已通过' : '已驳回', icon: 'success' });
+      this.load();
+    }).catch(() => wx.showToast({ title: '操作失败', icon: 'none' }));
   },
 
   removeCoach(e) {

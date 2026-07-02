@@ -87,6 +87,10 @@
   background: rgba(6, 126, 249, 1);
 }
 
+.tip-cell.manual {
+  background: #b9c0c9;
+}
+
 .submit-bar {
   position: fixed;
   left: 0;

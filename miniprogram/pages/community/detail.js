@@ -17,6 +17,7 @@ Page({
   behaviors: [require('../../utils/themeBehavior')],
   data: {
     postId: '',
+    region: '',
     post: null,
     liked: false,
     following: false,
@@ -28,13 +29,13 @@ Page({
   },
 
   onLoad(query) {
-    this.setData({ postId: query.id });
+    this.setData({ postId: query.id, region: query.region || '' });
     this.load();
   },
 
   load() {
     this.setData({ loading: true });
-    data.getPostDetail(this.data.postId).then((res) => {
+    data.getPostDetail(this.data.postId, { region: this.data.region }).then((res) => {
       const post = res.post;
       if (post) post.timeText = timeAgo(post.createdAt);
       const comments = (res.comments || []).map((c) => ({

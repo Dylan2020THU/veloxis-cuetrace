@@ -56,7 +56,7 @@ exports.main = async (event) => {
     const res = await db
       .collection('training_sessions')
       .where({ _openid: queryOpenid, date: _.gte(startKey).and(_.lte(endKey)) })
-      .field({ date: true, durationMinutes: true })
+      .field({ date: true, durationMinutes: true, verified: true })
       .skip(skip)
       .limit(pageSize)
       .get();
@@ -67,14 +67,17 @@ exports.main = async (event) => {
 
   const map = {};
   all.forEach((s) => {
-    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0 };
+    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0, verifiedCount: 0, unverifiedCount: 0 };
     map[s.date].totalMinutes += s.durationMinutes || 0;
     map[s.date].sessionCount += 1;
+    if (s.verified) map[s.date].verifiedCount += 1;
+    else map[s.date].unverifiedCount += 1;
   });
 
   const stats = Object.keys(map).map((k) => {
     const item = map[k];
     item.level = levelFromMinutes(item.totalMinutes);
+    item.hasVerified = item.verifiedCount > 0;
     return item;
   });
 

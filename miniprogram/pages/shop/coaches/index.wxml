@@ -13,6 +13,24 @@
     <view class="add-link" bindtap="openAdd">+ 添加教练</view>
   </view>
 
+  <view wx:if="{{pendingApplications.length > 0}}" class="pending-section">
+    <view class="pending-title">待确认绑定申请 {{pendingApplications.length}}</view>
+    <view class="pending-card card" wx:for="{{pendingApplications}}" wx:key="_id">
+      <view class="pending-main">
+        <image wx:if="{{item.coachAvatar}}" class="c-avatar small" src="{{item.coachAvatar}}" mode="aspectFill"></image>
+        <view wx:else class="c-avatar small">{{item.coachNickname ? item.coachNickname[0] : '教'}}</view>
+        <view class="pending-info">
+          <view class="c-name">{{item.coachNickname || '教练'}}</view>
+          <view class="muted">申请绑定 {{item.storeName || currentStoreName}}</view>
+        </view>
+      </view>
+      <view class="pending-actions">
+        <button class="mini-btn reject" data-id="{{item._id}}" bindtap="rejectApplication">驳回</button>
+        <button class="mini-btn approve" data-id="{{item._id}}" bindtap="approveApplication">通过</button>
+      </view>
+    </view>
+  </view>
+
   <view wx:if="{{coaches.length === 0}}" class="empty card">
     <view class="empty-icon">○</view>
     <view class="muted">还没有添加教练，点击右上角添加</view>

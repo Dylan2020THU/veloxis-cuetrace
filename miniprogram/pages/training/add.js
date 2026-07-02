@@ -1,6 +1,8 @@
 const data = require('../../services/data');
 const { today, toKey } = require('../../utils/date');
 
+const MANUAL_HALL = { _id: 'manual_other', name: '其他球厅' };
+
 Page({
   behaviors: [require('../../utils/themeBehavior')],
   data: {
@@ -17,9 +19,10 @@ Page({
   onLoad() {
     this.setData({ date: toKey(today()) });
     data.getHalls().then((halls) => {
+      const list = (halls || []).concat(MANUAL_HALL);
       this.setData({
-        halls,
-        hallNames: halls.map((h) => h.name)
+        halls: list,
+        hallNames: list.map((h) => h.name)
       });
     });
   },
@@ -65,12 +68,7 @@ Page({
       wx.showToast({ title: '请填写训练时长', icon: 'none' });
       return;
     }
-    if (!halls.length) {
-      wx.showToast({ title: '暂无台球厅数据', icon: 'none' });
-      return;
-    }
-
-    const hall = halls[hallIndex];
+    const hall = halls[hallIndex] || MANUAL_HALL;
     this.setData({ submitting: true });
     data
       .addTraining({
@@ -81,7 +79,7 @@ Page({
         durationMinutes
       })
       .then(() => {
-        wx.showToast({ title: '记录成功', icon: 'success' });
+        wx.showToast({ title: '补记成功', icon: 'success' });
         setTimeout(() => {
           wx.switchTab({ url: '/pages/checkin/index' });
         }, 600);

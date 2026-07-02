@@ -312,9 +312,6 @@ Page({
   goEditProfile() {
     wx.navigateTo({ url: '/pages/player/profile/edit/index' });
   },
-  goCoachProfile() {
-    wx.navigateTo({ url: '/pages/coach/profile/index' });
-  },
   goCoachMembers() {
     wx.switchTab({ url: '/pages/coach/members/index' });
   },

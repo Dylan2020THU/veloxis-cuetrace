@@ -1,5 +1,4 @@
 const data = require('../../../services/data');
-const { isAdmin } = require('../../../utils/admin');
 
 const HOME_SHOP = '/pages/shop/hall-status/index';
 const PHONE_RE = /^1\d{10}$/;
@@ -23,10 +22,15 @@ Page({
   },
 
   onLoad() {
-    const app = getApp();
-    const openid = (app && app.globalData && app.globalData.openid) || '';
-    this.setData({ isAdmin: isAdmin(openid) });
+    this.refreshAdminStatus();
     this.refresh();
+  },
+
+  refreshAdminStatus() {
+    data
+      .getAdminStatus()
+      .then((r) => this.setData({ isAdmin: !!(r && r.isAdmin) }))
+      .catch(() => this.setData({ isAdmin: false }));
   },
 
   // 拉取权威状态：approved 直接进店主端；其余渲染对应态（驳回时回填上次资料）

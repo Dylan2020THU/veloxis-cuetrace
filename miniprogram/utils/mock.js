@@ -17,6 +17,8 @@ const KEY_SHOP_STORES = 'dc_shop_stores';
 const KEY_SHOP_COACHES = 'dc_shop_coaches';
 const KEY_SHOP_MEMBERS = 'dc_shop_members'; // 店主手动添加（扫码/编码）的会员关系（按门店）
 const KEY_SHOP_APPLICATIONS = 'dc_shop_applications'; // 店主资质申请（营业执照审核）：每个 openid 一条
+const KEY_ADMINS = 'dc_admins'; // 平台管理员权限集合（mock 对齐云数据库 admins）
+const KEY_COACH_SHOP_APPLICATIONS = 'dc_coach_shop_applications'; // 教练申请绑定球厅，待店主确认
 const KEY_ALL_COACHES = 'dc_all_coaches';
 const KEY_POSTS = 'dc_posts';
 const KEY_POST_LIKES = 'dc_post_likes';
@@ -821,7 +823,15 @@ function ensureSeeded() {
   writeArray(KEY_POSTS, generatePosts());
   writeArray(KEY_POST_LIKES, []);
   writeArray(KEY_COMMENTS, []);
-  writeArray(KEY_FOLLOWS, ['member_01', 'member_04', 'member_10', 'coach_01', 'coach_06']);
+  writeArray(KEY_FOLLOWS, [
+    { _openid: MOCK_OPENID, authorOpenid: 'member_01', createdAt: Date.now() },
+    { _openid: MOCK_OPENID, authorOpenid: 'member_04', createdAt: Date.now() },
+    { _openid: MOCK_OPENID, authorOpenid: 'member_10', createdAt: Date.now() },
+    { _openid: MOCK_OPENID, authorOpenid: 'coach_01', createdAt: Date.now() },
+    { _openid: MOCK_OPENID, authorOpenid: 'coach_06', createdAt: Date.now() },
+    { _openid: 'member_01', authorOpenid: MOCK_OPENID, createdAt: Date.now() },
+    { _openid: 'coach_01', authorOpenid: MOCK_OPENID, createdAt: Date.now() }
+  ]);
 
   writeArray(KEY_MATCHES, generateMatches());
   writeArray(KEY_BOOKINGS, generateBookings());
@@ -876,6 +886,8 @@ module.exports = {
   KEY_SHOP_COACHES,
   KEY_SHOP_MEMBERS,
   KEY_SHOP_APPLICATIONS,
+  KEY_ADMINS,
+  KEY_COACH_SHOP_APPLICATIONS,
   KEY_ALL_COACHES,
   KEY_POSTS,
   KEY_POST_LIKES,

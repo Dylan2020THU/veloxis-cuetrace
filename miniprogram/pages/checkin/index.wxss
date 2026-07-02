@@ -145,6 +145,17 @@
   vertical-align: middle;
 }
 
+.unverified-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: #646a73;
+  background: rgba(100, 106, 115, 0.12);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  vertical-align: middle;
+}
+
 /* 教练身份计时标签（金色，对应热力图金色格） */
 .coach-tag {
   display: inline-block;

@@ -16,6 +16,21 @@
         </view>
       </picker>
     </view>
+    <view wx:if="{{bindingStatus !== 'none' || selectedHallName}}" class="binding-status status-{{bindingStatus}}">
+      <view class="binding-status-text">
+        <text>{{bindingLabel}}</text>
+        <text wx:if="{{bindingStoreName}}"> · {{bindingStoreName}}</text>
+        <text wx:if="{{bindingReason}}"> · {{bindingReason}}</text>
+      </view>
+      <button
+        wx:if="{{selectedHallId && selectedHallId !== approvedStoreId}}"
+        class="binding-apply-btn"
+        disabled="{{bindingSubmitting || (bindingStatus === 'pending' && selectedHallId === bindingStoreId)}}"
+        bindtap="applyBinding"
+      >
+        {{ bindingSubmitting ? '申请中...' : ((bindingStatus === 'pending' && selectedHallId === bindingStoreId) ? '已申请' : '申请绑定') }}
+      </button>
+    </view>
     <view wx:if="{{coachId}}" class="field">
       <text class="field-label">教练ID</text>
       <text class="coach-id">{{coachId}}</text>

@@ -13,6 +13,8 @@ App({
     planExpiresAt: 0,
     per_role: {},
     cloudEnv: CLOUD_ENV,
+    themeMode: 'light',
+    theme: 'light',
     // 云端是否真正可用：由 probeCloud() 实测云函数后置位。
     // 探测成功前一律按 false 处理 → data.js 走本地 mock，保证未部署时 demo 不挂。
     cloudReady: false
@@ -22,6 +24,7 @@ App({
     this.initCloud();      // 同步初始化 SDK（不代表云函数已部署）
     this.ensureSeedData(); // 播种本地 mock 演示数据（清缓存/新装后自愈，避免店主端门店/教练/会员全为 0）
     this.bootstrap();      // 读本地登录态 / 订阅缓存
+    this.initTheme();      // 固定应用白天模式
     this.probeCloud();     // 异步探测云端，通了才切云
   },
 
@@ -90,6 +93,47 @@ App({
   restoreSubscription() {
     this.globalData.plan = wx.getStorageSync('plan') || 'free';
     this.globalData.planExpiresAt = wx.getStorageSync('planExpiresAt') || 0;
+  },
+
+  initTheme() {
+    this._themeWatchers = this._themeWatchers || [];
+    this.globalData.themeMode = 'light';
+    this.globalData.theme = 'light';
+    try {
+      wx.setStorageSync('dc_theme_mode', 'light');
+    } catch (e) {}
+  },
+
+  resolveTheme(mode) {
+    return 'light';
+  },
+
+  applyTheme(theme) {
+    this.globalData.theme = theme || 'light';
+    (this._themeWatchers || []).slice().forEach((fn) => {
+      try {
+        fn(this.globalData.theme);
+      } catch (e) {}
+    });
+  },
+
+  setThemeMode(mode) {
+    this.globalData.themeMode = 'light';
+    try {
+      wx.setStorageSync('dc_theme_mode', 'light');
+    } catch (e) {}
+    this.applyTheme('light');
+  },
+
+  watchTheme(fn) {
+    if (typeof fn !== 'function') return;
+    this._themeWatchers = this._themeWatchers || [];
+    if (this._themeWatchers.indexOf(fn) === -1) this._themeWatchers.push(fn);
+  },
+
+  unwatchTheme(fn) {
+    if (!this._themeWatchers) return;
+    this._themeWatchers = this._themeWatchers.filter((item) => item !== fn);
   },
 
   // 付费墙统一入口：组件实例由当前页面注册（避免全局多实例）

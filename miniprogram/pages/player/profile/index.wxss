@@ -32,12 +32,12 @@
 }
 
 .hero {
-  background: linear-gradient(135deg, var(--brand) 0%, color(var(--brand) tint(20%)) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(6, 126, 249, 0.06) 100%);
   padding: 48rpx 40rpx 56rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #fff;
+  color: var(--text);
 }
 
 .avatar-wrap {
@@ -59,19 +59,21 @@
   width: 160rpx;
   height: 160rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(6, 126, 249, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 64rpx;
   font-weight: 700;
-  color: #fff;
+  color: #067ef9;
 }
 
 .hero-name {
   font-size: 40rpx;
   font-weight: 700;
   margin-bottom: 12rpx;
+  color: #1f2329;
+  line-height: 1.2;
 }
 
 .hero-badge {

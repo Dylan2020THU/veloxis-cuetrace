@@ -25,13 +25,6 @@
 
   <!-- 通用 -->
   <view class="card">
-    <view class="entry" bindtap="switchTheme">
-      <text class="entry-title">背景模式</text>
-      <view class="entry-right">
-        <text class="entry-val">{{themeModeLabel}}</text>
-        <text class="arrow">›</text>
-      </view>
-    </view>
     <view class="entry" bindtap="clearCache">
       <text class="entry-title">清理缓存</text>
       <view class="entry-right">

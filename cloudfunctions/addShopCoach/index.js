@@ -6,7 +6,7 @@ const db = cloud.database();
 // 店家将一名教练纳入本店管理
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
-  const { coachOpenid } = event;
+  const { coachOpenid, storeId, storeName } = event;
 
   if (!coachOpenid) return { ok: false, msg: '缺少 coachOpenid' };
 
@@ -14,7 +14,7 @@ exports.main = async (event) => {
   const existing = await links.where({ shopOpenid: OPENID, coachOpenid }).get();
   if (existing.data.length) {
     if (existing.data[0].status !== 'active') {
-      await links.doc(existing.data[0]._id).update({ data: { status: 'active' } });
+      await links.doc(existing.data[0]._id).update({ data: { status: 'active', storeId: storeId || existing.data[0].storeId || '', storeName: storeName || existing.data[0].storeName || '', source: 'shop_add', updatedAt: db.serverDate() } });
     }
     return { ok: true, msg: '已添加' };
   }
@@ -23,7 +23,10 @@ exports.main = async (event) => {
     data: {
       shopOpenid: OPENID,
       coachOpenid,
+      storeId: storeId || '',
+      storeName: storeName || '',
       status: 'active',
+      source: 'shop_add',
       createdAt: db.serverDate()
     }
   });

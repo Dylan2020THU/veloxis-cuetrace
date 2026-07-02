@@ -1,11 +1,11 @@
 const { buildGrid, today } = require('../../utils/date');
-const { colorOfLevel, levelFromMinutes, formatDuration, LEVEL_COLORS, rampFor } = require('../../utils/color');
+const { colorOfTrainingDay, levelFromMinutes, formatDuration, LEVEL_COLORS, rampFor } = require('../../utils/color');
 
 const STRIDE = 30; // 每个格子占位宽度(rpx)：cell 24 + margin 3*2
 
 Component({
   properties: {
-    // [{ date, totalMinutes, sessionCount, level }]
+    // [{ date, totalMinutes, sessionCount, level, hasVerified }]
     stats: {
       type: Array,
       value: [],
@@ -76,14 +76,22 @@ Component({
               ? st.level
               : levelFromMinutes(totalMinutes)
             : 0;
+          const hasVerified = st
+            ? st.hasVerified !== undefined
+              ? !!st.hasVerified
+              : st.verifiedCount !== undefined
+                ? st.verifiedCount > 0
+                : totalMinutes > 0
+            : false;
           return {
             key: cell.key,
             inRange: cell.inRange,
             level,
             kind,
+            hasVerified,
             totalMinutes,
             sessionCount,
-            color: cell.inRange ? colorOfLevel(level, theme, kind) : 'transparent'
+            color: cell.inRange ? colorOfTrainingDay(level, theme, kind, hasVerified) : 'transparent'
           };
         })
       );
@@ -112,12 +120,15 @@ Component({
       const count = Number(ds.count) || 0;
       const level = Number(ds.level) || 0;
       const kind = ds.kind || 'personal';
+      const hasVerified = ds.verified === true || ds.verified === 'true';
 
       const [, m, d] = key.split('-').map(Number);
       let tooltip;
       if (total > 0) {
         tooltip = kind === 'coach'
           ? `${m}月${d}日 · 教练计时 ${formatDuration(total)}`
+          : !hasVerified
+            ? `${m}月${d}日 · 补记训练 ${formatDuration(total)}（未核验）`
           : `${m}月${d}日 · 今日训练总时长 ${formatDuration(total)}`;
       } else {
         tooltip = `${m}月${d}日 · 当日未训练`;
@@ -129,7 +140,8 @@ Component({
         totalMinutes: total,
         sessionCount: count,
         level,
-        kind
+        kind,
+        hasVerified
       });
     }
   }

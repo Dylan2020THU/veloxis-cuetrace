@@ -3,16 +3,32 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
-// 系统管理员 openid 白名单。需与 getPendingShopApplications 保持一致。
-const ADMIN_OPENIDS = [
-  'ovvdY3VKYCo7_jTzdpgGbuf26-tA' // 管理员 openid（张总，与 getPendingShopApplications 保持一致）
+const BOOTSTRAP_ADMIN_OPENIDS = [
+  'ovvdY3VKYCo7_jTzdpgGbuf26-tA'
 ];
 
+async function getActiveAdmins() {
+  try {
+    const res = await db.collection('admins').where({ status: 'active' }).get();
+    return res.data || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function isAdminOpenid(openid) {
+  const admins = await getActiveAdmins();
+  if (admins.length) {
+    return admins.some((item) => item._openid === openid);
+  }
+  return BOOTSTRAP_ADMIN_OPENIDS.indexOf(openid) !== -1;
+}
+
 // 管理员审核店主资质申请：approve=true 通过 / false 驳回（驳回写 reason，店主可见）。
-// 通过后把申请人 users.role 置为 shop，便于其登录直接进入店主端。仅白名单 openid 可调用。
+// 通过后把申请人 users.role 置为 shop，便于其登录直接进入店主端。仅管理员可调用。
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
-  if (ADMIN_OPENIDS.indexOf(OPENID) === -1) {
+  if (!(await isAdminOpenid(OPENID))) {
     return { ok: false, code: 'FORBIDDEN', msg: '无审核权限' };
   }
 

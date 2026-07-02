@@ -20,6 +20,7 @@ exports.main = async (event) => {
       date,
       startTime: startTime || '',
       durationMinutes: Number(durationMinutes) || 0,
+      verified: false,
       createdAt: db.serverDate()
     }
   });

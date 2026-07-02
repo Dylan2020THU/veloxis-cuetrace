@@ -9,6 +9,14 @@ const LEVEL_COLORS = {
   3: 'rgba(6,126,249,1)' // 8 小时以上
 };
 
+// 未核验补记训练日：保留热力图点亮，但用灰色与已核验蓝色区分。
+const LEVEL_COLORS_UNVERIFIED = {
+  0: EMPTY,
+  1: '#d8dde3',
+  2: '#b9c0c9',
+  3: '#8f99a6'
+};
+
 // 夜间档位配色（参照 GitHub 夜间贡献格：深灰空格 + 渐亮品牌蓝）
 const EMPTY_DARK = '#2d333b';
 const LEVEL_COLORS_DARK = {
@@ -16,6 +24,12 @@ const LEVEL_COLORS_DARK = {
   1: '#16456f', // 0-3 小时（深蓝）
   2: '#1f73cc', // 3-8 小时（中蓝）
   3: '#4aa3ff' // 8 小时以上（亮蓝）
+};
+const LEVEL_COLORS_UNVERIFIED_DARK = {
+  0: EMPTY_DARK,
+  1: '#3b4149',
+  2: '#59616d',
+  3: '#77818f'
 };
 
 // 金色档位配色：教练以「教练身份」计时的日子用金色（与大川蓝并列的第二色系）。
@@ -58,6 +72,14 @@ function colorOfLevel(level, theme, kind) {
   return ramp[level] || ramp[0];
 }
 
+function colorOfTrainingDay(level, theme, kind, hasVerified) {
+  if (kind !== 'coach' && level > 0 && hasVerified === false) {
+    const ramp = theme === 'dark' ? LEVEL_COLORS_UNVERIFIED_DARK : LEVEL_COLORS_UNVERIFIED;
+    return ramp[level] || ramp[0];
+  }
+  return colorOfLevel(level, theme, kind);
+}
+
 // 将分钟格式化为「X 小时 Y 分」
 function formatDuration(totalMinutes) {
   const m = Math.max(0, Math.round(totalMinutes || 0));
@@ -68,4 +90,4 @@ function formatDuration(totalMinutes) {
   return `${min} 分`;
 }
 
-module.exports = { EMPTY, EMPTY_DARK, GOLD, LEVEL_COLORS, LEVEL_COLORS_DARK, LEVEL_COLORS_GOLD, LEVEL_COLORS_GOLD_DARK, rampFor, levelFromMinutes, colorOfLevel, formatDuration };
+module.exports = { EMPTY, EMPTY_DARK, GOLD, LEVEL_COLORS, LEVEL_COLORS_DARK, LEVEL_COLORS_UNVERIFIED, LEVEL_COLORS_UNVERIFIED_DARK, LEVEL_COLORS_GOLD, LEVEL_COLORS_GOLD_DARK, rampFor, levelFromMinutes, colorOfLevel, colorOfTrainingDay, formatDuration };
