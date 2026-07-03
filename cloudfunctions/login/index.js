@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
+const _ = db.command;
 
 const VALID_ROLES = ['member', 'coach', 'shop'];
 
@@ -16,10 +17,42 @@ exports.main = async (event = {}) => {
   let userRole = 'member';
   let nickname = '';
   let avatar = '';
+  let deletionCanceled = false;
   try {
     const existing = await users.where({ _openid: OPENID }).get();
     if (existing.data.length) {
       const doc = existing.data[0];
+      if (doc.deletionStatus === 'pending') {
+        const scheduledAt = doc.deletionScheduledAt || 0;
+        if (scheduledAt && Date.now() >= scheduledAt) {
+          return {
+            ok: false,
+            code: 'ACCOUNT_DELETION_LOCKED',
+            msg: '账号注销已进入删除流程，无法继续登录'
+          };
+        }
+        deletionCanceled = true;
+        await users.doc(doc._id).update({
+          data: {
+            deletionStatus: _.remove(),
+            deletionReason: _.remove(),
+            deletionRequestedAt: _.remove(),
+            deletionScheduledAt: _.remove(),
+            deletionCanceledAt: db.serverDate(),
+            updatedAt: db.serverDate()
+          }
+        });
+        try {
+          await db.collection('account_deletion_requests')
+            .where({ _openid: OPENID, deletionStatus: 'pending' })
+            .update({
+              data: {
+                deletionStatus: 'canceled',
+                deletionCanceledAt: db.serverDate()
+              }
+            });
+        } catch (e) {}
+      }
       userRole = role || doc.role || 'member';
       nickname = doc.nickname || '';
       avatar = doc.avatar || '';
@@ -44,5 +77,5 @@ exports.main = async (event = {}) => {
     console.error('init user failed', err);
   }
 
-  return { openid: OPENID, role: userRole, nickname, avatar };
+  return { openid: OPENID, role: userRole, nickname, avatar, deletionCanceled };
 };

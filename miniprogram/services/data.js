@@ -7,6 +7,8 @@ const { levelFromMinutes } = require('../utils/color');
 const billing = require('../utils/billing');
 const adminAuth = require('../utils/adminAuth');
 
+const ACCOUNT_DELETION_KEY = 'dc_account_deletion_pending';
+
 function cloudReady() {
   // onLaunch 期间 getApp() 可能尚未就绪，访问 .globalData 会抛 TypeError。
   // 任何一个环节为空都按"未就绪"处理，由调用方决定走 mock 兜底。
@@ -48,13 +50,61 @@ function applyUserResult(r) {
 function login(role) {
   if (cloudReady()) {
     return callCloud('login', role ? { role } : {}).then((r) => {
+      if (r && r.ok === false) {
+        const err = new Error(r.msg || '登录失败');
+        err.code = r.code || '';
+        err.result = r;
+        throw err;
+      }
       applyUserResult(r);
+      if (r && r.deletionCanceled) {
+        wx.showToast({ title: '已中止注销流程', icon: 'none' });
+      }
       return (r && r.openid) || '';
     });
+  }
+  const pendingDeletion = mock.readObject(ACCOUNT_DELETION_KEY, null);
+  if (pendingDeletion && pendingDeletion.deletionStatus === 'pending') {
+    if ((pendingDeletion.deletionScheduledAt || 0) > Date.now()) {
+      try { wx.removeStorageSync(ACCOUNT_DELETION_KEY); } catch (e) {}
+      wx.showToast({ title: '已中止注销流程', icon: 'none' });
+    } else {
+      return Promise.reject(Object.assign(new Error('账号注销已进入删除流程'), { code: 'ACCOUNT_DELETION_LOCKED' }));
+    }
   }
   getApp().globalData.openid = mock.MOCK_OPENID;
   mock.setRole(role);
   return Promise.resolve(mock.MOCK_OPENID);
+}
+
+function sendSmsCode(phone) {
+  if (cloudReady()) {
+    return callCloud('sendSmsCode', { phone }).then((r) => {
+      if (r && r.ok === false) {
+        const err = new Error(r.msg || '验证码发送失败');
+        err.code = r.code || '';
+        err.result = r;
+        throw err;
+      }
+      return r || { ok: true };
+    });
+  }
+  return Promise.reject(Object.assign(new Error('短信登录需先连接云服务'), { code: 'CLOUD_NOT_READY' }));
+}
+
+function verifySmsCode(phone, code) {
+  if (cloudReady()) {
+    return callCloud('verifySmsCode', { phone, code }).then((r) => {
+      if (r && r.ok === false) {
+        const err = new Error(r.msg || '验证码错误或已过期');
+        err.code = r.code || '';
+        err.result = r;
+        throw err;
+      }
+      return r || { ok: true };
+    });
+  }
+  return Promise.reject(Object.assign(new Error('短信登录需先连接云服务'), { code: 'CLOUD_NOT_READY' }));
 }
 
 // 读取当前用户在云数据库 users 集合中的资料
@@ -1883,7 +1933,9 @@ function getUserBilling(opts) {
     plan,
     role,
     period: (stored && stored.period) || 'year',
+    paymentMode: (stored && stored.paymentMode) || 'one_time',
     planExpiresAt: (stored && stored.planExpiresAt) || 0,
+    subscription: (stored && stored.subscription) || null,
     isInTrial: billing.isInTrial(),
     trialRemainingMs: billing.trialRemainingMs()
   });
@@ -2004,6 +2056,44 @@ function createPayOrder(planKey, period) {
   return Promise.resolve({ ok: true, mock: true });
 }
 
+// 连续订阅：创建微信委托代扣签约请求。
+// 未配置云函数 / 商户能力时不发货、不扣费，只返回清晰提示。
+function createRecurringContract(planKey, period) {
+  const app = getApp();
+  const role = (app && app.globalData && app.globalData.role) || mock.getRole();
+  const per = billing.PERIOD_MS[period] ? period : 'year';
+  if (cloudReady()) {
+    return callCloud('createRecurringContract', { planKey, role, period: per });
+  }
+  return Promise.resolve({
+    ok: false,
+    mock: true,
+    code: 'RECURRING_NOT_CONFIGURED',
+    msg: '连续订阅需配置微信支付委托代扣后使用'
+  });
+}
+
+function cancelRecurringContract() {
+  if (cloudReady()) {
+    return callCloud('cancelRecurringContract', {});
+  }
+  const sub = mock.readObject('dc_recurring_subscription', null);
+  if (sub) mock.writeObject('dc_recurring_subscription', Object.assign({}, sub, { status: 'canceled', canceledAt: Date.now() }));
+  return Promise.resolve({ ok: true, mock: true, status: 'canceled' });
+}
+
+function getRecurringSubscription() {
+  if (cloudReady()) {
+    const app = getApp();
+    const role = (app && app.globalData && app.globalData.role) || mock.getRole();
+    return callCloud('getUserBilling', { role }).then((r) => {
+      const billingState = (r && r.billing) || {};
+      return billingState.subscription || null;
+    });
+  }
+  return Promise.resolve(mock.readObject('dc_recurring_subscription', null));
+}
+
 // ============ 球桌按时计费订单（P1：结账 → 当日营收 → 我的页滚动） ============
 // 演示阶段：mock 落本地，无需部署云函数即可跑通；接真实台桌/支付后改云端。
 function _todayKey() {
@@ -2051,21 +2141,28 @@ function getTodayShopRevenue() {
   return Promise.resolve(total);
 }
 
-// 账号注销：删除本人全部数据（云端调用 deleteAccount 云函数；mock 清空本地存储）
-function deleteAccount() {
+// 账号注销：申请进入 7 天保留期；到期后由云端定时任务清理。
+function deleteAccount(opts) {
+  const reason = (opts && opts.reason) || '';
   if (cloudReady()) {
-    return callCloud('deleteAccount', {});
+    return callCloud('deleteAccount', { reason });
   }
-  try {
-    const info = wx.getStorageInfoSync();
-    (info.keys || []).forEach((k) => wx.removeStorageSync(k));
-  } catch (e) {}
-  return Promise.resolve({ ok: true });
+  const now = Date.now();
+  const deletionScheduledAt = now + 7 * 24 * 60 * 60 * 1000;
+  mock.writeObject(ACCOUNT_DELETION_KEY, {
+    deletionStatus: 'pending',
+    deletionReason: reason,
+    deletionRequestedAt: now,
+    deletionScheduledAt
+  });
+  return Promise.resolve({ ok: true, deletionStatus: 'pending', deletionScheduledAt });
 }
 
 module.exports = {
   initData,
   login,
+  sendSmsCode,
+  verifySmsCode,
   getUserProfile,
   getUserProfile,
   saveUserProfile,
@@ -2157,6 +2254,9 @@ module.exports = {
   upgradePlan,
   createVirtualPayOrder,
   createPayOrder,
+  createRecurringContract,
+  cancelRecurringContract,
+  getRecurringSubscription,
   deleteAccount,
   addTableOrder,
   getTodayShopRevenue,

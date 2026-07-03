@@ -25,8 +25,14 @@ const PERIOD_MS = {
   year: 365 * DAY_MS
 };
 
+const PAYMENT_MODES = ['one_time', 'recurring'];
+
+function normPaymentMode(paymentMode) {
+  return PAYMENT_MODES.indexOf(paymentMode) !== -1 ? paymentMode : 'one_time';
+}
+
 // 店主四档：启航 < 标准 < 旗舰 < 连锁（level 高档含低档全部能力）
-// periodOptions：包月 / 包季 / 包年；年付约 7 折（送约 3-4 个月）。
+// periodOptions：单月 / 单季 / 单年；recurringOptions：包月 / 包季 / 包年，价格更优惠。
 const PLANS = {
   free: { key: 'free', label: '免费', role: 'shop', level: 0, periodOptions: [] },
   shop_lite: {
@@ -35,9 +41,14 @@ const PLANS = {
     role: 'shop',
     level: 1,
     periodOptions: [
-      { period: 'month', price: 69, label: '包月' },
-      { period: 'quarter', price: 189, label: '包季', discount: '约 9 折' },
-      { period: 'year', price: 588, label: '包年', discount: '约 7 折' }
+      { period: 'month', price: 79, label: '单月', paymentMode: 'one_time' },
+      { period: 'quarter', price: 219, label: '单季', paymentMode: 'one_time', discount: '约 9.2 折' },
+      { period: 'year', price: 708, label: '单年', paymentMode: 'one_time', discount: '约 7.5 折' }
+    ],
+    recurringOptions: [
+      { period: 'month', price: 69, label: '包月', paymentMode: 'recurring', discount: '省 ¥10/月' },
+      { period: 'quarter', price: 189, label: '包季', paymentMode: 'recurring', discount: '约 8 折' },
+      { period: 'year', price: 588, label: '包年', paymentMode: 'recurring', discount: '约 6.2 折' }
     ]
   },
   shop_basic: {
@@ -46,9 +57,14 @@ const PLANS = {
     role: 'shop',
     level: 2,
     periodOptions: [
-      { period: 'month', price: 239, label: '包月' },
-      { period: 'quarter', price: 599, label: '包季', discount: '约 8.5 折' },
-      { period: 'year', price: 1980, label: '包年', discount: '约 7 折' }
+      { period: 'month', price: 269, label: '单月', paymentMode: 'one_time' },
+      { period: 'quarter', price: 699, label: '单季', paymentMode: 'one_time', discount: '约 8.7 折' },
+      { period: 'year', price: 2388, label: '单年', paymentMode: 'one_time', discount: '约 7.4 折' }
+    ],
+    recurringOptions: [
+      { period: 'month', price: 239, label: '包月', paymentMode: 'recurring', discount: '省 ¥30/月' },
+      { period: 'quarter', price: 599, label: '包季', paymentMode: 'recurring', discount: '约 7.4 折' },
+      { period: 'year', price: 1980, label: '包年', paymentMode: 'recurring', discount: '约 6.1 折' }
     ]
   },
   shop_pro: {
@@ -60,9 +76,14 @@ const PLANS = {
     // 由云端 upgradePlan 按 upgradedAt 与上线日判定生效，前端统一展示新价。
     grandfatherYearPrice: 3980,
     periodOptions: [
-      { period: 'month', price: 599, label: '包月' },
-      { period: 'quarter', price: 1499, label: '包季', discount: '约 8.5 折' },
-      { period: 'year', price: 4980, label: '包年', discount: '约 7 折' }
+      { period: 'month', price: 699, label: '单月', paymentMode: 'one_time' },
+      { period: 'quarter', price: 1799, label: '单季', paymentMode: 'one_time', discount: '约 8.6 折' },
+      { period: 'year', price: 5988, label: '单年', paymentMode: 'one_time', discount: '约 7.1 折' }
+    ],
+    recurringOptions: [
+      { period: 'month', price: 599, label: '包月', paymentMode: 'recurring', discount: '省 ¥100/月' },
+      { period: 'quarter', price: 1499, label: '包季', paymentMode: 'recurring', discount: '约 7.1 折' },
+      { period: 'year', price: 4980, label: '包年', paymentMode: 'recurring', discount: '约 5.9 折' }
     ]
   },
   shop_chain: {
@@ -72,7 +93,10 @@ const PLANS = {
     level: 4,
     // 连锁版：含 5 门店，6 店起面议；按年订阅。不进自助付费墙（getPlanList），由商务侧促成下单。
     periodOptions: [
-      { period: 'year', price: 9800, label: '包年', discount: '含 5 门店' }
+      { period: 'year', price: 11800, label: '单年', paymentMode: 'one_time', discount: '含 5 门店' }
+    ],
+    recurringOptions: [
+      { period: 'year', price: 9800, label: '包年', paymentMode: 'recurring', discount: '含 5 门店' }
     ]
   }
 };
@@ -191,27 +215,28 @@ function getPlanList(role) {
   return [];
 }
 
-// 给付费墙组件使用：返回指定套餐的可选周期（包月/包季/包年）
-function getPlanOptions(planKey) {
+// 给付费墙组件使用：返回指定套餐的可选周期
+function getPlanOptions(planKey, paymentMode) {
   const p = PLANS[planKey];
-  if (!p || !p.periodOptions || !p.periodOptions.length) return [];
-  return p.periodOptions;
+  if (!p) return [];
+  if (normPaymentMode(paymentMode) === 'recurring') return p.recurringOptions || [];
+  return p.periodOptions || [];
 }
 
 // 给付费墙组件 / data.js 使用：计算某套餐在某周期下的实付价
 // period 取 month/quarter/year，缺省 year；找不到返回 0
-function getPlanPrice(planKey, period) {
-  const p = PLANS[planKey];
-  if (!p || !p.periodOptions || !p.periodOptions.length) return 0;
+function getPlanPrice(planKey, period, paymentMode) {
+  const opts = getPlanOptions(planKey, paymentMode);
+  if (!opts.length) return 0;
   const wanted = PERIOD_MS[period] ? period : 'year';
-  const opt = p.periodOptions.find((o) => o.period === wanted);
+  const opt = opts.find((o) => o.period === wanted);
   if (opt) return opt.price;
-  return p.periodOptions[0].price;
+  return opts[0].price;
 }
 
 // 给付费墙组件使用：套餐入门价（最低周期价，用于卡片"起"展示）
-function getPlanEntryPrice(planKey) {
-  const opts = getPlanOptions(planKey);
+function getPlanEntryPrice(planKey, paymentMode) {
+  const opts = getPlanOptions(planKey, paymentMode);
   if (!opts.length) return 0;
   return opts.reduce((min, o) => (o.price < min ? o.price : min), opts[0].price);
 }
@@ -241,9 +266,11 @@ function calcCoachCommission(amount) {
 module.exports = {
   TRIAL_MS,
   PERIOD_MS,
+  PAYMENT_MODES,
   COACH_COMMISSION_RATE,
   PLANS,
   FEATURE_TO_PLAN,
+  normPaymentMode,
   planLevel,
   calcCoachCommission,
   isInTrial,

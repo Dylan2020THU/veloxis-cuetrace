@@ -8,6 +8,8 @@ const ACCOUNT_LABELS = {
   default: { profile: '个人主页', edit: '编辑我的信息', qr: '我的二维码' }
 };
 
+const DELETE_REASONS = ['不再使用', '功能不好用', '隐私/数据顾虑', '换账号', '其他原因'];
+
 Page({
   behaviors: [require('../../utils/themeBehavior')],
 
@@ -139,33 +141,36 @@ Page({
   },
 
   // ---------- 账号 ----------
-  // 账号注销（不可恢复，双重确认）
+  // 账号注销：先调研原因，再进入 7 天保留期。
   deleteAccount() {
-    wx.showModal({
-      title: '注销账号',
-      content: '注销后将永久删除你的训练记录、社区内容、约球与预约等数据，且不可恢复。确定继续？',
-      confirmText: '继续',
-      confirmColor: '#e54545',
-      success: (res) => {
-        if (!res.confirm) return;
+    wx.showActionSheet({
+      itemList: DELETE_REASONS,
+      success: (picked) => {
+        const reason = DELETE_REASONS[picked.tapIndex] || '其他原因';
         wx.showModal({
-          title: '再次确认',
-          content: '这是不可逆操作，确认注销并删除全部数据吗？',
-          confirmText: '确认注销',
+          title: '申请注销账号',
+          content: `注销原因：${reason}\n\n账号将进入 7 天保留期，期间重新登录将中止注销流程。7 天后将删除你的训练记录、社区内容、约球与预约等数据。`,
+          confirmText: '申请注销',
           confirmColor: '#e54545',
-          success: (res2) => {
-            if (!res2.confirm) return;
+          success: (res) => {
+            if (!res.confirm) return;
             wx.showLoading({ title: '处理中', mask: true });
-            data.deleteAccount().then(() => {
+            data.deleteAccount({ reason }).then(() => {
               try { wx.removeStorageSync('dc_role'); } catch (e) {}
               const app = getApp();
               if (app && app.globalData) {
                 app.globalData.openid = '';
+                app.globalData.role = '';
                 app.globalData.userProfile = null;
               }
               wx.hideLoading();
-              wx.showToast({ title: '已注销', icon: 'success' });
-              setTimeout(() => wx.reLaunch({ url: '/pages/login/index' }), 800);
+              wx.showModal({
+                title: '已申请注销',
+                content: '账号将在 7 天后完成注销。期间重新登录将中止注销流程。',
+                showCancel: false,
+                confirmText: '知道了',
+                success: () => wx.reLaunch({ url: '/pages/login/index' })
+              });
             }).catch(() => {
               wx.hideLoading();
               wx.showToast({ title: '注销失败，请重试', icon: 'none' });

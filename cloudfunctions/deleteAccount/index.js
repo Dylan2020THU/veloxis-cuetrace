@@ -2,49 +2,54 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
-const _ = db.command;
 
-// 账号注销：删除本人(openid)归属的全部数据。不可恢复。
-exports.main = async () => {
+const DELETE_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
+
+// 账号注销：提交注销申请并进入 7 天保留期，不在这里立即删除数据。
+exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
-  const removed = {};
+  const reason = String(event.reason || '').slice(0, 80);
+  const now = Date.now();
+  const deletionScheduledAt = now + DELETE_DELAY_MS;
+  const users = db.collection('users');
 
-  // 以 _openid = 本人 归属的集合
-  const ownCollections = [
-    'users',
-    'training_sessions',
-    'coaches',
-    'shops',
-    'posts',
-    'post_likes',
-    'post_comments',
-    'matches',
-    'match_joins',
-    'bookings'
-  ];
-  for (let i = 0; i < ownCollections.length; i++) {
-    const name = ownCollections[i];
-    try {
-      const r = await db.collection(name).where({ _openid: OPENID }).remove();
-      removed[name] = (r && r.stats && r.stats.removed) || 0;
-    } catch (e) {
-      removed[name] = 'skip';
-    }
+  const data = {
+    deletionStatus: 'pending',
+    deletionReason: reason,
+    deletionRequestedAt: now,
+    deletionScheduledAt,
+    updatedAt: db.serverDate()
+  };
+
+  const found = await users.where({ _openid: OPENID }).limit(1).get();
+  if (found.data.length) {
+    await users.doc(found.data[0]._id).update({ data });
+  } else {
+    await users.add({
+      data: Object.assign({
+        _openid: OPENID,
+        role: 'member',
+        nickname: '',
+        avatar: '',
+        createdAt: db.serverDate()
+      }, data)
+    });
   }
 
-  // 关系类集合：按角色字段匹配本人
   try {
-    await db.collection('coach_member_links')
-      .where(_.or([{ coachOpenid: OPENID }, { memberOpenid: OPENID }])).remove();
-  } catch (e) {}
-  try {
-    await db.collection('shop_coach_links')
-      .where(_.or([{ shopOpenid: OPENID }, { coachOpenid: OPENID }])).remove();
-  } catch (e) {}
-  try {
-    await db.collection('user_follows')
-      .where(_.or([{ _openid: OPENID }, { authorOpenid: OPENID }])).remove();
-  } catch (e) {}
+    await db.collection('account_deletion_requests').add({
+      data: {
+        _openid: OPENID,
+        reason,
+        deletionStatus: 'pending',
+        deletionRequestedAt: now,
+        deletionScheduledAt,
+        createdAt: db.serverDate()
+      }
+    });
+  } catch (err) {
+    console.warn('[deleteAccount] write account_deletion_requests failed', err);
+  }
 
-  return { ok: true, removed };
+  return { ok: true, deletionStatus: 'pending', deletionRequestedAt: now, deletionScheduledAt };
 };

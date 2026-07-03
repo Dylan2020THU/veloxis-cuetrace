@@ -42,6 +42,7 @@ Page({
     phone: '',
     code: '',
     counting: false,
+    sendingCode: false,
     countdown: 60,
     // 注册表单
     regAccount: '',
@@ -200,16 +201,8 @@ Page({
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
   },
 
-  // 发送验证码（演示：本地校验 + 60s 倒计时）
-  sendCode() {
-    if (this.data.counting) return;
-    const phone = (this.data.phone || '').trim();
-    if (!PHONE_RE.test(phone)) {
-      wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
-      return;
-    }
+  startCodeCountdown() {
     this.setData({ counting: true, countdown: 60 });
-    wx.showToast({ title: '验证码已发送', icon: 'none' });
     this._timer = setInterval(() => {
       const next = this.data.countdown - 1;
       if (next <= 0) {
@@ -220,6 +213,31 @@ Page({
         this.setData({ countdown: next });
       }
     }, 1000);
+  },
+
+  // 发送验证码
+  sendCode() {
+    if (this.data.counting || this.data.sendingCode) return;
+    const phone = (this.data.phone || '').trim();
+    if (!PHONE_RE.test(phone)) {
+      wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+      return;
+    }
+    this.setData({ sendingCode: true });
+    wx.showLoading({ title: '发送中', mask: true });
+    data
+      .sendSmsCode(phone)
+      .then(() => {
+        wx.hideLoading();
+        this.setData({ sendingCode: false });
+        wx.showToast({ title: '验证码已发送', icon: 'none' });
+        this.startCodeCountdown();
+      })
+      .catch((e) => {
+        wx.hideLoading();
+        this.setData({ sendingCode: false });
+        wx.showToast({ title: (e && e.message) || '验证码发送失败', icon: 'none' });
+      });
   },
 
   submit() {
@@ -238,6 +256,18 @@ Page({
       if (!(this.data.code || '').trim()) {
         return wx.showToast({ title: '请输入验证码', icon: 'none' });
       }
+      wx.showLoading({ title: '校验中', mask: true });
+      data
+        .verifySmsCode((this.data.phone || '').trim(), (this.data.code || '').trim())
+        .then(() => {
+          wx.hideLoading();
+          this.doLogin(role);
+        })
+        .catch((e) => {
+          wx.hideLoading();
+          wx.showToast({ title: (e && e.message) || '验证码错误或已过期', icon: 'none' });
+        });
+      return;
     }
     this.doLogin(role);
   },

@@ -34,6 +34,7 @@ exports.main = async (event = {}) => {
   const planKey = String(event.planKey || '');
   const role = fulfill.normRole(event.role);
   const period = fulfill.normPeriod(event.period);
+  const paymentMode = 'one_time';
 
   // 1) 取用户与当前订阅
   const users = db.collection('users');
@@ -44,7 +45,7 @@ exports.main = async (event = {}) => {
   const current = (perRole[role] && typeof perRole[role] === 'object') ? perRole[role] : {};
 
   // 2) 服务端算价（防篡改）→ 分
-  const priced = fulfill.computeAmountYuan({ planKey, role, period, current });
+  const priced = fulfill.computeAmountYuan({ planKey, role, period, current, paymentMode });
   if (!priced.ok) return { ok: false, code: priced.code, msg: '套餐校验失败' };
   const totalFee = fulfill.yuanToFen(priced.amount); // 单位：分
 
@@ -59,7 +60,7 @@ exports.main = async (event = {}) => {
     outTradeNo = genOutTradeNo(OPENID);
     await orders.add({
       data: {
-        outTradeNo, _openid: OPENID, planKey, role, period,
+        outTradeNo, _openid: OPENID, planKey, role, period, paymentMode,
         amount: priced.amount, totalFee, paid: false, status: 'pending',
         source: 'wxpay', createdAt: db.serverDate()
       }

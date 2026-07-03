@@ -117,6 +117,38 @@
   box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.08);
 }
 
+.pw-mode {
+  display: flex;
+  margin: 28rpx 0 12rpx;
+  padding: 6rpx;
+  background: #F8FAFC;
+  border: 2rpx solid #E2E8F0;
+  border-radius: 16rpx;
+}
+.pw-mode__item {
+  flex: 1;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #64748B;
+  border-radius: 12rpx;
+}
+.pw-mode__item.is-active {
+  background: #067EF9;
+  color: #ffffff;
+  font-weight: 600;
+}
+.pw-renewal-note {
+  margin-bottom: 12rpx;
+  padding: 14rpx 18rpx;
+  background: #ECFDF5;
+  border-radius: 12rpx;
+  color: #047857;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
 /* 当前角色徽标（single 模式） */
 .pw-current {
   display: flex;
