@@ -28,7 +28,10 @@ exports.main = async (event = {}) => {
         firstLoginAt: u.firstLoginAt || 0,
         plan: perRole.plan || 'free',
         term: perRole.term || 1,
+        period: perRole.period || 'year',
+        paymentMode: perRole.paymentMode || 'one_time',
         planExpiresAt: perRole.planExpiresAt || 0,
+        subscription: perRole.subscription || null,
         role
       }
     };

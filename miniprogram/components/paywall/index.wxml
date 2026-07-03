@@ -60,7 +60,7 @@ module.exports = {
           <text class="pw-card__name">{{item.label}}</text>
           <view class="pw-card__price">
             <text class="pw-card__price-num">{{fmt.yuan(item.entryPrice)}}</text>
-            <text class="pw-card__price-unit">/月起</text>
+            <text class="pw-card__price-unit">{{purchaseMode === 'recurring' ? '/月起' : '起'}}</text>
           </view>
         </view>
         <view class="pw-card__desc">{{item.desc}}</view>
@@ -70,6 +70,20 @@ module.exports = {
         <view class="pw-card__check" wx:if="{{selectedPlan===item.key}}">✓</view>
         <view class="pw-card__tag" wx:if="{{item.featured}}">推荐</view>
       </view>
+    </view>
+
+    <!-- 购买方式：单次购买 / 连续订阅 -->
+    <view class="pw-mode">
+      <view
+        wx:for="{{purchaseModes}}"
+        wx:key="key"
+        class="pw-mode__item {{purchaseMode===item.key?'is-active':''}}"
+        data-mode="{{item.key}}"
+        bindtap="onSwitchPurchaseMode"
+      >{{item.label}}</view>
+    </view>
+    <view class="pw-renewal-note" wx:if="{{purchaseMode === 'recurring'}}">
+      自动续费，到期前按所选周期扣款，可随时取消。未完成微信支付签约前不会扣费。
     </view>
 
     <!-- 周期 tab：包月 / 包季 / 包年（复用 pw-tabs 样式） -->
@@ -110,13 +124,13 @@ module.exports = {
         当前套餐已包含该档
       </block>
       <block wx:elif="{{sceneMode === 'renew' || sceneMode === 'expired'}}">
-        续费同档 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
+        {{purchaseMode === 'recurring' ? '开通自动续费' : '续费同档'}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
       <block wx:elif="{{sceneMode === 'upgrade'}}">
-        升级到 {{currentPlan.label}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
+        {{purchaseMode === 'recurring' ? '自动续费' : '升级到'}} {{currentPlan.label}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
       <block wx:else>
-        立即开通 {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
+        {{purchaseMode === 'recurring' ? '开通自动续费' : '立即开通'}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
       </block>
     </view>
     <view class="pw-skip" bindtap="onClose">返回，继续使用免费版</view>

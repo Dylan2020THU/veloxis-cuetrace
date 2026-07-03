@@ -53,7 +53,7 @@ exports.main = async (event = {}) => {
       const planExpiresAt = fulfill.computeExpiry({ current, planKey: order.planKey, period: order.period, now });
       await fulfill.applyEntitlement({
         db, userId: user._id, perRole, role: order.role,
-        planKey: order.planKey, period: order.period, planExpiresAt, now
+        planKey: order.planKey, period: order.period, paymentMode: order.paymentMode || 'one_time', planExpiresAt, now
       });
     }
   } catch (err) {

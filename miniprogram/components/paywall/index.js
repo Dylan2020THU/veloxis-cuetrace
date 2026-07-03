@@ -9,7 +9,7 @@
 //   services/data.js   upgradePlan / getUserBilling
 
 const { getPlanList, getPlanOptions, getPlanPrice, getPlanEntryPrice, getFeatureLabel, trialRemainingMs, planLevel } = require('../../utils/billing');
-const { upgradePlan, createVirtualPayOrder, createPayOrder, getUserBilling } = require('../../services/data');
+const { upgradePlan, createVirtualPayOrder, createPayOrder, createRecurringContract, getUserBilling } = require('../../services/data');
 
 // ⚠️【临时·仅沙箱测试】强制走虚拟支付分支，方便在安卓真机测虚拟支付（正常逻辑是安卓→微信支付）。
 // 虚拟支付沙箱测试结束后，务必改回 false（或删掉本行与下方使用处），恢复按平台分流。
@@ -74,6 +74,11 @@ Component({
     currentRoleLabel: '',
     plans: [],
     selectedPlan: '',
+    purchaseMode: 'one_time',
+    purchaseModes: [
+      { key: 'one_time', label: '单次购买' },
+      { key: 'recurring', label: '连续订阅' }
+    ],
     selectedPeriod: 'year',     // 当前选中周期：month / quarter / year
     currentPlan: EMPTY_PLAN,    // 选中套餐 + 周期详情（CTA 展示用）
     agreed: false,
@@ -91,7 +96,8 @@ Component({
       const role = opts.role || 'shop';
       const multi = !!opts.multi;
       const activeTab = role === 'member' || role === 'coach' || role === 'shop' ? role : 'shop';
-      const plans = this._buildPlans(activeTab);
+      const purchaseMode = opts.paymentMode === 'recurring' ? 'recurring' : 'one_time';
+      const plans = this._buildPlans(activeTab, purchaseMode);
       // 无可订阅套餐（球员/教练端）：不渲染空墙，直接回调关闭
       if (!plans.length) {
         if (typeof onResult === 'function') onResult(false);
@@ -124,7 +130,7 @@ Component({
       const sceneMode = sceneFor(focusKey, ownedPlan, ownedPlanExpired);
 
       const initialPeriod = opts.period || 'year';
-      const currentPlan = this._composeCurrentPlan(focusPlan, initialPeriod);
+      const currentPlan = this._composeCurrentPlan(focusPlan, initialPeriod, purchaseMode);
 
       this._callback = typeof onResult === 'function' ? onResult : null;
       this._feature = opts.feature || '';
@@ -136,6 +142,7 @@ Component({
         activeTab,
         currentRoleLabel: ROLE_LABEL[role] || '用户',
         plans,
+        purchaseMode,
         selectedPlan: focusKey,
         selectedPeriod: currentPlan.period,
         currentPlan,
@@ -166,7 +173,7 @@ Component({
     onSwitchTab(e) {
       const tab = e.currentTarget.dataset.tab;
       if (!tab) return;
-      const plans = this._buildPlans(tab);
+      const plans = this._buildPlans(tab, this.data.purchaseMode);
       const focusKey = (plans[0] && plans[0].key) || '';
       const focusPlan = plans[0] || EMPTY_PLAN;
       const period = this.data.selectedPeriod || 'year';
@@ -175,7 +182,7 @@ Component({
         plans,
         selectedPlan: focusKey,
         selectedPeriod: period,
-        currentPlan: this._composeCurrentPlan(focusPlan, period)
+        currentPlan: this._composeCurrentPlan(focusPlan, period, this.data.purchaseMode)
       });
     },
 
@@ -189,7 +196,7 @@ Component({
         selectedPlan: key,
         selectedPeriod: period,
         sceneMode,
-        currentPlan: this._composeCurrentPlan(plan, period)
+        currentPlan: this._composeCurrentPlan(plan, period, this.data.purchaseMode)
       });
     },
 
@@ -199,7 +206,24 @@ Component({
       if (!plan || !period) return;
       this.setData({
         selectedPeriod: period,
-        currentPlan: this._composeCurrentPlan(plan, period)
+        currentPlan: this._composeCurrentPlan(plan, period, this.data.purchaseMode)
+      });
+    },
+
+    onSwitchPurchaseMode(e) {
+      const mode = e.currentTarget.dataset.mode;
+      if (mode !== 'one_time' && mode !== 'recurring') return;
+      const plans = this._buildPlans(this.data.activeTab, mode);
+      const selectedPlan = plans.find((p) => p.key === this.data.selectedPlan) || plans[0] || EMPTY_PLAN;
+      const sceneMode = sceneFor(selectedPlan.key, this.data.ownedPlan, this.data.ownedPlanExpired);
+      const currentPlan = this._composeCurrentPlan(selectedPlan, this.data.selectedPeriod || 'year', mode);
+      this.setData({
+        purchaseMode: mode,
+        plans,
+        selectedPlan: selectedPlan.key,
+        selectedPeriod: currentPlan.period,
+        sceneMode,
+        currentPlan
       });
     },
 
@@ -226,12 +250,53 @@ Component({
         wx.showToast({ title: '请选择套餐', icon: 'none' });
         return;
       }
+      if (this.data.purchaseMode === 'recurring') {
+        this._startRecurring(planKey, period);
+        return;
+      }
       // 按设备分流：iOS → 虚拟支付(苹果 IAP)；安卓/其它 → 基础支付(微信支付 cloudPay)；
       // devtools/mock（cloudReady 为假，下单返回 {mock:true}）→ 演示发货，保证可点测。
       if (FORCE_VIRTUAL_PAY_FOR_TEST || this._platform() === 'ios') {
         this._payViaVirtual(planKey, period);
       } else {
         this._payViaWxpay(planKey, period);
+      }
+    },
+
+    async _startRecurring(planKey, period) {
+      try {
+        wx.showLoading({ title: '签约中...', mask: true });
+        const res = await createRecurringContract(planKey, period);
+        wx.hideLoading();
+        if (!res || !res.ok) {
+          wx.showModal({
+            title: '连续订阅未开通',
+            content: (res && res.msg) || '请先完成微信支付委托代扣配置后再开通连续订阅。',
+            showCancel: false,
+            confirmText: '知道了'
+          });
+          return;
+        }
+        if (!wx.navigateToMiniProgram) {
+          wx.showToast({ title: '当前微信版本不支持签约', icon: 'none' });
+          return;
+        }
+        wx.navigateToMiniProgram({
+          appId: res.appId,
+          path: res.path || 'pages/index/index',
+          extraData: res.extraData || {},
+          success: () => {
+            wx.showToast({ title: '请完成微信签约', icon: 'none' });
+          },
+          fail: (e) => {
+            console.error('[paywall] recurring contract fail', e);
+            wx.showToast({ title: '签约未完成', icon: 'none' });
+          }
+        });
+      } catch (err) {
+        wx.hideLoading();
+        console.error('[paywall] recurring error', err);
+        wx.showToast({ title: '网络异常', icon: 'none' });
       }
     },
 
@@ -348,13 +413,13 @@ Component({
     },
 
     // 构造指定角色下的套餐列表（含描述/特性/入门价/周期）
-    _buildPlans(role) {
+    _buildPlans(role, paymentMode) {
       const list = getPlanList(role) || [];
       return list.map((p, idx) => ({
         key: p.key,
         label: p.label,
-        entryPrice: getPlanEntryPrice(p.key),
-        periodOptions: getPlanOptions(p.key),
+        entryPrice: getPlanEntryPrice(p.key, paymentMode),
+        periodOptions: getPlanOptions(p.key, paymentMode),
         desc: PLAN_DESC[p.key] || '',
         features: PLAN_FEATURES[p.key] || [],
         // 店主端默认推荐标准版（利润主力）；其他端推荐唯一档
@@ -363,7 +428,7 @@ Component({
     },
 
     // 组合"当前选中套餐 + 选中周期"，供 CTA / 模板展示实付价
-    _composeCurrentPlan(plan, period) {
+    _composeCurrentPlan(plan, period, paymentMode) {
       const periodOptions = (plan.periodOptions && plan.periodOptions.length)
         ? plan.periodOptions
         : [{ period: 'year', price: plan.entryPrice || 0, label: '包年' }];
@@ -373,7 +438,8 @@ Component({
       const mult = cur.period === 'year' ? 12 : (cur.period === 'quarter' ? 3 : 1);
       return Object.assign({}, plan, {
         period: cur.period,
-        price: getPlanPrice(plan.key, cur.period) || cur.price,
+        price: getPlanPrice(plan.key, cur.period, paymentMode) || cur.price,
+        paymentMode: paymentMode || 'one_time',
         periodLabel: cur.label,
         discountLabel: cur.discount || '',
         originalPrice: monthly * mult, // 划线原价（按月价×周期数）

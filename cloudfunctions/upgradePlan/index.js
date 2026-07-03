@@ -12,6 +12,7 @@ exports.main = async (event = {}) => {
   const planKey = String(event.planKey || '');
   const role = fulfill.normRole(event.role);
   const period = fulfill.normPeriod(event.period);
+  const paymentMode = 'one_time';
 
   // 1) 找用户记录
   const users = db.collection('users');
@@ -24,7 +25,7 @@ exports.main = async (event = {}) => {
   const current = (perRole[role] && typeof perRole[role] === 'object') ? perRole[role] : {};
 
   // 2) 套餐校验 + 服务端算价（防篡改，含老客价）
-  const priced = fulfill.computeAmountYuan({ planKey, role, period, current });
+  const priced = fulfill.computeAmountYuan({ planKey, role, period, current, paymentMode });
   if (!priced.ok) {
     return { ok: false, code: priced.code, msg: '套餐校验失败' };
   }
@@ -32,13 +33,13 @@ exports.main = async (event = {}) => {
   // 3) 计算到期（续期累加 / 首次从 now）并发货
   const now = Date.now();
   const planExpiresAt = fulfill.computeExpiry({ current, planKey, period, now });
-  await fulfill.applyEntitlement({ db, userId: user._id, perRole, role, planKey, period, planExpiresAt, now });
+  await fulfill.applyEntitlement({ db, userId: user._id, perRole, role, planKey, period, planExpiresAt, now, paymentMode });
 
   // 4) 写订单留痕（demo 期 paid=true、source=demo；真实付费由 virtualPayCallback 落 paid）
   try {
     await db.collection('orders').add({
       data: {
-        _openid: OPENID, planKey, role, period,
+        _openid: OPENID, planKey, role, period, paymentMode,
         amount: priced.amount, paid: true, source: 'demo', createdAt: db.serverDate()
       }
     });

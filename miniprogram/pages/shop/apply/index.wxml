@@ -8,7 +8,7 @@
       <view class="status-title">资质审核中</view>
       <view class="status-desc">您的营业执照等资质已提交，平台将在 1–3 个工作日内完成核验。审核通过后即可使用店主功能。</view>
       <button class="btn-ghost" bindtap="refresh">刷新审核状态</button>
-      <button wx:if="{{isAdmin}}" class="btn-ghost" bindtap="goReview">前往资质审核后台</button>
+      <button wx:if="{{isAdmin}}" class="btn-ghost" bindtap="goReview">前往审核后台</button>
       <button class="btn-text" bindtap="backToLogin">返回登录</button>
     </view>
   </block>
@@ -65,7 +65,7 @@
       <button class="btn-primary {{submitting?'is-loading':''}}" bindtap="submit" disabled="{{submitting}}">
         {{ submitting ? '提交中…' : '提交审核' }}
       </button>
-      <button wx:if="{{isAdmin}}" class="btn-text" bindtap="goReview">（管理员）前往资质审核后台</button>
+      <button wx:if="{{isAdmin}}" class="btn-text" bindtap="goReview">（管理员）前往审核后台</button>
       <button class="btn-text" bindtap="backToLogin">返回登录</button>
     </view>
   </block>
