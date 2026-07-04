@@ -1,5 +1,5 @@
 .page {
-  padding-bottom: 180rpx;
+  padding-bottom: 320rpx;
 }
 
 .form-tip {
@@ -95,8 +95,9 @@
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
-  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  bottom: calc(110rpx + env(safe-area-inset-bottom));
+  z-index: 900;
+  padding: 20rpx 32rpx;
   background: rgba(255, 255, 255, 0.92);
 }
 

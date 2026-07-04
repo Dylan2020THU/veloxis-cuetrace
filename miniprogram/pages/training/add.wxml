@@ -58,7 +58,7 @@
 
   <view class="submit-bar">
     <button class="btn-primary submit-btn" disabled="{{submitting}}" bindtap="submit">
-      {{ submitting ? '提交中...' : '保存补记' }}
+      {{ submitting ? '添加中...' : '添加训练数据' }}
     </button>
   </view>
 </view>
