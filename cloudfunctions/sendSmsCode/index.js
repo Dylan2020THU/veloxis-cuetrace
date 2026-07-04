@@ -140,10 +140,11 @@ exports.main = async (event = {}) => {
   const codes = db.collection('sms_codes');
   const recent = await codes
     .where({ phone, _openid: OPENID, used: false })
-    .orderBy('createdAt', 'desc')
-    .limit(1)
+    .limit(20)
     .get();
-  const last = recent.data[0];
+  const last = (recent.data || [])
+    .filter((item) => item.createdAt)
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
   if (last && last.createdAt && now - last.createdAt < RESEND_MS) {
     return { ok: false, code: 'TOO_FREQUENT', msg: '请稍后再获取验证码' };
   }
