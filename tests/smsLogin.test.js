@@ -27,12 +27,16 @@ assert(sendSmsCode.includes('CONFIG_MISSING'), 'sendSmsCode should fail clearly 
 assert(sendSmsCode.includes('sms_codes'), 'sendSmsCode should persist generated codes in sms_codes.');
 assert(sendSmsCode.includes('crypto.createHash'), 'sendSmsCode should store a hashed code, not plaintext.');
 assert(!sendSmsCode.includes('123456'), 'sendSmsCode should not hardcode demo verification codes.');
+assert(!sendSmsCode.includes('.orderBy('), 'sendSmsCode should not require a database index for resend checks.');
 
 const verifySmsCode = read('cloudfunctions/verifySmsCode/index.js');
 assert(verifySmsCode.includes('sms_codes'), 'verifySmsCode should read sms_codes.');
 assert(verifySmsCode.includes('expiresAt'), 'verifySmsCode should reject expired codes.');
 assert(verifySmsCode.includes('used'), 'verifySmsCode should mark successful codes as used.');
 assert(verifySmsCode.includes('INVALID_CODE'), 'verifySmsCode should report invalid codes clearly.');
+assert(!verifySmsCode.includes('.orderBy('), 'verifySmsCode should not require a database index for code checks.');
+assert(verifySmsCode.includes("db.collection('users')"), 'verifySmsCode should bind the verified phone to the current user.');
+assert(verifySmsCode.includes('phoneVerifiedAt'), 'verifySmsCode should record when the phone was verified.');
 
 const dataJs = read('miniprogram/services/data.js');
 assert(dataJs.includes('function sendSmsCode'), 'data.js should expose sendSmsCode().');

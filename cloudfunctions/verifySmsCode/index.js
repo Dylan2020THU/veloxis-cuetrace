@@ -27,11 +27,13 @@ exports.main = async (event = {}) => {
   const codes = db.collection('sms_codes');
   const found = await codes
     .where({ phone, _openid: OPENID, used: false })
-    .orderBy('createdAt', 'desc')
-    .limit(5)
+    .limit(20)
     .get();
   const expected = hashCode(phone, smsCode);
-  const matched = found.data.find((item) => item.expiresAt > now && item.codeHash === expected);
+  const matched = (found.data || [])
+    .filter((item) => item.expiresAt > now)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .find((item) => item.codeHash === expected);
   if (!matched) return { ok: false, code: 'INVALID_CODE', msg: '验证码错误或已过期' };
 
   await codes.doc(matched._id).update({
@@ -40,6 +42,27 @@ exports.main = async (event = {}) => {
       usedAt: now
     }
   });
+
+  const users = db.collection('users');
+  const existing = await users.where({ _openid: OPENID }).limit(1).get();
+  const phoneData = {
+    phone,
+    phoneVerifiedAt: now,
+    updatedAt: db.serverDate()
+  };
+  if (existing.data.length) {
+    await users.doc(existing.data[0]._id).update({ data: phoneData });
+  } else {
+    await users.add({
+      data: Object.assign({
+        _openid: OPENID,
+        role: 'member',
+        nickname: '',
+        avatar: '',
+        createdAt: db.serverDate()
+      }, phoneData)
+    });
+  }
 
   return { ok: true, phone };
 };
