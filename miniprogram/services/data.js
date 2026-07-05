@@ -8,6 +8,8 @@ const billing = require('../utils/billing');
 const adminAuth = require('../utils/adminAuth');
 
 const ACCOUNT_DELETION_KEY = 'dc_account_deletion_pending';
+const LOGIN_DEFAULT_NICKNAME_KEY = 'dc_login_default_nickname';
+const USER_PROFILE_KEY = 'dc_user_profile';
 
 function cloudReady() {
   // onLaunch 期间 getApp() 可能尚未就绪，访问 .globalData 会抛 TypeError。
@@ -26,6 +28,49 @@ function initData() {
   mock.ensureSeeded();
 }
 
+function defaultNicknameKey(role) {
+  return `${LOGIN_DEFAULT_NICKNAME_KEY}_${role || 'member'}`;
+}
+
+function rememberLoginNickname(nickname, role) {
+  const name = (nickname || '').trim();
+  if (!name) return;
+  const app = typeof getApp === 'function' ? getApp() : null;
+  const currentRole = role || (app && app.globalData && app.globalData.role) || mock.getRole() || 'member';
+  try {
+    wx.setStorageSync(defaultNicknameKey(currentRole), name);
+  } catch (e) {}
+  if (app && app.globalData) {
+    const profile = app.globalData.userProfile || {};
+    const oldName = profile.nickname || '';
+    if (!oldName || oldName === '大川会员') {
+      app.globalData.userProfile = Object.assign({}, profile, {
+        role: currentRole,
+        nickname: name
+      });
+    }
+  }
+}
+
+function readLoginNickname(role) {
+  try {
+    return wx.getStorageSync(defaultNicknameKey(role)) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function applyDefaultNickname(user) {
+  if (!user) return user;
+  const app = typeof getApp === 'function' ? getApp() : null;
+  const role = user.role || (app && app.globalData && app.globalData.role) || mock.getRole() || 'member';
+  const fallback = readLoginNickname(role);
+  if (fallback && (!user.nickname || user.nickname === '大川会员')) {
+    return Object.assign({}, user, { role, nickname: fallback });
+  }
+  return user;
+}
+
 function applyUserResult(r) {
   const app = getApp();
   if (!app || !app.globalData || !r) return;
@@ -37,12 +82,12 @@ function applyUserResult(r) {
   if (r.firstLoginAt) app.globalData.firstLoginAt = r.firstLoginAt;
   if (r.plan) app.globalData.plan = r.plan;
   if (r.nickname !== undefined || r.avatar !== undefined) {
-    app.globalData.userProfile = {
+    app.globalData.userProfile = applyDefaultNickname({
       openid: r.openid || app.globalData.openid,
       role: r.role || app.globalData.role,
       nickname: r.nickname || '',
       avatar: r.avatar || ''
-    };
+    });
   }
 }
 
@@ -111,17 +156,21 @@ function verifySmsCode(phone, code) {
 function getUserProfile() {
   if (cloudReady()) {
     return callCloud('getUserProfile', {}).then((r) => {
-      const user = (r && r.user) || null;
+      const user = applyDefaultNickname((r && r.user) || null);
       if (user) applyUserResult(user);
       return user;
     });
   }
-  const user = {
+  const stored = mock.readObject(USER_PROFILE_KEY, null) || {};
+  const user = applyDefaultNickname(Object.assign({
     openid: mock.MOCK_OPENID,
     role: mock.getRole(),
     nickname: '大川会员',
     avatar: ''
-  };
+  }, stored, {
+    openid: mock.MOCK_OPENID,
+    role: mock.getRole()
+  }));
   applyUserResult(user);
   return Promise.resolve(user);
 }
@@ -158,8 +207,7 @@ function saveUserProfile({
       canSeePhone
     });
   }
-  const key = 'dc_user_profile';
-  const existing = mock.readObject(key, null) || {};
+  const existing = mock.readObject(USER_PROFILE_KEY, null) || {};
   const updated = Object.assign({}, existing, {
     nickname,
     avatar,
@@ -175,7 +223,7 @@ function saveUserProfile({
     canSeeHometown,
     canSeePhone
   });
-  mock.writeObject(key, updated);
+  mock.writeObject(USER_PROFILE_KEY, updated);
   if (getApp().globalData) {
     getApp().globalData.userProfile = updated;
   }
@@ -2161,6 +2209,7 @@ function deleteAccount(opts) {
 module.exports = {
   initData,
   login,
+  rememberLoginNickname,
   sendSmsCode,
   verifySmsCode,
   getUserProfile,

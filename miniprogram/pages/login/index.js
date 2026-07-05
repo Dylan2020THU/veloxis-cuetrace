@@ -92,16 +92,19 @@ Page({
     this.doLogin(this.data.role);
   },
 
-  doLogin(role) {
+  doLogin(role, loginName) {
     // 店主需先通过营业执照资质审核，单独走带状态网关的登录流程
     if (role === 'shop') {
-      this.doShopLogin();
+      this.doShopLogin(loginName);
       return;
     }
     wx.showLoading({ title: '登录中', mask: true });
     data
       .login(role)
-      .then(() => data.getUserProfile())
+      .then(() => {
+        if (loginName) data.rememberLoginNickname(loginName, role);
+        return data.getUserProfile();
+      })
       .then(() => data.markFirstLogin(role))
       .then(() => {
         wx.hideLoading();
@@ -114,11 +117,14 @@ Page({
   },
 
   // 店主登录网关：登录后查资质状态。approved → 进店主端；其余（未申请/待审核/已驳回）→ 资质核验页。
-  doShopLogin() {
+  doShopLogin(loginName) {
     wx.showLoading({ title: '登录中', mask: true });
     data
       .login('shop')
-      .then(() => data.getUserProfile())
+      .then(() => {
+        if (loginName) data.rememberLoginNickname(loginName, 'shop');
+        return data.getUserProfile();
+      })
       .then(() => data.getShopApplicationStatus())
       .then((res) => {
         const status = (res && res.status) || 'none';
@@ -152,6 +158,21 @@ Page({
     this.setData({ mode: 'login' });
   },
 
+  readRegisteredAccounts() {
+    try {
+      const accounts = wx.getStorageSync(ACCOUNTS_KEY) || [];
+      return Array.isArray(accounts) ? accounts : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  findRegisteredAccount(account, role) {
+    const key = (account || '').trim();
+    if (!key) return null;
+    return this.readRegisteredAccounts().find((a) => a && a.account === key && a.role === role) || null;
+  },
+
   // 注册（演示阶段：本地校验并保存账号，成功后返回登录态）
   register() {
     const account = (this.data.regAccount || '').trim();
@@ -166,12 +187,7 @@ Page({
       return wx.showToast({ title: '两次密码不一致', icon: 'none' });
     }
 
-    let accounts = [];
-    try {
-      accounts = wx.getStorageSync(ACCOUNTS_KEY) || [];
-    } catch (e) {
-      accounts = [];
-    }
+    const accounts = this.readRegisteredAccounts();
     if (accounts.some((a) => a.account === account && a.role === role)) {
       return wx.showToast({ title: '该账号已注册', icon: 'none' });
     }
@@ -223,6 +239,10 @@ Page({
       wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
       return;
     }
+    if (!this.findRegisteredAccount(phone, this.data.role)) {
+      wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
+      return;
+    }
     this.setData({ sendingCode: true });
     wx.showLoading({ title: '发送中', mask: true });
     data
@@ -243,25 +263,39 @@ Page({
   submit() {
     const { loginType, role } = this.data;
     if (loginType === 'password') {
-      if (!(this.data.account || '').trim()) {
+      const account = (this.data.account || '').trim();
+      if (!account) {
         return wx.showToast({ title: '请输入账号', icon: 'none' });
       }
       if (!this.data.password) {
         return wx.showToast({ title: '请输入密码', icon: 'none' });
       }
+      const registered = this.findRegisteredAccount(account, role);
+      if (!registered) {
+        return wx.showToast({ title: '账号未注册，请先注册', icon: 'none' });
+      }
+      if (registered.password !== this.data.password) {
+        return wx.showToast({ title: '密码错误', icon: 'none' });
+      }
+      this.doLogin(role, account);
+      return;
     } else {
-      if (!PHONE_RE.test((this.data.phone || '').trim())) {
+      const phone = (this.data.phone || '').trim();
+      if (!PHONE_RE.test(phone)) {
         return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
       }
       if (!(this.data.code || '').trim()) {
         return wx.showToast({ title: '请输入验证码', icon: 'none' });
       }
+      if (!this.findRegisteredAccount(phone, role)) {
+        return wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
+      }
       wx.showLoading({ title: '校验中', mask: true });
       data
-        .verifySmsCode((this.data.phone || '').trim(), (this.data.code || '').trim())
+        .verifySmsCode(phone, (this.data.code || '').trim())
         .then(() => {
           wx.hideLoading();
-          this.doLogin(role);
+          this.doLogin(role, phone);
         })
         .catch((e) => {
           wx.hideLoading();
@@ -269,7 +303,6 @@ Page({
         });
       return;
     }
-    this.doLogin(role);
   },
 
   onUnload() {
