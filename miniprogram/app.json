@@ -5,6 +5,7 @@
     "pages/training/add",
     "pages/profile/index",
     "pages/settings/index",
+    "pages/settings/account-security/index",
     "pages/coach/profile/index",
     "pages/coach/members/index",
     "pages/coach/member/index",

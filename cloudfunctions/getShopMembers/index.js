@@ -5,12 +5,14 @@ const db = cloud.database();
 const _ = db.command;
 
 // 统计本店（按店铺所属台球厅）会员的训练打卡天数与训练时长
-exports.main = async () => {
+exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
 
   const shopRes = await db.collection('shops').where({ _openid: OPENID }).get();
   if (!shopRes.data.length) return { members: [], shop: null };
   const shop = shopRes.data[0];
+  const targetStoreId = event.storeId || shop.storeId || shop.hallId || '';
+  if (!targetStoreId) return { members: [], shop };
 
   // 拉取本店台球厅的全部训练记录
   let all = [];
@@ -19,7 +21,7 @@ exports.main = async () => {
   while (true) {
     const res = await db
       .collection('training_sessions')
-      .where({ hallId: shop.hallId })
+      .where({ hallId: targetStoreId })
       .field({ _openid: true, date: true, durationMinutes: true })
       .skip(skip)
       .limit(pageSize)
@@ -59,6 +61,7 @@ exports.main = async () => {
     .map((openid) => ({
       openid,
       nickname: (userMap[openid] && userMap[openid].nickname) || '会员',
+      avatar: (userMap[openid] && userMap[openid].avatar) || '',
       checkinDays: Object.keys(agg[openid].days).length,
       totalMinutes: agg[openid].totalMinutes
     }))

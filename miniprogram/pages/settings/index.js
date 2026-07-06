@@ -49,6 +49,9 @@ Page({
   },
 
   // ---------- 账户 ----------
+  goAccountSecurity() {
+    wx.navigateTo({ url: '/pages/settings/account-security/index' });
+  },
   goMyProfile() {
     // 店主端走专属「球厅主页」；球员/教练沿用个人主页
     if (mock.getRole() === 'shop') {

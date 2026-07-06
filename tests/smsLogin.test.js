@@ -18,11 +18,12 @@ assert(exists('cloudfunctions/verifySmsCode/index.js'), 'verifySmsCode cloud fun
 assert(exists('cloudfunctions/verifySmsCode/package.json'), 'verifySmsCode package.json should exist.');
 
 const sendSmsCode = read('cloudfunctions/sendSmsCode/index.js');
-assert(sendSmsCode.includes('TENCENTCLOUD_SECRET_ID'), 'sendSmsCode should read Tencent Cloud secret id from env.');
-assert(sendSmsCode.includes('TENCENTCLOUD_SECRET_KEY'), 'sendSmsCode should read Tencent Cloud secret key from env.');
-assert(sendSmsCode.includes('TENCENTCLOUD_SMS_SDK_APP_ID'), 'sendSmsCode should read Tencent SMS app id from env.');
-assert(sendSmsCode.includes('TENCENTCLOUD_SMS_SIGN_NAME'), 'sendSmsCode should read Tencent SMS sign name from env.');
-assert(sendSmsCode.includes('TENCENTCLOUD_SMS_TEMPLATE_ID'), 'sendSmsCode should read Tencent SMS template id from env.');
+assert(sendSmsCode.includes('CUETRACE_SMS_SECRET_ID'), 'sendSmsCode should read Tencent Cloud secret id from env.');
+assert(sendSmsCode.includes('CUETRACE_SMS_SECRET_KEY'), 'sendSmsCode should read Tencent Cloud secret key from env.');
+assert(sendSmsCode.includes('CUETRACE_SMS_SDK_APP_ID'), 'sendSmsCode should read Tencent SMS app id from env.');
+assert(sendSmsCode.includes('CUETRACE_SMS_SIGN_NAME'), 'sendSmsCode should read Tencent SMS sign name from env.');
+assert(sendSmsCode.includes('CUETRACE_SMS_TEMPLATE_ID'), 'sendSmsCode should read Tencent SMS template id from env.');
+assert(!sendSmsCode.includes('TENCENTCLOUD_'), 'sendSmsCode should not use Tencent Cloud reserved env prefixes.');
 assert(sendSmsCode.includes('CONFIG_MISSING'), 'sendSmsCode should fail clearly when SMS is not configured.');
 assert(sendSmsCode.includes('sms_codes'), 'sendSmsCode should persist generated codes in sms_codes.');
 assert(sendSmsCode.includes('crypto.createHash'), 'sendSmsCode should store a hashed code, not plaintext.');
@@ -30,6 +31,7 @@ assert(!sendSmsCode.includes('123456'), 'sendSmsCode should not hardcode demo ve
 assert(!sendSmsCode.includes('.orderBy('), 'sendSmsCode should not require a database index for resend checks.');
 
 const verifySmsCode = read('cloudfunctions/verifySmsCode/index.js');
+assert(!verifySmsCode.includes('TENCENTCLOUD_'), 'verifySmsCode should not use Tencent Cloud reserved env prefixes.');
 assert(verifySmsCode.includes('sms_codes'), 'verifySmsCode should read sms_codes.');
 assert(verifySmsCode.includes('expiresAt'), 'verifySmsCode should reject expired codes.');
 assert(verifySmsCode.includes('used'), 'verifySmsCode should mark successful codes as used.');
@@ -53,7 +55,7 @@ assert(
 );
 assert(/data\s*\.\s*verifySmsCode/.test(loginJs), 'SMS login should call data.verifySmsCode().');
 assert(
-  loginJs.search(/data\s*\.\s*verifySmsCode/) < loginJs.lastIndexOf('this.doLogin(role)'),
-  'SMS login should verify the code before doLogin().'
+  /data\s*\.\s*verifySmsCode\([\s\S]*?\.then\(\(\)\s*=>\s*\{[\s\S]*?this\.doLogin\(role,\s*phone\)/.test(loginJs),
+  'SMS login should call doLogin() only after verifySmsCode() succeeds.'
 );
 assert(!/验证码已发送[\s\S]{0,120}setInterval/.test(loginJs), 'Login page should not show success and start countdown before cloud send succeeds.');

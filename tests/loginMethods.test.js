@@ -45,35 +45,22 @@ assert(
   'WeChat login should be presented as an icon button under 其他登录方式.'
 );
 
+const wechatButtonMatch = loginWxml.match(/<button[^>]*class="wechat-icon-btn"[^>]*bindtap="wechatLogin"[^>]*>([\s\S]*?)<\/button>/);
+assert(wechatButtonMatch, 'WeChat login icon button should exist.');
+const wechatButtonText = wechatButtonMatch[1].replace(/<[^>]+>/g, '').trim();
 assert(
-  !/<button[^>]*bindtap="wechatLogin"[\s\S]*(微信登录|微)[\s\S]*<\/button>/.test(loginWxml),
+  !wechatButtonText,
   'The WeChat login button should not display a text label.'
 );
 
 assert(
-  loginWxml.includes('wechat-logo-bubble main') && loginWxml.includes('wechat-logo-bubble sub'),
-  'The WeChat login button should render a two-bubble WeChat-style logo.'
+  /<image[^>]+class="wechat-logo-img"[^>]+src="\/images\/login\/WeChat_logo\.ico"/.test(loginWxml),
+  'The WeChat login button should render the configured official WeChat icon image.'
 );
 
 assert(
-  /\.wechat-icon-btn\s*\{[\s\S]*?background:\s*#07c160/.test(loginWxss),
-  'The WeChat logo icon should use the official green circular background.'
-);
-
-assert(
-  /\.wechat-logo-bubble\s*\{[\s\S]*?background:\s*#fff/.test(loginWxss),
-  'The WeChat logo bubbles should be white.'
-);
-
-assert(
-  /\.wechat-logo-bubble\.main::after\s*\{[\s\S]*?background:\s*#fff/.test(loginWxss) &&
-    /\.wechat-logo-bubble\.sub::after\s*\{[\s\S]*?background:\s*#fff/.test(loginWxss),
-  'The WeChat logo bubble tails should be white.'
-);
-
-assert(
-  /\.wechat-dot\s*\{[\s\S]*?background:\s*#07c160/.test(loginWxss),
-  'The WeChat logo eyes should match the green background.'
+  !loginWxml.includes('wechat-logo-bubble') && !loginWxss.includes('wechat-logo-bubble') && !loginWxss.includes('wechat-dot'),
+  'The WeChat login button should not use the old hand-drawn logo.'
 );
 
 assert(
@@ -87,6 +74,7 @@ assert(
 );
 
 assert(
-  /\.wechat-icon-btn\s*\{[\s\S]*?min-width:\s*92rpx[\s\S]*?max-width:\s*92rpx/.test(loginWxss),
-  'The WeChat logo icon should lock min/max width so native button styles cannot stretch it.'
+  /\.wechat-icon-btn\s*\{[\s\S]*?min-width:\s*74rpx[\s\S]*?max-width:\s*74rpx/.test(loginWxss) &&
+    /\.wechat-logo-img\s*\{[\s\S]*?width:\s*74rpx[\s\S]*?height:\s*74rpx/.test(loginWxss),
+  'The WeChat logo icon should be locked to 80% of the previous 92rpx size.'
 );

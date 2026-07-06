@@ -208,6 +208,22 @@
   box-shadow: 0 2rpx 10rpx rgba(6, 126, 249, 0.18);
 }
 
+.bind-head {
+  margin-bottom: 28rpx;
+}
+
+.bind-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bind-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+
 /* 圆角填充式输入框 */
 .field {
   display: flex;
@@ -228,6 +244,13 @@
   color: var(--text-weak);
 }
 
+.account-rule {
+  margin: -12rpx 6rpx 22rpx;
+  font-size: 22rpx;
+  line-height: 1.45;
+  color: var(--text-weak);
+}
+
 .field-code .input {
   margin-right: 24rpx;
 }
@@ -245,10 +268,65 @@
 }
 
 .login-btn {
-  margin-top: 48rpx;
+  margin-top: 22rpx;
   height: 92rpx;
   border-radius: 36rpx 0 36rpx 0;
   box-shadow: 0 10rpx 28rpx rgba(6, 126, 249, 0.35);
+}
+
+.login-btn--disabled {
+  background: #b7c7f0;
+  box-shadow: none;
+}
+
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 10rpx;
+  color: var(--text-weak);
+}
+
+.agreement-row--register {
+  margin-top: 4rpx;
+}
+
+.agree-circle {
+  flex: 0 0 34rpx;
+  width: 34rpx;
+  height: 34rpx;
+  margin-top: 2rpx;
+  margin-right: 14rpx;
+  border: 3rpx solid #d9dde4;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.agree-circle.checked {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.agree-check {
+  color: #fff;
+  font-size: 22rpx;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.agree-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 23rpx;
+  line-height: 1.55;
+  color: var(--text-weak);
+}
+
+.agree-link {
+  color: #003eb3;
 }
 
 /* 登录 / 注册 切换链接 */
@@ -283,14 +361,14 @@
 }
 
 .wechat-icon-btn {
-  width: 92rpx;
-  min-width: 92rpx;
-  max-width: 92rpx;
-  height: 92rpx;
-  min-height: 92rpx;
-  max-height: 92rpx;
+  width: 74rpx;
+  min-width: 74rpx;
+  max-width: 74rpx;
+  height: 74rpx;
+  min-height: 74rpx;
+  max-height: 74rpx;
   border-radius: 50%;
-  background: #07c160;
+  background: transparent;
   box-sizing: border-box;
   padding: 0;
   margin: 0 auto;
@@ -305,79 +383,8 @@
   border: none;
 }
 
-.wechat-logo {
-  position: relative;
-  width: 58rpx;
-  height: 46rpx;
-}
-
-.wechat-logo-bubble {
-  position: absolute;
-  background: #fff;
-}
-
-.wechat-logo-bubble.main {
-  left: 0;
-  top: 0;
-  width: 40rpx;
-  height: 32rpx;
-  border-radius: 50%;
-}
-
-.wechat-logo-bubble.main::after {
-  content: '';
-  position: absolute;
-  left: 7rpx;
-  bottom: -5rpx;
-  width: 10rpx;
-  height: 10rpx;
-  background: #fff;
-  transform: rotate(28deg);
-}
-
-.wechat-logo-bubble.sub {
-  right: 0;
-  bottom: 2rpx;
-  width: 36rpx;
-  height: 28rpx;
-  border-radius: 50%;
-}
-
-.wechat-logo-bubble.sub::after {
-  content: '';
-  position: absolute;
-  right: 6rpx;
-  bottom: -4rpx;
-  width: 9rpx;
-  height: 9rpx;
-  background: #fff;
-  transform: rotate(24deg);
-}
-
-.wechat-dot {
-  position: absolute;
-  width: 6rpx;
-  height: 6rpx;
-  border-radius: 50%;
-  background: #07c160;
-}
-
-.dot-a {
-  left: 11rpx;
-  top: 11rpx;
-}
-
-.dot-b {
-  left: 25rpx;
-  top: 11rpx;
-}
-
-.dot-c {
-  left: 10rpx;
-  top: 9rpx;
-}
-
-.dot-d {
-  left: 23rpx;
-  top: 9rpx;
+.wechat-logo-img {
+  width: 74rpx;
+  height: 74rpx;
+  display: block;
 }

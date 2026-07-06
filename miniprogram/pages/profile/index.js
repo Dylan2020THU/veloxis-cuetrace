@@ -284,6 +284,61 @@ Page({
 
   // ---------- 账号编码 ----------
   // 点击编码：复制到剪贴板，方便发给对方手动添加
+  chooseAvatar() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      success: (res) => {
+        const file = res.tempFiles && res.tempFiles[0];
+        const tempPath = file && file.tempFilePath;
+        if (!tempPath) return;
+        wx.showLoading({ title: '上传中', mask: true });
+        data
+          .uploadImage(tempPath)
+          .then((url) => data.getUserProfile().then((user) => {
+            const profile = user || {};
+            return data.saveUserProfile({
+              role: profile.role || this.data.role,
+              nickname: profile.nickname || this.data.nickname,
+              avatar: url,
+              gender: profile.gender || '',
+              birthDate: profile.birthDate || '',
+              phone: profile.phone || '',
+              locationCity: profile.locationCity || '',
+              hometown: Array.isArray(profile.hometown) ? profile.hometown : [],
+              years: profile.years || '',
+              level: profile.level || '',
+              canSeeGender: profile.canSeeGender,
+              canSeeBirthDate: profile.canSeeBirthDate,
+              canSeeHometown: profile.canSeeHometown,
+              canSeePhone: profile.canSeePhone
+            }).then((r) => ({ r, url, profile }));
+          }))
+          .then(({ r, url, profile }) => {
+            if (r && r.ok === false) {
+              wx.showToast({ title: r.msg || '保存失败', icon: 'none' });
+              return;
+            }
+            const app = getApp();
+            if (app.globalData) {
+              app.globalData.userProfile = Object.assign({}, profile, {
+                role: profile.role || this.data.role,
+                nickname: profile.nickname || this.data.nickname,
+                avatar: url
+              });
+            }
+            this.setData({ avatar: url });
+            wx.showToast({ title: '头像已更新', icon: 'success' });
+          })
+          .catch((err) => {
+            console.warn('[我的] 头像更新失败', err);
+            wx.showToast({ title: '头像更新失败', icon: 'none' });
+          })
+          .finally(() => wx.hideLoading());
+      }
+    });
+  },
+
   copyCode() {
     if (!this.data.accountCode) return;
     wx.setClipboardData({

@@ -74,6 +74,6 @@ assert(
 );
 
 assert(
-  legalJs.includes('7 天') && legalJs.includes('重新登录'),
+  legalJs.includes('7 天保留期') && legalJs.includes('重新登录') && legalJs.includes('撤回注销申请'),
   'User agreement should disclose the 7-day account deletion grace period.'
 );

@@ -22,19 +22,19 @@ function hmac(key, value, encoding) {
 }
 
 function hashCode(phone, code) {
-  const secret = process.env.SMS_CODE_HASH_SECRET || process.env.TENCENTCLOUD_SECRET_KEY || '';
+  const secret = process.env.SMS_CODE_HASH_SECRET || process.env.CUETRACE_SMS_SECRET_KEY || '';
   return sha256(`${phone}:${code}:${secret}`);
 }
 
 function config() {
   const cfg = {
-    secretId: process.env.TENCENTCLOUD_SECRET_ID || '',
-    secretKey: process.env.TENCENTCLOUD_SECRET_KEY || '',
-    smsSdkAppId: process.env.TENCENTCLOUD_SMS_SDK_APP_ID || '',
-    signName: process.env.TENCENTCLOUD_SMS_SIGN_NAME || '',
-    templateId: process.env.TENCENTCLOUD_SMS_TEMPLATE_ID || '',
-    region: process.env.TENCENTCLOUD_SMS_REGION || 'ap-guangzhou',
-    templateParams: process.env.TENCENTCLOUD_SMS_TEMPLATE_PARAMS || 'code,expire'
+    secretId: process.env.CUETRACE_SMS_SECRET_ID || '',
+    secretKey: process.env.CUETRACE_SMS_SECRET_KEY || '',
+    smsSdkAppId: process.env.CUETRACE_SMS_SDK_APP_ID || '',
+    signName: process.env.CUETRACE_SMS_SIGN_NAME || '',
+    templateId: process.env.CUETRACE_SMS_TEMPLATE_ID || '',
+    region: process.env.CUETRACE_SMS_REGION || 'ap-guangzhou',
+    templateParams: process.env.CUETRACE_SMS_TEMPLATE_PARAMS || 'code,expire'
   };
   const missing = Object.keys(cfg).filter((k) => k !== 'region' && k !== 'templateParams' && !cfg[k]);
   return { cfg, missing };

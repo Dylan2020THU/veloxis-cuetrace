@@ -4,7 +4,7 @@
       <image class="hero-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
       <view class="hero-name">强化杆迹</view>
       <view class="hero-slogan">没有任何一杆是白打的</view>
-      <view class="hero-sub">{{ step === 1 ? '请选择身份，使用账号或手机号登录' : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
+      <view class="hero-sub">{{ step === 1 ? '请选择身份，使用账号或手机号登录' : (mode === 'register' ? '注册「' + roleLabel + '」账号' : (mode === 'wechatBind' ? '绑定后使用微信登录' : '使用「' + roleLabel + '」身份登录')) }}</view>
     </view>
 
     <!-- 第一步：身份选择（库边瞄准点选择器） -->
@@ -112,7 +112,19 @@
         </view>
       </block>
 
-      <button class="btn-primary login-btn" bindtap="submit">登录</button>
+      <view class="agreement-row">
+        <view class="agree-circle {{agreementChecked ? 'checked' : ''}}" bindtap="toggleAgreement">
+          <text wx:if="{{agreementChecked}}" class="agree-check">✓</text>
+        </view>
+        <view class="agree-text">
+          <text>我已阅读并同意</text>
+          <text class="agree-link" catchtap="openAgreement">《强化杆迹用户协议》</text>
+          <text>和</text>
+          <text class="agree-link" catchtap="openPrivacyPolicy">《强化杆迹隐私权政策》</text>
+        </view>
+      </view>
+
+      <button class="btn-primary login-btn {{agreementChecked ? '' : 'login-btn--disabled'}}" bindtap="submit">登录</button>
 
       <view class="alt-line">
         <text class="alt-text">还没有账号？</text>
@@ -122,18 +134,107 @@
       <view class="other-login">
         <view class="other-title">其他登录方式</view>
         <button class="wechat-icon-btn" bindtap="wechatLogin">
-          <view class="wechat-logo" aria-hidden="true">
-            <view class="wechat-logo-bubble main">
-              <view class="wechat-dot dot-a"></view>
-              <view class="wechat-dot dot-b"></view>
-            </view>
-            <view class="wechat-logo-bubble sub">
-              <view class="wechat-dot dot-c"></view>
-              <view class="wechat-dot dot-d"></view>
-            </view>
-          </view>
+          <image class="wechat-logo-img" src="/images/login/WeChat_logo.ico" mode="aspectFit"></image>
         </button>
       </view>
+      </block>
+
+      <!-- 微信绑定态 -->
+      <block wx:elif="{{mode==='wechatBind'}}">
+        <view class="bind-head">
+          <view class="bind-title">绑定账号或手机号</view>
+          <view class="bind-sub">当前身份：{{roleLabel}}</view>
+        </view>
+
+        <view class="seg">
+          <view
+            class="seg-item {{loginType==='password'?'active':''}}"
+            data-type="password"
+            bindtap="switchType"
+          >绑定账号</view>
+          <view
+            class="seg-item {{loginType==='sms'?'active':''}}"
+            data-type="sms"
+            bindtap="switchType"
+          >绑定手机号</view>
+        </view>
+
+        <block wx:if="{{loginType==='password'}}">
+          <view class="field">
+            <input
+              class="input"
+              placeholder="请输入已注册账号"
+              placeholder-class="placeholder"
+              data-field="account"
+              value="{{account}}"
+              bindinput="onInput"
+            />
+          </view>
+          <view class="field">
+            <input
+              class="input"
+              password
+              placeholder="请输入密码"
+              placeholder-class="placeholder"
+              data-field="password"
+              value="{{password}}"
+              bindinput="onInput"
+            />
+          </view>
+        </block>
+
+        <block wx:else>
+          <view class="field">
+            <input
+              class="input"
+              type="number"
+              maxlength="11"
+              placeholder="请输入已注册手机号"
+              placeholder-class="placeholder"
+              data-field="phone"
+              value="{{phone}}"
+              bindinput="onInput"
+            />
+          </view>
+          <view class="field field-code">
+            <input
+              class="input"
+              type="number"
+              maxlength="6"
+              placeholder="请输入验证码"
+              placeholder-class="placeholder"
+              data-field="code"
+              value="{{code}}"
+              bindinput="onInput"
+            />
+            <view class="code-btn {{counting?'disabled':''}}" bindtap="sendCode">
+              {{counting ? countdown + 's' : '获取验证码'}}
+            </view>
+          </view>
+        </block>
+
+        <view class="agreement-row">
+          <view class="agree-circle {{agreementChecked ? 'checked' : ''}}" bindtap="toggleAgreement">
+            <text wx:if="{{agreementChecked}}" class="agree-check">✓</text>
+          </view>
+          <view class="agree-text">
+            <text>我已阅读并同意</text>
+            <text class="agree-link" catchtap="openAgreement">《强化杆迹用户协议》</text>
+            <text>和</text>
+            <text class="agree-link" catchtap="openPrivacyPolicy">《强化杆迹隐私权政策》</text>
+          </view>
+        </view>
+
+        <button class="btn-primary login-btn {{agreementChecked ? '' : 'login-btn--disabled'}}" bindtap="bindWechat">绑定并微信登录</button>
+
+        <view class="alt-line">
+          <text class="alt-text">还没有账号？</text>
+          <text class="alt-link" bindtap="goRegister">注册账号</text>
+        </view>
+
+        <view class="alt-line">
+          <text class="alt-link" bindtap="backToLogin">返回账号登录</text>
+        </view>
       </block>
 
       <!-- 注册态 -->
@@ -148,6 +249,7 @@
             bindinput="onInput"
           />
         </view>
+        <view class="account-rule">{{accountRuleText}}</view>
         <view class="field">
           <input
             class="input"
@@ -171,7 +273,19 @@
           />
         </view>
 
-        <button class="btn-primary login-btn" bindtap="register">注册</button>
+        <view class="agreement-row agreement-row--register">
+          <view class="agree-circle {{agreementChecked ? 'checked' : ''}}" bindtap="toggleAgreement">
+            <text wx:if="{{agreementChecked}}" class="agree-check">✓</text>
+          </view>
+          <view class="agree-text">
+            <text>我已阅读并同意</text>
+            <text class="agree-link" catchtap="openAgreement">《强化杆迹用户协议》</text>
+            <text>和</text>
+            <text class="agree-link" catchtap="openPrivacyPolicy">《强化杆迹隐私权政策》</text>
+          </view>
+        </view>
+
+        <button class="btn-primary login-btn {{agreementChecked ? '' : 'login-btn--disabled'}}" bindtap="register">注册</button>
 
         <view class="alt-line">
           <text class="alt-text">已有账号？</text>
@@ -181,5 +295,5 @@
       </view>
     </block>
   </view>
-  <view class="icp-footer">京ICP备2026039244号-1X</view>
+  <view wx:if="{{step === 1}}" class="icp-footer">京ICP备2026039244号-1X</view>
 </view>

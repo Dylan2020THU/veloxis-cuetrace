@@ -99,6 +99,88 @@ async function testCloudFunctionUpdatesUserProfile() {
   });
 }
 
+async function testCloudFunctionPreservesExistingFieldsOnPartialUpdate() {
+  const updates = [];
+  const fakeDb = {
+    serverDate: () => 'SERVER_DATE',
+    collection(name) {
+      assert.strictEqual(name, 'users');
+      return {
+        where(query) {
+          assert.deepStrictEqual(query, { _openid: 'user_openid' });
+          return {
+            async get() {
+              return {
+                data: [{
+                  _id: 'user_doc_id',
+                  role: 'coach',
+                  nickname: 'Coach A',
+                  avatar: 'cloud://old-avatar',
+                  gender: '男',
+                  birthDate: '1990-01-01',
+                  phone: '13800138000',
+                  locationCity: '北京',
+                  hometown: ['北京', '北京市'],
+                  years: '5年以上',
+                  level: '4级',
+                  canSeeGender: false,
+                  canSeeBirthDate: false,
+                  canSeeHometown: true,
+                  canSeePhone: false
+                }]
+              };
+            }
+          };
+        },
+        doc(id) {
+          assert.strictEqual(id, 'user_doc_id');
+          return {
+            async update({ data }) {
+              updates.push(data);
+            }
+          };
+        }
+      };
+    }
+  };
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'DYNAMIC_CURRENT_ENV',
+    init() {},
+    database() {
+      return fakeDb;
+    },
+    getWXContext() {
+      return { OPENID: 'user_openid' };
+    }
+  };
+
+  const fnPath = path.join(root, 'cloudfunctions/saveUserProfile/index.js');
+  delete require.cache[require.resolve(fnPath)];
+  const saveUserProfile = withWxServerSdk(fakeCloud, () => require(fnPath));
+
+  const result = await saveUserProfile.main({ avatar: 'cloud://new-avatar' });
+
+  assert.deepStrictEqual(result, { ok: true });
+  assert.strictEqual(updates.length, 1);
+  assert.deepStrictEqual(updates[0], {
+    nickname: 'Coach A',
+    avatar: 'cloud://new-avatar',
+    gender: '男',
+    birthDate: '1990-01-01',
+    phone: '13800138000',
+    locationCity: '北京',
+    hometown: ['北京', '北京市'],
+    years: '5年以上',
+    level: '4级',
+    canSeeGender: false,
+    canSeeBirthDate: false,
+    canSeeHometown: true,
+    canSeePhone: false,
+    role: 'coach',
+    updatedAt: 'SERVER_DATE'
+  });
+}
+
 async function testDataServiceForwardsVisibilityFields() {
   const captured = [];
   global.getApp = () => ({ globalData: { cloudReady: true } });
@@ -207,6 +289,7 @@ async function testGetUserProfileReturnsSavedProfileFields() {
 
 (async () => {
   await testCloudFunctionUpdatesUserProfile();
+  await testCloudFunctionPreservesExistingFieldsOnPartialUpdate();
   await testDataServiceForwardsVisibilityFields();
   await testGetUserProfileReturnsSavedProfileFields();
 })();

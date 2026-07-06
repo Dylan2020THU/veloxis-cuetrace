@@ -2,8 +2,13 @@
   <!-- 1. 身份头部 -->
   <view class="profile-head">
     <view class="head-gear" catchtap="goSettings"><view class="gear-ic"></view></view>
-    <image wx:if="{{avatar}}" class="head-avatar" src="{{avatar}}" mode="aspectFill"></image>
-    <view wx:else class="head-avatar head-avatar--ph">{{nickname[0]}}</view>
+    <view class="head-avatar-wrap" bindtap="chooseAvatar">
+      <image wx:if="{{avatar}}" class="head-avatar" src="{{avatar}}" mode="aspectFill"></image>
+      <view wx:else class="head-avatar head-avatar--ph">{{nickname[0]}}</view>
+      <view class="head-avatar-edit">
+        <view class="head-avatar-edit-ic"></view>
+      </view>
+    </view>
     <view class="head-name">{{nickname}}</view>
     <view class="head-role">大川激流 · {{roleLabel}}</view>
     <view class="head-code" wx:if="{{accountCode}}">

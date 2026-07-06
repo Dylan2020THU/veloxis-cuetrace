@@ -176,6 +176,7 @@ function getUserProfile() {
 }
 
 function saveUserProfile({
+  role,
   nickname,
   avatar,
   gender,
@@ -192,6 +193,7 @@ function saveUserProfile({
 }) {
   if (cloudReady()) {
     return callCloud('saveUserProfile', {
+      role,
       nickname,
       avatar,
       gender,
@@ -208,7 +210,9 @@ function saveUserProfile({
     });
   }
   const existing = mock.readObject(USER_PROFILE_KEY, null) || {};
-  const updated = Object.assign({}, existing, {
+  const updated = Object.assign({}, existing);
+  const patch = {
+    role: role || existing.role || mock.getRole(),
     nickname,
     avatar,
     gender,
@@ -222,6 +226,9 @@ function saveUserProfile({
     canSeeBirthDate,
     canSeeHometown,
     canSeePhone
+  };
+  Object.keys(patch).forEach((key) => {
+    if (patch[key] !== undefined) updated[key] = patch[key];
   });
   mock.writeObject(USER_PROFILE_KEY, updated);
   if (getApp().globalData) {

@@ -9,7 +9,7 @@ const PHONE_RE = /^1\d{10}$/;
 const CODE_RE = /^\d{6}$/;
 
 function hashCode(phone, code) {
-  const secret = process.env.SMS_CODE_HASH_SECRET || process.env.TENCENTCLOUD_SECRET_KEY || '';
+  const secret = process.env.SMS_CODE_HASH_SECRET || process.env.CUETRACE_SMS_SECRET_KEY || '';
   return crypto.createHash('sha256').update(`${phone}:${code}:${secret}`).digest('hex');
 }
 
@@ -19,7 +19,7 @@ exports.main = async (event = {}) => {
   const smsCode = String(event.code || '').trim();
   if (!PHONE_RE.test(phone)) return { ok: false, code: 'INVALID_PHONE', msg: '请输入正确的手机号' };
   if (!CODE_RE.test(smsCode)) return { ok: false, code: 'INVALID_CODE', msg: '请输入 6 位验证码' };
-  if (!(process.env.SMS_CODE_HASH_SECRET || process.env.TENCENTCLOUD_SECRET_KEY)) {
+  if (!(process.env.SMS_CODE_HASH_SECRET || process.env.CUETRACE_SMS_SECRET_KEY)) {
     return { ok: false, code: 'CONFIG_MISSING', msg: '短信服务未配置' };
   }
 

@@ -1,0 +1,57 @@
+.page {
+  min-height: 100vh;
+  padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.security-card {
+  background: var(--card-bg);
+  border-radius: 20rpx;
+  padding: 0 32rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.security-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 104rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.security-row:last-child {
+  border-bottom: none;
+}
+
+.row-title {
+  flex-shrink: 0;
+  font-size: 32rpx;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.row-right {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: 24rpx;
+}
+
+.row-value {
+  min-width: 0;
+  max-width: 420rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 30rpx;
+  color: var(--text-weak);
+  text-align: right;
+}
+
+.arrow {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  color: var(--text-weak);
+  font-size: 40rpx;
+  line-height: 1;
+}

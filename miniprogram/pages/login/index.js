@@ -9,9 +9,12 @@ const ROLES = [
 ];
 
 const PHONE_RE = /^1\d{10}$/;
+const ACCOUNT_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;
+const ACCOUNT_RULE_TEXT = '账号需 4-20 位，字母开头，仅支持字母、数字、下划线';
 
 // 本地注册账号存储（演示阶段）
 const ACCOUNTS_KEY = 'dc_accounts';
+const WECHAT_BINDINGS_KEY = 'dc_wechat_bindings';
 
 // 各身份登录后的落地首页
 const HOME_BY_ROLE = {
@@ -33,7 +36,7 @@ Page({
     roleLabel: '球员',
     // 登录步骤：1 = 选择身份，2 = 填写账号
     step: 1,
-    // 第二步的模式：login = 登录，register = 注册
+    // 第二步的模式：login = 登录，wechatBind = 微信绑定，register = 注册
     mode: 'login',
     // 登录方式：password = 账号密码，sms = 手机验证码
     loginType: 'password',
@@ -44,6 +47,8 @@ Page({
     counting: false,
     sendingCode: false,
     countdown: 60,
+    agreementChecked: false,
+    accountRuleText: ACCOUNT_RULE_TEXT,
     // 注册表单
     regAccount: '',
     regPassword: '',
@@ -84,12 +89,11 @@ Page({
 
   // 第一步 → 第二步：所有身份都先进入账号/手机号登录
   goNext() {
-    this.setData({ step: 2 });
+    this.setData({ step: 2, agreementChecked: false });
   },
 
   wechatLogin() {
-    this.syncCloudReady();
-    this.doLogin(this.data.role);
+    this.setData({ mode: 'wechatBind', loginType: 'password', password: '', code: '', agreementChecked: false });
   },
 
   doLogin(role, loginName) {
@@ -145,17 +149,35 @@ Page({
 
   // 第二步 → 第一步（重选身份）
   goPrev() {
-    this.setData({ step: 1, mode: 'login' });
+    this.setData({ step: 1, mode: 'login', agreementChecked: false });
   },
 
   // 切换到注册态
   goRegister() {
-    this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '' });
+    this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '', agreementChecked: false });
   },
 
   // 注册态 → 返回登录态
   backToLogin() {
-    this.setData({ mode: 'login' });
+    this.setData({ mode: 'login', agreementChecked: false });
+  },
+
+  toggleAgreement() {
+    this.setData({ agreementChecked: !this.data.agreementChecked });
+  },
+
+  openAgreement() {
+    wx.navigateTo({ url: '/pages/legal/index?type=agreement' });
+  },
+
+  openPrivacyPolicy() {
+    wx.navigateTo({ url: '/pages/legal/index?type=privacy' });
+  },
+
+  ensureAgreementChecked() {
+    if (this.data.agreementChecked) return true;
+    wx.showToast({ title: '请先阅读并同意协议与隐私政策', icon: 'none' });
+    return false;
   },
 
   readRegisteredAccounts() {
@@ -173,12 +195,47 @@ Page({
     return this.readRegisteredAccounts().find((a) => a && a.account === key && a.role === role) || null;
   },
 
+  isValidRegisterAccount(account) {
+    return ACCOUNT_RE.test(account);
+  },
+
+  saveWechatBinding(account, role) {
+    const key = (account || '').trim();
+    if (!key) return;
+    const now = Date.now();
+    try {
+      const bindings = wx.getStorageSync(WECHAT_BINDINGS_KEY) || [];
+      const list = Array.isArray(bindings) ? bindings : [];
+      const idx = list.findIndex((item) => item && item.account === key && item.role === role);
+      const record = { account: key, role, boundAt: now };
+      if (idx >= 0) list[idx] = Object.assign({}, list[idx], record);
+      else list.push(record);
+      wx.setStorageSync(WECHAT_BINDINGS_KEY, list);
+    } catch (e) {}
+
+    const accounts = this.readRegisteredAccounts();
+    const accountIdx = accounts.findIndex((item) => item && item.account === key && item.role === role);
+    if (accountIdx >= 0) {
+      accounts[accountIdx] = Object.assign({}, accounts[accountIdx], {
+        wechatBound: true,
+        wechatBoundAt: now
+      });
+      try {
+        wx.setStorageSync(ACCOUNTS_KEY, accounts);
+      } catch (e) {}
+    }
+  },
+
   // 注册（演示阶段：本地校验并保存账号，成功后返回登录态）
   register() {
+    if (!this.ensureAgreementChecked()) return;
     const account = (this.data.regAccount || '').trim();
     const { regPassword, regConfirm, role } = this.data;
     if (!account) {
       return wx.showToast({ title: '请输入账号', icon: 'none' });
+    }
+    if (!this.isValidRegisterAccount(account)) {
+      return wx.showToast({ title: ACCOUNT_RULE_TEXT, icon: 'none' });
     }
     if (!regPassword || regPassword.length < 6) {
       return wx.showToast({ title: '密码至少 6 位', icon: 'none' });
@@ -261,6 +318,7 @@ Page({
   },
 
   submit() {
+    if (!this.ensureAgreementChecked()) return;
     const { loginType, role } = this.data;
     if (loginType === 'password') {
       const account = (this.data.account || '').trim();
@@ -303,6 +361,53 @@ Page({
         });
       return;
     }
+  },
+
+  bindWechat() {
+    if (!this.ensureAgreementChecked()) return;
+    const { loginType, role } = this.data;
+    if (loginType === 'password') {
+      const account = (this.data.account || '').trim();
+      if (!account) {
+        return wx.showToast({ title: '请输入账号', icon: 'none' });
+      }
+      if (!this.data.password) {
+        return wx.showToast({ title: '请输入密码', icon: 'none' });
+      }
+      const registered = this.findRegisteredAccount(account, role);
+      if (!registered) {
+        return wx.showToast({ title: '账号未注册，请先注册', icon: 'none' });
+      }
+      if (registered.password !== this.data.password) {
+        return wx.showToast({ title: '密码错误', icon: 'none' });
+      }
+      this.saveWechatBinding(account, role);
+      this.doLogin(role, account);
+      return;
+    }
+
+    const phone = (this.data.phone || '').trim();
+    if (!PHONE_RE.test(phone)) {
+      return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+    }
+    if (!(this.data.code || '').trim()) {
+      return wx.showToast({ title: '请输入验证码', icon: 'none' });
+    }
+    if (!this.findRegisteredAccount(phone, role)) {
+      return wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
+    }
+    wx.showLoading({ title: '校验中', mask: true });
+    data
+      .verifySmsCode(phone, (this.data.code || '').trim())
+      .then(() => {
+        wx.hideLoading();
+        this.saveWechatBinding(phone, role);
+        this.doLogin(role, phone);
+      })
+      .catch((e) => {
+        wx.hideLoading();
+        wx.showToast({ title: (e && e.message) || '验证码错误或已过期', icon: 'none' });
+      });
   },
 
   onUnload() {

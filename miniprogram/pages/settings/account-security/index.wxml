@@ -1,0 +1,43 @@
+<view class="page theme-{{theme}}">
+  <view class="security-card">
+    <view class="security-row" bindtap="copyAccount">
+      <text class="row-title">账号</text>
+      <view class="row-right">
+        <text class="row-value">{{accountText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onPassword">
+      <text class="row-title">登录密码</text>
+      <view class="row-right">
+        <text class="row-value">{{passwordText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="goMyQrcode">
+      <text class="row-title">我的二维码</text>
+      <view class="row-right">
+        <text class="row-value">{{qrText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onPhone">
+      <text class="row-title">手机号</text>
+      <view class="row-right">
+        <text class="row-value">{{phoneText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onWechat">
+      <text class="row-title">微信账号</text>
+      <view class="row-right">
+        <text class="row-value">{{wechatText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+</view>

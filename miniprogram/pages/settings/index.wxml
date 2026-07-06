@@ -1,16 +1,8 @@
 <view class="page theme-{{theme}}">
   <!-- 账户 -->
   <view class="card">
-    <view class="entry" bindtap="goMyProfile">
-      <text class="entry-title">{{profileLabel}}</text>
-      <text class="arrow">›</text>
-    </view>
-    <view class="entry" bindtap="goEditProfile">
-      <text class="entry-title">{{editLabel}}</text>
-      <text class="arrow">›</text>
-    </view>
-    <view class="entry" bindtap="goMyQrcode">
-      <text class="entry-title">{{qrLabel}}</text>
+    <view class="entry" bindtap="goAccountSecurity">
+      <text class="entry-title">账号与安全</text>
       <text class="arrow">›</text>
     </view>
   </view>
