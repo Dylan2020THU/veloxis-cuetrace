@@ -366,11 +366,13 @@
 
 /* 操作按钮 */
 .card-action {
+  display: flex;
+  gap: 12rpx;
   padding: 12rpx 16rpx 16rpx;
 }
 
 .action-btn {
-  width: 100%;
+  flex: 1;
   text-align: center;
   padding: 14rpx 0;
   border-radius: 10rpx;
@@ -381,6 +383,13 @@
 .btn-use {
   background: var(--card-color, #067ef9);
   color: #fff;
+}
+
+.action-btn.secondary,
+.btn-qr {
+  background: var(--card-bg);
+  color: var(--text-sub);
+  border: 2rpx solid var(--border);
 }
 
 .btn-end {

@@ -1,0 +1,149 @@
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+
+.loading {
+  padding-top: 160rpx;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 28rpx;
+}
+
+.table-hero {
+  padding: 40rpx 32rpx;
+  border-radius: 24rpx;
+  background: var(--card-bg);
+  border: 2rpx solid var(--border);
+}
+
+.store-name {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+
+.table-name {
+  margin-top: 12rpx;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.table-meta {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: var(--text-sub);
+}
+
+.panel {
+  margin-top: 28rpx;
+  padding: 32rpx;
+  border-radius: 24rpx;
+  background: var(--card-bg);
+  border: 2rpx solid var(--border);
+}
+
+.panel-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28rpx;
+  min-height: 168rpx;
+  margin-top: 28rpx;
+}
+
+.participant {
+  width: 120rpx;
+  text-align: center;
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 auto;
+}
+
+.avatar,
+.avatar-ph {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+}
+
+.avatar-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  color: #fff;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+
+.ready-mark {
+  position: absolute;
+  right: -4rpx;
+  bottom: -4rpx;
+  width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  border-radius: 50%;
+  background: #18b66a;
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.participant-name {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--text);
+}
+
+.participant-role {
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: var(--text-weak);
+}
+
+.empty-participant {
+  width: 100%;
+  padding: 48rpx 0;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+.actions {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 40rpx;
+}
+
+.join-btn,
+.start-btn {
+  flex: 1;
+  height: 92rpx;
+  line-height: 92rpx;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+}
+
+.join-btn {
+  color: var(--brand);
+  background: var(--card-bg);
+  border: 2rpx solid var(--brand);
+}
+
+.start-btn {
+  color: #fff;
+  background: var(--brand);
+}

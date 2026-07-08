@@ -3,6 +3,38 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
+const VALID_ROLES = ['member', 'coach', 'shop'];
+
+async function openCoachRole(coachOpenid) {
+  if (!coachOpenid) return;
+  const users = db.collection('users');
+  const res = await users.where({ _openid: coachOpenid }).get();
+  if (!res.data.length) {
+    await users.add({
+      data: {
+        _openid: coachOpenid,
+        roles: ['member', 'coach'],
+        currentRole: 'member',
+        role: 'member',
+        createdAt: db.serverDate(),
+        updatedAt: db.serverDate()
+      }
+    });
+    return;
+  }
+  const user = res.data[0];
+  const roles = Array.from(new Set([].concat(user.roles || [], user.role || 'member', ['member', 'coach'])))
+    .filter((role) => VALID_ROLES.indexOf(role) !== -1);
+  await users.doc(user._id).update({
+    data: {
+      roles,
+      currentRole: user.currentRole || user.role || 'member',
+      role: user.role || user.currentRole || 'member',
+      updatedAt: db.serverDate()
+    }
+  });
+}
+
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const { applicationId, approve, reason } = event;
@@ -57,6 +89,7 @@ exports.main = async (event = {}) => {
         }
       });
     }
+    await openCoachRole(application.coachOpenid);
   }
 
   return { ok: true, status };

@@ -504,13 +504,9 @@ function getMemberCheckins() {
 
 function saveCoachProfile(profile) {
   if (cloudReady()) {
-    return callCloud('saveCoachProfile', profile).then((r) => {
-      mock.setRole('coach');
-      return r;
-    });
+    return callCloud('saveCoachProfile', profile);
   }
   mock.writeObject(mock.KEY_COACH, Object.assign({ _openid: mock.MOCK_OPENID }, profile));
-  mock.setRole('coach');
   return Promise.resolve({ ok: true });
 }
 
@@ -825,10 +821,11 @@ function _currentOpenid() {
 }
 
 // 球员到店：发起待前台确认的到店请求。lat/lng/dist 供"在店内"距离核验留痕。
-function requestCheckin({ storeId, storeName, tableId, tableName, nickname, avatar, lat, lng, dist }) {
+function requestCheckin({ storeId, storeName, tableId, tableName, nickname, avatar, lat, lng, dist, role, ready, readyAt }) {
   const me = _currentOpenid();
+  const now = Date.now();
   const record = {
-    _id: `ci_${Date.now()}`,
+    _id: `ci_${now}`,
     storeId: storeId || '',
     storeName: storeName || '',
     tableId: tableId || '',
@@ -836,18 +833,22 @@ function requestCheckin({ storeId, storeName, tableId, tableName, nickname, avat
     memberOpenid: me,
     nickname: nickname || '',
     avatar: avatar || '',
+    role: role || 'member',
+    ready: !!ready,
+    joinedAt: now,
+    readyAt: ready ? (readyAt || now) : null,
     lat: typeof lat === 'number' ? lat : null,
     lng: typeof lng === 'number' ? lng : null,
     dist: typeof dist === 'number' ? dist : null,
     status: 'pending',
-    createdAt: Date.now()
+    createdAt: now
   };
   if (cloudReady()) {
     return callCloud('requestCheckin', record).then((r) => r || { ok: true, request: record });
   }
   const arr = mock.readArray(KEY_CHECKIN);
   // 同一球员对同一门店仅保留一条 pending（重复发起覆盖）
-  const kept = arr.filter((x) => !(x.memberOpenid === me && x.storeId === record.storeId && x.status === 'pending'));
+  const kept = arr.filter((x) => !(x.memberOpenid === me && x.storeId === record.storeId && (x.tableId || '') === record.tableId && x.status === 'pending'));
   kept.push(record);
   mock.writeArray(KEY_CHECKIN, kept);
   return Promise.resolve({ ok: true, request: record });
@@ -946,9 +947,9 @@ function recordVerifiedTraining({ memberOpenid, memberNickname, coachOpenid, coa
 // 生成门店"到店码"（小程序码，scene=s=<storeId>）。
 // 云端走 genCheckinCode 云函数（wxacode.getUnlimited，需部署 + 真云环境）；
 // mock/未部署返回空串，页面用 payload 文本 + 占位兜底。
-function genStoreCheckinCode(storeId) {
+function genStoreCheckinCode(storeId, tableId, tableName) {
   if (cloudReady()) {
-    return callCloud('genCheckinCode', { storeId }).then((r) => (r && (r.fileID || r.image)) || '');
+    return callCloud('genCheckinCode', { storeId, tableId: tableId || '', tableName: tableName || '' }).then((r) => (r && (r.fileID || r.image)) || '');
   }
   return Promise.resolve('');
 }
@@ -1177,9 +1178,9 @@ function addShopCoach(coachOpenid, store) {
   return Promise.resolve({ ok: true });
 }
 
-function applyCoachShopBinding({ storeId, coachNickname, coachAvatar }) {
+function applyCoachShopBinding({ storeId, coachNickname, coachAvatar, intro }) {
   if (cloudReady()) {
-    return callCloud('applyCoachShopBinding', { storeId, coachNickname, coachAvatar });
+    return callCloud('applyCoachShopBinding', { storeId, coachNickname, coachAvatar, intro });
   }
   if (!storeId) return Promise.resolve({ ok: false, msg: '请选择球厅' });
   const store = mock.readArray(mock.KEY_STORES).find((s) => s._id === storeId);
@@ -1193,6 +1194,7 @@ function applyCoachShopBinding({ storeId, coachNickname, coachAvatar }) {
     coachOpenid: mock.MOCK_OPENID,
     coachNickname: coachNickname || '',
     coachAvatar: coachAvatar || '',
+    intro: intro || '',
     shopOpenid: store._openid || mock.MOCK_OPENID,
     storeId,
     storeName: store.name || '',
@@ -1265,6 +1267,22 @@ function reviewCoachBindingApplication({ applicationId, approve, reason }) {
     if (linkIdx !== -1) links[linkIdx] = link;
     else links.push(link);
     mock.writeArray(mock.KEY_SHOP_COACHES, links);
+    const profile = mock.readObject(USER_PROFILE_KEY, null) || {};
+    const roles = Array.from(new Set([].concat(profile.roles || [], profile.role || 'member', ['member', 'coach'])))
+      .filter((role) => VALID_ROLES.indexOf(role) !== -1);
+    const currentRole = profile.currentRole || profile.role || mock.getRole() || 'member';
+    const updatedProfile = Object.assign({}, profile, {
+      roles,
+      currentRole,
+      role: profile.role || currentRole,
+      updatedAt: Date.now()
+    });
+    mock.writeObject(USER_PROFILE_KEY, updatedProfile);
+    const appInstance = typeof getApp === 'function' ? getApp() : null;
+    if (appInstance && appInstance.globalData) {
+      appInstance.globalData.roles = roles;
+      appInstance.globalData.userProfile = Object.assign({}, appInstance.globalData.userProfile || {}, updatedProfile);
+    }
   }
   return Promise.resolve({ ok: true, status: app.status });
 }

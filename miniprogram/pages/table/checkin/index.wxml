@@ -1,0 +1,32 @@
+<view class="page theme-{{theme}}">
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <block wx:else>
+    <view class="table-hero">
+      <view class="store-name">{{store.name || '球厅'}}</view>
+      <view class="table-name">{{tableName || tableId}}</view>
+      <view class="table-meta">{{table.name || ''}}{{table.pricePerHour ? ' · ' + table.pricePerHour + '元/小时' : ''}}</view>
+    </view>
+
+    <view class="panel">
+      <view class="panel-title">参与者</view>
+      <view class="participants">
+        <view wx:for="{{participants}}" wx:key="openid" class="participant {{item.ready ? 'ready' : ''}}">
+          <view class="avatar-wrap">
+            <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill" />
+            <view wx:else class="avatar-ph">{{item.nickname ? item.nickname[0] : '?'}}</view>
+            <view wx:if="{{item.ready}}" class="ready-mark">✓</view>
+          </view>
+          <view class="participant-name">{{item.nickname}}</view>
+          <view class="participant-role">{{item.role === 'coach' ? '教练' : '球员'}}</view>
+        </view>
+        <view wx:if="{{!participants.length}}" class="empty-participant">点击加入后，头像会显示在这里</view>
+      </view>
+    </view>
+
+    <view class="actions">
+      <button class="join-btn" bindtap="joinTable">加入</button>
+      <button class="start-btn" bindtap="startPlay">开打</button>
+    </view>
+  </block>
+</view>

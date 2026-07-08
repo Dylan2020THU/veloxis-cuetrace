@@ -35,6 +35,13 @@ assert(
 );
 
 assert(
+  loginJs.includes("const baseRole = 'member';") &&
+    loginJs.includes('role: baseRole') &&
+    loginJs.includes('roles: [baseRole]'),
+  'Register submit should create a base player account before identity selection.'
+);
+
+assert(
   loginWxml.includes('accountRuleText') && loginWxml.includes('class="account-rule"'),
   'Register page should display account rule helper text.'
 );

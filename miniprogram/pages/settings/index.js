@@ -10,6 +10,14 @@ const ACCOUNT_LABELS = {
 
 const DELETE_REASONS = ['不再使用', '功能不好用', '隐私/数据顾虑', '换账号', '其他原因'];
 
+function canApplyCoach(profile) {
+  if (mock.getRole() !== 'member') return false;
+  const app = getApp();
+  const roles = (app && app.globalData && app.globalData.roles) || (profile && profile.roles) || [];
+  if (Array.isArray(roles) && roles.indexOf('coach') !== -1) return false;
+  return !(profile && profile.role === 'coach');
+}
+
 Page({
   behaviors: [require('../../utils/themeBehavior')],
 
@@ -23,7 +31,8 @@ Page({
     editLabel: '编辑我的信息',
     qrLabel: '我的二维码',
     // 系统管理员：显示「店主资质审核」入口
-    isAdmin: false
+    isAdmin: false,
+    canApplyCoach: false
   },
 
   onShow() {
@@ -35,7 +44,8 @@ Page({
       profileLabel: labels.profile,
       editLabel: labels.edit,
       qrLabel: labels.qr,
-      isAdmin: false
+      isAdmin: false,
+      canApplyCoach: canApplyCoach(profile)
     });
     this.refreshCacheSize();
     this.refreshAdminStatus();
@@ -81,6 +91,10 @@ Page({
   // 系统管理员：进入店主资质审核
   goShopReview() {
     wx.navigateTo({ url: '/pages/shop/admin/review/index' });
+  },
+
+  goBecomeCoach() {
+    wx.navigateTo({ url: '/pages/coach/apply/index' });
   },
 
   // ---------- 通用 ----------

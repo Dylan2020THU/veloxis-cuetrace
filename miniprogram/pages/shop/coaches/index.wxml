@@ -22,6 +22,7 @@
         <view class="pending-info">
           <view class="c-name">{{item.coachNickname || '教练'}}</view>
           <view class="muted">申请绑定 {{item.storeName || currentStoreName}}</view>
+          <view wx:if="{{item.intro}}" class="muted">申请说明：{{item.intro}}</view>
         </view>
       </view>
       <view class="pending-actions">

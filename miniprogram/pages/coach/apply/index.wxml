@@ -1,0 +1,65 @@
+<view class="page theme-{{theme}}">
+  <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+  <block wx:else>
+    <view class="card">
+      <view class="avatar-row">
+        <view class="avatar-wrap" bindtap="chooseAvatar">
+          <image wx:if="{{avatar}}" class="avatar-img" src="{{avatar}}" mode="aspectFill"></image>
+          <view wx:else class="avatar-ph">+</view>
+        </view>
+        <view class="avatar-text">
+          <view class="avatar-title">教练头像</view>
+          <view class="muted">用于店主审核和教练端展示</view>
+        </view>
+      </view>
+
+      <view class="field">
+        <text class="field-label">教练昵称</text>
+        <input class="field-input" placeholder="请输入教练昵称" value="{{nickname}}" data-field="nickname" bindinput="onInput" />
+      </view>
+
+      <view class="field">
+        <text class="field-label">申请球厅</text>
+        <picker mode="selector" range="{{stores}}" range-key="name" value="{{selectedStoreIndex}}" bindchange="onStoreChange">
+          <view class="field-pick {{selectedStoreName ? '' : 'muted'}}">
+            {{selectedStoreName || '请选择球厅'}}
+          </view>
+        </picker>
+      </view>
+
+      <view class="field column">
+        <text class="field-label">申请说明</text>
+        <textarea
+          class="field-textarea"
+          placeholder="简单说明你的教学经验或与本店关系"
+          value="{{intro}}"
+          data-field="intro"
+          bindinput="onInput"
+          maxlength="80"
+        ></textarea>
+      </view>
+    </view>
+
+    <view class="card status-card status-{{status}}">
+      <view class="status-title">
+        {{status === 'approved' ? '教练身份已开通' : (status === 'pending' ? '待店主审核' : (status === 'rejected' ? '申请已驳回' : '提交后由店主审核'))}}
+      </view>
+      <view wx:if="{{status === 'rejected' && reason}}" class="status-reason">驳回原因：{{reason}}</view>
+      <view wx:elif="{{status === 'approved'}}" class="muted">你可以进入教练端继续完善收费、证书和可预约时间。</view>
+      <view wx:else class="muted">店主通过后，你的账号会开通教练身份，同时保留球员身份。</view>
+    </view>
+
+    <view class="submit-bar">
+      <button
+        wx:if="{{status !== 'approved'}}"
+        class="submit-btn"
+        disabled="{{submitting || status === 'pending'}}"
+        bindtap="submitApplication"
+      >
+        {{submitting ? '提交中...' : (status === 'pending' ? '已提交，等待审核' : '提交申请')}}
+      </button>
+      <button wx:else class="submit-btn" bindtap="goCoachProfile">去完善教练资料</button>
+    </view>
+  </block>
+</view>

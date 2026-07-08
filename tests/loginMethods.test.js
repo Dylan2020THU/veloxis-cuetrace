@@ -1,6 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const Module = require('module');
 
 const root = path.resolve(__dirname, '..');
 
@@ -8,17 +9,65 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
 }
 
+function flushPromises() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function loadLoginPage(accounts, fakeData) {
+  const loginPath = path.join(root, 'miniprogram/pages/login/index.js');
+  const dataPath = path.join(root, 'miniprogram/services/data.js');
+  const mockPath = path.join(root, 'miniprogram/utils/mock.js');
+  delete require.cache[require.resolve(loginPath)];
+  delete require.cache[require.resolve(dataPath)];
+  delete require.cache[require.resolve(mockPath)];
+
+  let page;
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (fakeData && request === '../../services/data') return fakeData;
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  global.Page = (def) => {
+    page = def;
+  };
+  global.Behavior = (def) => def;
+  global.getApp = () => ({ globalData: { cloudReady: false } });
+  global.wx = {
+    getStorageSync(key) {
+      if (key === 'dc_accounts') return accounts;
+      return null;
+    },
+    setStorageSync() {},
+    showToast() {},
+    showLoading() {},
+    hideLoading() {},
+    showModal() {},
+    switchTab() {},
+    reLaunch() {},
+    navigateTo() {}
+  };
+
+  try {
+    require(loginPath);
+  } finally {
+    Module._load = originalLoad;
+  }
+  page.data = JSON.parse(JSON.stringify(page.data));
+  page.setData = function setData(next) {
+    this.data = Object.assign({}, this.data, next);
+  };
+  return page;
+}
+
 const loginJs = read('miniprogram/pages/login/index.js');
 const loginWxml = read('miniprogram/pages/login/index.wxml');
 const loginWxss = read('miniprogram/pages/login/index.wxss');
 
-const goNextBlock = loginJs.match(/\n  goNext\(\) \{[\s\S]*?\n  \},/);
-assert(goNextBlock, 'Login page should define goNext().');
-
-assert(
-  !goNextBlock[0].includes('doLogin'),
-  'Choosing a role should always continue to account/phone login, not auto-trigger WeChat login.'
-);
+function cssBlock(selector) {
+  const escaped = selector.replace('.', '\\.');
+  const match = loginWxss.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  return match ? match[1] : '';
+}
 
 assert(
   loginJs.includes('wechatLogin()'),
@@ -31,8 +80,10 @@ assert(
 );
 
 assert(
-  loginWxml.includes('登录 · {{roleLabel}}') && !loginWxml.includes('账号/手机号登录 · {{roleLabel}}'),
-  'Primary role button should only read 登录 · 当前身份.'
+  !loginWxml.includes('wx:for="{{roles}}"') &&
+    !loginWxml.includes('bindtap="selectRole"') &&
+    !loginWxml.includes('bindtap="goNext"'),
+  'Login page should not render the old pre-login identity selector.'
 );
 
 assert(
@@ -69,6 +120,12 @@ assert(
 );
 
 assert(
+  !cssBlock('.hero').includes('background: linear-gradient') &&
+    !cssBlock('.hero-name').includes('color: #fff'),
+  'Login hero should stay clean without the old blue block.'
+);
+
+assert(
   /\.wechat-icon-btn::after\s*\{[\s\S]*?border:\s*none/.test(loginWxss),
   'The WeChat logo icon should remove the native button pseudo-border.'
 );
@@ -78,3 +135,98 @@ assert(
     /\.wechat-logo-img\s*\{[\s\S]*?width:\s*74rpx[\s\S]*?height:\s*74rpx/.test(loginWxss),
   'The WeChat logo icon should be locked to 80% of the previous 92rpx size.'
 );
+
+assert(
+  loginJs.includes("step: 'auth'"),
+  'Login page should start from account login/register, not role selection.'
+);
+
+assert(
+  loginJs.includes('showRolePicker(') && loginJs.includes('chooseRole('),
+  'Login page should defer role selection until after account verification.'
+);
+
+assert(
+  /<block\s+wx:(?:el)?if="\{\{step === 'auth'\}\}">/.test(loginWxml),
+  'Login form should render in auth step.'
+);
+
+assert(
+  loginWxml.includes('wx:for="{{availableRoles}}"') &&
+    loginWxml.includes('bindtap="chooseRole"') &&
+    loginWxml.includes('role-lock') &&
+    loginWxml.includes('bindtap="enterSelectedRole"'),
+  'Role picker should render every role, lock unopened roles, and enter only after confirmation.'
+);
+
+async function testPasswordLoginShowsRolePickerBeforeLogin() {
+  const loginCalls = [];
+  const fakeData = {
+    login(...args) {
+      loginCalls.push(args);
+      return Promise.resolve('openid');
+    },
+    rememberLoginNickname() {},
+    getUserProfile() {
+      return Promise.resolve({});
+    },
+    markFirstLogin() {
+      return Promise.resolve();
+    }
+  };
+  const page = loadLoginPage([
+    { account: 'coach1', password: '123456', role: 'coach', roles: ['member', 'coach'] }
+  ], fakeData);
+  page.setData({
+    account: 'coach1',
+    password: '123456',
+    agreementChecked: true,
+    loginType: 'password'
+  });
+
+  page.submit();
+
+  assert.strictEqual(loginCalls.length, 0, 'Account verification should not call data.login before role selection.');
+  assert.strictEqual(page.data.step, 'role');
+  assert.strictEqual(page.data.pendingAccount, 'coach1');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member', 'coach']);
+  assert.deepStrictEqual(page.data.availableRoles.map((item) => [item.key, item.enabled]), [
+    ['member', true],
+    ['coach', true],
+    ['shop', false]
+  ]);
+
+  page.chooseRole({ currentTarget: { dataset: { role: 'coach' } } });
+  assert.strictEqual(page.data.role, 'coach');
+  assert.strictEqual(loginCalls.length, 0, 'Choosing an opened role should not login until entering.');
+  page.enterSelectedRole();
+  await flushPromises();
+  await flushPromises();
+
+  assert.deepStrictEqual(loginCalls[0], ['coach', ['member', 'coach'], 'coach1']);
+}
+
+(async () => {
+  await testPasswordLoginShowsRolePickerBeforeLogin();
+  const page = loadLoginPage([
+    { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
+  ]);
+  let modalOptions = null;
+  global.wx.showModal = (options) => {
+    modalOptions = options;
+  };
+  page.setData({
+    step: 'role',
+    pendingAccount: 'member1',
+    pendingRoles: ['member'],
+    availableRoles: [
+      { key: 'member', label: '球员', enabled: true },
+      { key: 'coach', label: '教练', enabled: false },
+      { key: 'shop', label: '店主', enabled: false }
+    ],
+    role: 'member',
+    roleLabel: '球员'
+  });
+  page.chooseRole({ currentTarget: { dataset: { role: 'coach' } } });
+  assert(modalOptions && modalOptions.content.includes('店主'), 'Locked coach role should prompt for shop owner certification.');
+})();

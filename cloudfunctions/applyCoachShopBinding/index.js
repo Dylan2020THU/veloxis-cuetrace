@@ -5,7 +5,7 @@ const db = cloud.database();
 
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
-  const { storeId, coachNickname, coachAvatar } = event;
+  const { storeId, coachNickname, coachAvatar, intro } = event;
   if (!storeId) return { ok: false, msg: '请选择球厅' };
 
   const storeRes = await db.collection('stores').doc(storeId).get().catch(() => null);
@@ -19,6 +19,7 @@ exports.main = async (event = {}) => {
     coachOpenid: OPENID,
     coachNickname: coachNickname || '',
     coachAvatar: coachAvatar || '',
+    intro: intro || '',
     shopOpenid: store._openid,
     storeId,
     storeName: store.name || '',

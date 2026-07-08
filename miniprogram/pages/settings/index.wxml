@@ -7,6 +7,13 @@
     </view>
   </view>
 
+  <view wx:if="{{canApplyCoach}}" class="card">
+    <view class="entry" bindtap="goBecomeCoach">
+      <text class="entry-title">成为教练</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
   <!-- 系统管理员：店主资质审核 -->
   <view wx:if="{{isAdmin}}" class="card">
     <view class="entry" bindtap="goShopReview">
