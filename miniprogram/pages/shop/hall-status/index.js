@@ -37,15 +37,49 @@ function computeOccupiedBorder(bgColor, status) {
   return bgColor || '#067ef9';
 }
 
-function computeStatus(tables, sessions, members) {
+function mergeCheckinTables(table, checkins, now) {
+  const readyList = (checkins || []).filter((item) => item.tableId === table.tableId && item.ready);
+  if (!readyList.length) return null;
+  const startedAt = Math.min.apply(null, readyList.map((item) => item.readyAt || item.createdAt || now));
+  const players = readyList.map((item) => ({
+    openid: item.memberOpenid,
+    nickname: item.nickname || (item.role === 'coach' ? '教练' : '球员'),
+    avatar: item.avatar || '',
+    isCoach: item.role === 'coach',
+    joinedAt: item.role === 'coach' ? (item.readyAt || startedAt) : null,
+    checkinId: item._id
+  }));
+  return {
+    ...table,
+    status: 'occupied',
+    pendingVerify: true,
+    pendingCheckinIds: readyList.map((item) => item._id).filter(Boolean),
+    memberOpenid: (readyList.find((item) => item.role !== 'coach') || {}).memberOpenid || '',
+    memberNickname: (readyList.find((item) => item.role !== 'coach') || {}).nickname || '',
+    coachOpenid: (readyList.find((item) => item.role === 'coach') || {}).memberOpenid || '',
+    coachNickname: (readyList.find((item) => item.role === 'coach') || {}).nickname || '',
+    players,
+    elapsedMs: now - startedAt,
+    revenue: 0,
+    revenueText: '',
+    session: { _id: `checkin_${table.tableId}`, startedAt, isCheckin: true },
+    cardBg: computeCardBg(table.bgColor, 'occupied'),
+    occupiedBorder: computeOccupiedBorder(table.bgColor, 'occupied')
+  };
+}
+
+function computeStatus(tables, sessions, members, checkins) {
   members = Array.isArray(members) ? members : [];
   sessions = Array.isArray(sessions) ? sessions : [];
+  checkins = Array.isArray(checkins) ? checkins : [];
   const now = Date.now();
   return tables.map((t) => {
     const activeSession = sessions.find(
       (s) => s.tableId === t.tableId && s.status === 'active'
     );
     if (!activeSession) {
+      const checkinTable = mergeCheckinTables(t, checkins, now);
+      if (checkinTable) return checkinTable;
       return { ...t, status: 'idle', players: [], elapsedMs: 0, revenue: 0, revenueText: '', session: null, cardBg: computeCardBg(t.bgColor, 'idle'), occupiedBorder: computeOccupiedBorder(t.bgColor, 'idle') };
     }
     const elapsedMs = now - (activeSession.startedAt || now);
@@ -222,8 +256,8 @@ Page({
       return;
     }
 
-    Promise.all([data.getShopStores(), data.getSessions(), data.getMembers()])
-      .then(([stores, sessions, members]) => {
+    Promise.all([data.getShopStores(), data.getSessions(), data.getMembers(), data.getPendingCheckins(storeId)])
+      .then(([stores, sessions, members, checkins]) => {
         const store = stores.find((s) => s._id === this.data.currentStoreId) || stores[0] || {};
         const tableTypes = (store && store.tableTypes) || [];
         if (!tableTypes.length) {
@@ -239,8 +273,9 @@ Page({
           image: tt.image || ''
         }));
         const sessions2 = (sessions || []).filter((s) => s.status === 'active');
-        const tables2 = computeStatus(tables, sessions2, members || []);
-        this.setData({ tables: tables2 }, () => this._applyFilters());
+        const readyCheckins = (checkins || []).filter((item) => item.status === 'pending' && item.ready);
+        const tables2 = computeStatus(tables, sessions2, members || [], readyCheckins);
+        this.setData({ tables: tables2, pendingCheckins: checkins || [], pendingCount: (checkins || []).length }, () => this._applyFilters());
       })
       .catch((err) => {
         console.error('[hall-status] loadData failed:', err);
@@ -308,6 +343,8 @@ Page({
     if (table.status === 'idle') {
       // 开台：弹确认弹窗（可绑定到店球员 + 教学局教练）
       this._openUseSheet(idx);
+    } else if (table.pendingVerify) {
+      this.verifyTableCheckin({ currentTarget: { dataset: { idx } } });
     } else {
       const amount = Math.round((table.revenue || 0) * 100) / 100;
       wx.showModal({
@@ -321,6 +358,36 @@ Page({
         }
       });
     }
+  },
+
+  verifyTableCheckin(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const table = this.data.filteredTables[idx];
+    if (!table) return;
+    const durationMin = Math.max(1, Math.round((table.elapsedMs || 0) / 60000));
+    const order = {
+      amount: 0,
+      storeId: this.data.currentStoreId,
+      tableId: table.tableId,
+      tableName: table.tableName,
+      durationMin
+    };
+    wx.showModal({
+      title: '核验有效',
+      content: `${table.tableName} 本次训练 ${durationMin} 分钟，确认写入有效训练？`,
+      confirmText: '核验有效',
+      confirmColor: '#067ef9',
+      success: (res) => {
+        if (!res.confirm) return;
+        this._syncTrainingOnClose(table, order)
+          .then(() => Promise.all((table.pendingCheckinIds || []).map((id) => data.resolveCheckin(id, 'confirm'))))
+          .then(() => {
+            wx.showToast({ title: '已核验', icon: 'success' });
+            this.loadInit();
+          })
+          .catch(() => wx.showToast({ title: '核验失败', icon: 'none' }));
+      }
+    });
   },
 
   // 打开"开台确认"弹窗
@@ -515,6 +582,15 @@ Page({
   goCheckinQr() {
     wx.navigateTo({
       url: `/pages/shop/checkin-qr/index?storeId=${encodeURIComponent(this.data.currentStoreId || '')}`
+    });
+  },
+
+  goTableQr(e) {
+    const idx = e.currentTarget.dataset.idx;
+    const table = this.data.filteredTables[idx];
+    if (!table) return;
+    wx.navigateTo({
+      url: `/pages/shop/checkin-qr/index?storeId=${encodeURIComponent(this.data.currentStoreId || '')}&tableId=${encodeURIComponent(table.tableId || '')}&tableName=${encodeURIComponent(table.tableName || '')}`
     });
   },
 

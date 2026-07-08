@@ -4,19 +4,22 @@
       <image class="hero-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
       <view class="hero-name">强化杆迹</view>
       <view class="hero-slogan">没有任何一杆是白打的</view>
-      <view class="hero-sub">{{ step === 1 ? '请选择身份，使用账号或手机号登录' : (mode === 'register' ? '注册「' + roleLabel + '」账号' : (mode === 'wechatBind' ? '绑定后使用微信登录' : '使用「' + roleLabel + '」身份登录')) }}</view>
+      <view class="hero-sub">{{ step === 'role' ? '请选择本次进入的身份' : (mode === 'register' ? '注册账号' : (mode === 'wechatBind' ? '绑定后选择身份' : '使用账号或手机号登录')) }}</view>
     </view>
 
-    <!-- 第一步：身份选择（库边瞄准点选择器） -->
-    <block wx:if="{{step === 1}}">
-      <view class="picker-label">选择你的身份</view>
+    <!-- 账号验证通过后选择本次进入身份 -->
+    <block wx:if="{{step === 'role'}}">
+      <view class="step2-head">
+        <view class="back" bindtap="goPrev">‹ 返回登录</view>
+      </view>
+      <view class="picker-label">选择进入身份</view>
       <view class="roles">
         <view
-          wx:for="{{roles}}"
+          wx:for="{{availableRoles}}"
           wx:key="key"
-          class="role-row {{role===item.key?'active':''}}"
+          class="role-row {{role===item.key?'active':''}} {{item.enabled?'':'locked'}}"
           data-role="{{item.key}}"
-          bindtap="selectRole"
+          bindtap="chooseRole"
         >
           <view class="sight"></view>
           <image class="role-thumb" src="{{item.img}}" mode="aspectFill" lazy-load="true"></image>
@@ -25,17 +28,17 @@
             <view class="role-desc">{{item.desc}}</view>
           </view>
           <view class="role-arrow">›</view>
+          <view wx:if="{{!item.enabled}}" class="role-lock">
+            <view class="role-lock-text">未开通</view>
+          </view>
         </view>
       </view>
-
-      <button class="btn-primary next-btn" bindtap="goNext">登录 · {{roleLabel}}</button>
-
-      <view wx:if="{{role==='shop'}}" class="shop-tip">店主注册需核验「营业执照」等信息，提交后经平台审核通过方可使用</view>
+      <button class="btn-primary next-btn role-enter-btn" bindtap="enterSelectedRole">进入</button>
     </block>
 
-    <!-- 第二步：账号登录 -->
-    <block wx:else>
-      <view class="step2-head">
+    <!-- 账号登录 -->
+    <block wx:elif="{{step === 'auth'}}">
+      <view class="step2-head" wx:if="{{false}}">
         <view class="back" bindtap="goPrev">‹ 返回</view>
         <view class="cur-role">当前身份：{{roleLabel}}</view>
       </view>
@@ -143,7 +146,7 @@
       <block wx:elif="{{mode==='wechatBind'}}">
         <view class="bind-head">
           <view class="bind-title">绑定账号或手机号</view>
-          <view class="bind-sub">当前身份：{{roleLabel}}</view>
+          <view class="bind-sub">绑定成功后选择进入身份</view>
         </view>
 
         <view class="seg">
@@ -295,5 +298,5 @@
       </view>
     </block>
   </view>
-  <view wx:if="{{step === 1}}" class="icp-footer">京ICP备2026039244号-1X</view>
+  <view wx:if="{{step === 'auth'}}" class="icp-footer">京ICP备2026039244号-1X</view>
 </view>

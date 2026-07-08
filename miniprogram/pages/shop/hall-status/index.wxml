@@ -162,6 +162,18 @@
         <!-- 操作按钮 -->
         <view class="card-action">
           <view
+            class="action-btn secondary btn-qr"
+            data-idx="{{index}}"
+            bindtap="goTableQr"
+          >桌码</view>
+          <view
+            wx:if="{{item.pendingVerify}}"
+            class="action-btn btn-end"
+            data-idx="{{index}}"
+            bindtap="verifyTableCheckin"
+          >核验有效</view>
+          <view
+            wx:else
             class="action-btn {{item.status === 'occupied' ? 'btn-end' : 'btn-use'}}"
             data-idx="{{index}}"
             bindtap="toggleTable"
