@@ -6,6 +6,7 @@ const db = cloud.database();
 const BOOTSTRAP_ADMIN_OPENIDS = [
   'ovvdY3VKYCo7_jTzdpgGbuf26-tA'
 ];
+const ADMIN_ACCOUNTS = ['admin_zhx'];
 
 async function getActiveAdmins() {
   try {
@@ -16,10 +17,11 @@ async function getActiveAdmins() {
   }
 }
 
-async function isAdminOpenid(openid) {
+async function isAdminOpenid(openid, loginName) {
+  if (ADMIN_ACCOUNTS.indexOf(loginName) === -1) return false;
   const admins = await getActiveAdmins();
   if (admins.length) {
-    return admins.some((item) => item._openid === openid);
+    return admins.some((item) => item._openid === openid && item.account === loginName);
   }
   return BOOTSTRAP_ADMIN_OPENIDS.indexOf(openid) !== -1;
 }
@@ -28,7 +30,8 @@ async function isAdminOpenid(openid) {
 // 仅 admins 集合 active 管理员可调用；集合未初始化时允许兜底管理员调用。
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
-  if (!(await isAdminOpenid(OPENID))) {
+  const loginName = (event.loginName || '').trim();
+  if (!(await isAdminOpenid(OPENID, loginName))) {
     return { ok: false, code: 'FORBIDDEN', msg: '无审核权限', applications: [] };
   }
 

@@ -1,5 +1,6 @@
 const data = require('../../services/data');
 const mock = require('../../utils/mock');
+const adminAuth = require('../../utils/adminAuth');
 
 // 三种登录身份，顺序即页面从上至下的展示顺序
 const ROLES = [
@@ -15,6 +16,20 @@ const ACCOUNT_RULE_TEXT = '账号需 4-20 位，字母开头，仅支持字母�
 // 本地注册账号存储（演示阶段）
 const ACCOUNTS_KEY = 'dc_accounts';
 const WECHAT_BINDINGS_KEY = 'dc_wechat_bindings';
+const VALID_ROLES = ['member', 'coach', 'shop'];
+const ADMIN_ROLES = ['member', 'coach', 'shop'];
+
+function normalizeAccountRoles(account) {
+  const roles = account && Array.isArray(account.roles) ? account.roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
+  if (roles.length) return Array.from(new Set(roles));
+  if (account && account.role === 'coach') return ['member', 'coach'];
+  if (account && account.role === 'shop') return ['shop'];
+  return ['member'];
+}
+
+function accountSupportsRole(account, role) {
+  return normalizeAccountRoles(account).indexOf(role) !== -1;
+}
 
 // 各身份登录后的落地首页
 const HOME_BY_ROLE = {
@@ -96,15 +111,15 @@ Page({
     this.setData({ mode: 'wechatBind', loginType: 'password', password: '', code: '', agreementChecked: false });
   },
 
-  doLogin(role, loginName) {
+  doLogin(role, loginName, roles) {
     // 店主需先通过营业执照资质审核，单独走带状态网关的登录流程
     if (role === 'shop') {
-      this.doShopLogin(loginName);
+      this.doShopLogin(loginName, roles);
       return;
     }
     wx.showLoading({ title: '登录中', mask: true });
     data
-      .login(role)
+      .login(role, roles, loginName)
       .then(() => {
         if (loginName) data.rememberLoginNickname(loginName, role);
         return data.getUserProfile();
@@ -114,22 +129,23 @@ Page({
         wx.hideLoading();
         this.goHome(role);
       })
-      .catch(() => {
+      .catch((e) => {
         wx.hideLoading();
-        wx.showToast({ title: '登录失败，请重试', icon: 'none' });
+        wx.showToast({ title: (e && e.message) || '登录失败，请重试', icon: 'none' });
       });
   },
 
   // 店主登录网关：登录后查资质状态。approved → 进店主端；其余（未申请/待审核/已驳回）→ 资质核验页。
-  doShopLogin(loginName) {
+  doShopLogin(loginName, roles) {
+    const isAdmin = adminAuth.isAdminAccount(loginName);
     wx.showLoading({ title: '登录中', mask: true });
     data
-      .login('shop')
+      .login('shop', roles, loginName)
       .then(() => {
         if (loginName) data.rememberLoginNickname(loginName, 'shop');
         return data.getUserProfile();
       })
-      .then(() => data.getShopApplicationStatus())
+      .then(() => (isAdmin ? { status: 'approved' } : data.getShopApplicationStatus()))
       .then((res) => {
         const status = (res && res.status) || 'none';
         if (status === 'approved') {
@@ -183,16 +199,35 @@ Page({
   readRegisteredAccounts() {
     try {
       const accounts = wx.getStorageSync(ACCOUNTS_KEY) || [];
-      return Array.isArray(accounts) ? accounts : [];
+      const list = Array.isArray(accounts) ? accounts.slice() : [];
+      adminAuth.ADMIN_ACCOUNTS.forEach((admin) => {
+        const idx = list.findIndex((item) => item && item.account === admin.account);
+        const adminAccount = Object.assign({}, idx >= 0 ? list[idx] : {}, {
+            role: 'member',
+            roles: ADMIN_ROLES.slice(),
+            account: admin.account,
+            password: admin.password,
+            builtInAdmin: true
+        });
+        if (idx >= 0) list[idx] = adminAccount;
+        else list.push(adminAccount);
+      });
+      return list;
     } catch (e) {
-      return [];
+      return adminAuth.ADMIN_ACCOUNTS.map((admin) => ({
+        role: 'member',
+        roles: ADMIN_ROLES.slice(),
+        account: admin.account,
+        password: admin.password,
+        builtInAdmin: true
+      }));
     }
   },
 
   findRegisteredAccount(account, role) {
     const key = (account || '').trim();
     if (!key) return null;
-    return this.readRegisteredAccounts().find((a) => a && a.account === key && a.role === role) || null;
+    return this.readRegisteredAccounts().find((a) => a && a.account === key && accountSupportsRole(a, role)) || null;
   },
 
   isValidRegisterAccount(account) {
@@ -214,7 +249,7 @@ Page({
     } catch (e) {}
 
     const accounts = this.readRegisteredAccounts();
-    const accountIdx = accounts.findIndex((item) => item && item.account === key && item.role === role);
+    const accountIdx = accounts.findIndex((item) => item && item.account === key && accountSupportsRole(item, role));
     if (accountIdx >= 0) {
       accounts[accountIdx] = Object.assign({}, accounts[accountIdx], {
         wechatBound: true,
@@ -245,10 +280,28 @@ Page({
     }
 
     const accounts = this.readRegisteredAccounts();
-    if (accounts.some((a) => a.account === account && a.role === role)) {
+    const existingIdx = accounts.findIndex((a) => a && a.account === account);
+    if (existingIdx >= 0 && accountSupportsRole(accounts[existingIdx], role)) {
       return wx.showToast({ title: '该账号已注册', icon: 'none' });
     }
-    accounts.push({ role, account, password: regPassword, createdAt: Date.now() });
+    if (existingIdx >= 0 && role === 'coach' && accountSupportsRole(accounts[existingIdx], 'member')) {
+      const roles = normalizeAccountRoles(accounts[existingIdx]);
+      if (roles.indexOf('coach') === -1) roles.push('coach');
+      accounts[existingIdx] = Object.assign({}, accounts[existingIdx], {
+        roles,
+        role: 'coach',
+        password: accounts[existingIdx].password || regPassword,
+        updatedAt: Date.now()
+      });
+    } else {
+      accounts.push({
+        role,
+        roles: role === 'coach' ? ['member', 'coach'] : role === 'shop' ? ['shop'] : ['member'],
+        account,
+        password: regPassword,
+        createdAt: Date.now()
+      });
+    }
     try {
       wx.setStorageSync(ACCOUNTS_KEY, accounts);
     } catch (e) {}
@@ -335,7 +388,7 @@ Page({
       if (registered.password !== this.data.password) {
         return wx.showToast({ title: '密码错误', icon: 'none' });
       }
-      this.doLogin(role, account);
+      this.doLogin(role, account, normalizeAccountRoles(registered));
       return;
     } else {
       const phone = (this.data.phone || '').trim();
@@ -353,7 +406,7 @@ Page({
         .verifySmsCode(phone, (this.data.code || '').trim())
         .then(() => {
           wx.hideLoading();
-          this.doLogin(role, phone);
+          this.doLogin(role, phone, normalizeAccountRoles(this.findRegisteredAccount(phone, role)));
         })
         .catch((e) => {
           wx.hideLoading();
@@ -382,7 +435,7 @@ Page({
         return wx.showToast({ title: '密码错误', icon: 'none' });
       }
       this.saveWechatBinding(account, role);
-      this.doLogin(role, account);
+      this.doLogin(role, account, normalizeAccountRoles(registered));
       return;
     }
 
@@ -402,7 +455,7 @@ Page({
       .then(() => {
         wx.hideLoading();
         this.saveWechatBinding(phone, role);
-        this.doLogin(role, phone);
+        this.doLogin(role, phone, normalizeAccountRoles(this.findRegisteredAccount(phone, role)));
       })
       .catch((e) => {
         wx.hideLoading();

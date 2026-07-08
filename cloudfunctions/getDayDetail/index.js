@@ -37,6 +37,7 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const { dateKey, targetOpenid } = event;
 
+  const isSelf = !targetOpenid || targetOpenid === OPENID;
   const queryOpenid = await resolveTargetOpenid(OPENID, targetOpenid);
 
   const res = await db
@@ -45,5 +46,23 @@ exports.main = async (event) => {
     .orderBy('startTime', 'asc')
     .get();
 
-  return { sessions: res.data };
+  let sessions = (res.data || []).map((s) => Object.assign({ kind: 'personal' }, s));
+
+  if (isSelf) {
+    const lessonRes = await db
+      .collection('coach_lessons')
+      .where({ coachOpenid: OPENID, date: dateKey })
+      .orderBy('startTime', 'asc')
+      .get();
+    const lessons = (lessonRes.data || []).map((l) => Object.assign({
+      kind: 'coach',
+      verified: l.verified !== false,
+      hallName: l.hallName || '教学课时'
+    }, l));
+    sessions = sessions.concat(lessons);
+  }
+
+  sessions.sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+
+  return { sessions };
 };

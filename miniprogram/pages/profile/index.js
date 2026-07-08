@@ -5,6 +5,7 @@ const billing = require('../../utils/billing.js');
 const account = require('../../utils/account');
 
 const ROLE_LABEL = { member: '会员', coach: '教练', shop: '店家' };
+const ADMIN_LABEL = '\u7ba1\u7406\u5458';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // 经营工具九宫格图标（线性描边，CSS mask 渲染、颜色由样式控制；复用底栏同一技法）
@@ -43,6 +44,7 @@ Page({
     avatar: '',
     role: 'member',
     roleLabel: '会员',
+    isAdmin: false,
     isCoach: false,
     isShop: false,
     // 账号编码（由 openid 确定性派生，跨端扫码/手输识别用）
@@ -73,6 +75,28 @@ Page({
     }
   },
 
+  resolveRoleLabel(role, isAdmin) {
+    return isAdmin ? ADMIN_LABEL : (ROLE_LABEL[role] || ROLE_LABEL.member);
+  },
+
+  refreshAdminStatus() {
+    return data
+      .getAdminStatus()
+      .then((r) => {
+        const isAdmin = !!(r && r.isAdmin);
+        this.setData({
+          isAdmin,
+          roleLabel: this.resolveRoleLabel(this.data.role, isAdmin)
+        });
+      })
+      .catch(() => {
+        this.setData({
+          isAdmin: false,
+          roleLabel: this.resolveRoleLabel(this.data.role, false)
+        });
+      });
+  },
+
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().refresh();
@@ -83,13 +107,15 @@ Page({
     const openid = (app.globalData && app.globalData.openid) || mock.MOCK_OPENID;
     this.setData({
       role,
-      roleLabel: ROLE_LABEL[role] || '会员',
+      roleLabel: this.resolveRoleLabel(role, false),
+      isAdmin: false,
       isCoach: role === 'coach',
       isShop: role === 'shop',
       accountCode: account.codeOf(openid),
       nickname: (profile && profile.nickname) || '大川会员',
       avatar: (profile && profile.avatar) || ''
     });
+    this.refreshAdminStatus();
     data.getUserProfile().then((user) => {
       if (!user) return;
       const nextRole = user.role || role;
@@ -97,7 +123,7 @@ Page({
         nickname: user.nickname || '大川会员',
         avatar: user.avatar || '',
         role: nextRole,
-        roleLabel: ROLE_LABEL[nextRole] || '会员',
+        roleLabel: this.resolveRoleLabel(nextRole, this.data.isAdmin),
         isCoach: nextRole === 'coach',
         isShop: nextRole === 'shop'
       });

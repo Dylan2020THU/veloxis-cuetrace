@@ -31,6 +31,16 @@
       <view wx:if="{{selectedTotalText}}" class="detail-total">总时长 {{selectedTotalText}}</view>
     </view>
 
+    <view wx:if="{{allDetailList.length > 0}}" class="detail-filters">
+      <view
+        wx:for="{{detailFilters}}"
+        wx:key="key"
+        class="detail-filter {{detailFilter === item.key ? 'active' : ''}}"
+        data-filter="{{item.key}}"
+        bindtap="switchDetailFilter"
+      >{{item.label}}</view>
+    </view>
+
     <view wx:if="{{detailList.length === 0}}" class="empty">
       <view class="empty-icon">○</view>
       <view class="muted">你在休息，而你的对手在训练，凭什么赢的是你？</view>
@@ -41,7 +51,8 @@
       <view class="detail-item" wx:for="{{detailList}}" wx:key="_id">
         <view class="dot"></view>
         <view class="detail-main">
-          <view class="hall">{{item.hallName || '未知台球厅'}}<text wx:if="{{item.kind === 'coach'}}" class="coach-tag">教练计时</text><text wx:if="{{item.verified}}" class="verified-tag">已核验</text><text wx:else class="unverified-tag">未核验</text></view>
+          <view class="hall">{{item.hallName || '未知台球厅'}}<text wx:if="{{item.kind === 'coach'}}" class="coach-tag">教学课时</text><text wx:elif="{{item.verified}}" class="verified-tag">已核验</text><text wx:else class="unverified-tag">未核验</text></view>
+          <view wx:if="{{item.kind === 'coach' && item.memberNickname}}" class="muted">学员 {{item.memberNickname}}</view>
           <view class="muted">{{item.startTime}} 开始</view>
         </view>
         <view class="duration">{{item.durationText}}</view>

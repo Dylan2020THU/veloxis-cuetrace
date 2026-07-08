@@ -55,7 +55,7 @@ assert(
 );
 assert(/data\s*\.\s*verifySmsCode/.test(loginJs), 'SMS login should call data.verifySmsCode().');
 assert(
-  /data\s*\.\s*verifySmsCode\([\s\S]*?\.then\(\(\)\s*=>\s*\{[\s\S]*?this\.doLogin\(role,\s*phone\)/.test(loginJs),
+  /data\s*\.\s*verifySmsCode\([\s\S]*?\.then\(\(\)\s*=>\s*\{[\s\S]*?this\.doLogin\(role,\s*phone(?:,\s*[\s\S]*?)?\)/.test(loginJs),
   'SMS login should call doLogin() only after verifySmsCode() succeeds.'
 );
 assert(!/验证码已发送[\s\S]{0,120}setInterval/.test(loginJs), 'Login page should not show success and start countdown before cloud send succeeds.');
