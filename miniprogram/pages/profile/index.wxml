@@ -10,7 +10,7 @@
       </view>
     </view>
     <view class="head-name">{{nickname}}</view>
-    <view class="head-role">大川激流 · {{roleLabel}}</view>
+    <view class="head-role">{{roleLabel}}</view>
     <view class="head-code" wx:if="{{accountCode}}">
       <text class="head-code-text" catchtap="copyCode">编码 {{accountCode}}</text>
       <text class="head-code-div">|</text>

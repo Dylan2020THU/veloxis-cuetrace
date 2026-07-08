@@ -11,6 +11,13 @@ Page({
     streak: 0,
     selectedLabel: '',
     selectedTotalText: '',
+    detailFilters: [
+      { key: 'all', label: '全部' },
+      { key: 'personal', label: '普通训练' },
+      { key: 'coach', label: '教学课时' }
+    ],
+    detailFilter: 'all',
+    allDetailList: [],
     detailList: [],
     loading: true
   },
@@ -85,17 +92,38 @@ Page({
   selectDay(dateKey) {
     const [, m, d] = dateKey.split('-').map(Number);
     data.getDayDetail(dateKey).then((sessions) => {
-      const totalMinutes = sessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
-      const detailList = sessions.map((s) => ({
+      const allDetailList = sessions.map((s) => ({
         ...s,
+        kind: s.kind || 'personal',
         durationText: formatDuration(s.durationMinutes)
       }));
       this.setData({
         selectedLabel: `${m}月${d}日`,
-        selectedTotalText: totalMinutes > 0 ? formatDuration(totalMinutes) : '',
-        detailList
+        allDetailList
       });
+      this.setDetailList(allDetailList, this.data.detailFilter);
     });
+  },
+
+  applyDetailFilter(list, filter) {
+    if (filter === 'personal') return (list || []).filter((item) => item.kind !== 'coach');
+    if (filter === 'coach') return (list || []).filter((item) => item.kind === 'coach');
+    return list || [];
+  },
+
+  setDetailList(list, filter) {
+    const detailList = this.applyDetailFilter(list, filter);
+    const totalMinutes = detailList.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+    this.setData({
+      detailFilter: filter,
+      selectedTotalText: totalMinutes > 0 ? formatDuration(totalMinutes) : '',
+      detailList
+    });
+  },
+
+  switchDetailFilter(e) {
+    const filter = e.currentTarget.dataset.filter || 'all';
+    this.setDetailList(this.data.allDetailList, filter);
   },
 
   goAdd() {

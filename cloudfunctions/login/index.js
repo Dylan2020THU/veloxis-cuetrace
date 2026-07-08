@@ -5,6 +5,44 @@ const db = cloud.database();
 const _ = db.command;
 
 const VALID_ROLES = ['member', 'coach', 'shop'];
+const ADMIN_ACCOUNTS = ['admin_zhx'];
+
+function normalizeRoles(role, roles) {
+  const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
+  if (list.length) return Array.from(new Set(list));
+  if (role === 'coach') return ['member', 'coach'];
+  if (role === 'shop') return ['shop'];
+  return ['member'];
+}
+
+function canEnterRole(roles, role) {
+  return normalizeRoles('', roles).indexOf(role) !== -1;
+}
+
+function mergeRoles(a, b) {
+  return Array.from(new Set((a || []).concat(b || []).filter((r) => VALID_ROLES.indexOf(r) !== -1)));
+}
+
+async function ensureAdminAccount(openid, account) {
+  if (!account || ADMIN_ACCOUNTS.indexOf(account) === -1) return;
+  try {
+    const admins = db.collection('admins');
+    const res = await admins.where({ _openid: openid }).get();
+    const data = {
+      _openid: openid,
+      account,
+      status: 'active',
+      updatedAt: db.serverDate()
+    };
+    if (res.data.length) {
+      await admins.doc(res.data[0]._id).update({ data });
+    } else {
+      await admins.add({ data: Object.assign({}, data, { createdAt: db.serverDate() }) });
+    }
+  } catch (err) {
+    console.error('ensure admin account failed', err);
+  }
+}
 
 // 登录：以微信身份(openid)为唯一账号，在 users 集合中创建/更新用户记录。
 // event.role 可选：登录页选定的身份；传入时写入云端，实现身份长期持久化（换设备/清缓存仍生效）。
@@ -13,8 +51,11 @@ exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const users = db.collection('users');
   const role = VALID_ROLES.indexOf(event.role) !== -1 ? event.role : '';
+  const requestedRoles = Array.isArray(event.roles) ? normalizeRoles('', event.roles) : [];
+  const loginName = (event.loginName || '').trim();
 
-  let userRole = 'member';
+  let roles = normalizeRoles(role || 'member');
+  let currentRole = role || roles[0] || 'member';
   let nickname = '';
   let avatar = '';
   let deletionCanceled = false;
@@ -53,19 +94,33 @@ exports.main = async (event = {}) => {
             });
         } catch (e) {}
       }
-      userRole = role || doc.role || 'member';
+      roles = mergeRoles(normalizeRoles(doc.role, doc.roles), requestedRoles);
+      currentRole = role || doc.currentRole || doc.role || roles[0] || 'member';
+      if (!canEnterRole(roles, currentRole)) {
+        return {
+          ok: false,
+          code: 'ROLE_NOT_ALLOWED',
+          msg: currentRole === 'coach'
+            ? '该账号尚未开通教练身份'
+            : currentRole === 'shop'
+              ? '该账号尚未开通店主身份'
+              : '该账号不能登录球员端'
+        };
+      }
       nickname = doc.nickname || '';
       avatar = doc.avatar || '';
-      // 仅当显式传入且与云端不一致时才更新，避免无谓写操作
-      if (role && role !== doc.role) {
-        await users.doc(doc._id).update({ data: { role, updatedAt: db.serverDate() } });
-      }
+      await users.doc(doc._id).update({
+        data: { roles, currentRole, role: currentRole, updatedAt: db.serverDate() }
+      });
     } else {
-      userRole = role || 'member';
+      roles = mergeRoles(normalizeRoles(role || 'member'), requestedRoles);
+      currentRole = role || roles[0] || 'member';
       await users.add({
         data: {
           _openid: OPENID,
-          role: userRole,
+          roles,
+          currentRole,
+          role: currentRole,
           nickname: '',
           avatar: '',
           createdAt: db.serverDate()
@@ -77,5 +132,7 @@ exports.main = async (event = {}) => {
     console.error('init user failed', err);
   }
 
-  return { openid: OPENID, role: userRole, nickname, avatar, deletionCanceled };
+  await ensureAdminAccount(OPENID, loginName);
+
+  return { openid: OPENID, role: currentRole, roles, currentRole, nickname, avatar, deletionCanceled };
 };

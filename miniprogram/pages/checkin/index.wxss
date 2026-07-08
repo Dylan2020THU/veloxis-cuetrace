@@ -65,6 +65,29 @@
   font-weight: 500;
 }
 
+.detail-filters {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.detail-filter {
+  height: 52rpx;
+  line-height: 52rpx;
+  padding: 0 22rpx;
+  border-radius: 26rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+  background: var(--bg-muted);
+}
+
+.detail-filter.active {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.12);
+  font-weight: 600;
+}
+
 .empty {
   padding: 50rpx 0;
   text-align: center;

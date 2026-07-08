@@ -46,6 +46,7 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   const { startKey, endKey, targetOpenid } = event;
 
+  const isSelf = !targetOpenid || targetOpenid === OPENID;
   const queryOpenid = await resolveTargetOpenid(OPENID, targetOpenid);
 
   let all = [];
@@ -67,17 +68,44 @@ exports.main = async (event) => {
 
   const map = {};
   all.forEach((s) => {
-    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0, verifiedCount: 0, unverifiedCount: 0 };
+    if (!map[s.date]) map[s.date] = { date: s.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0, verifiedCount: 0, unverifiedCount: 0 };
     map[s.date].totalMinutes += s.durationMinutes || 0;
+    map[s.date].personalMinutes += s.durationMinutes || 0;
     map[s.date].sessionCount += 1;
     if (s.verified) map[s.date].verifiedCount += 1;
     else map[s.date].unverifiedCount += 1;
   });
 
+  if (isSelf) {
+    let lessons = [];
+    skip = 0;
+    while (true) {
+      const res = await db
+        .collection('coach_lessons')
+        .where({ coachOpenid: OPENID, date: _.gte(startKey).and(_.lte(endKey)) })
+        .field({ date: true, durationMinutes: true, verified: true })
+        .skip(skip)
+        .limit(pageSize)
+        .get();
+      lessons = lessons.concat(res.data);
+      if (res.data.length < pageSize) break;
+      skip += pageSize;
+    }
+    lessons.forEach((l) => {
+      if (!map[l.date]) map[l.date] = { date: l.date, totalMinutes: 0, sessionCount: 0, personalMinutes: 0, coachMinutes: 0, verifiedCount: 0, unverifiedCount: 0 };
+      map[l.date].totalMinutes += l.durationMinutes || 0;
+      map[l.date].coachMinutes += l.durationMinutes || 0;
+      map[l.date].sessionCount += 1;
+      if (l.verified !== false) map[l.date].verifiedCount += 1;
+      else map[l.date].unverifiedCount += 1;
+    });
+  }
+
   const stats = Object.keys(map).map((k) => {
     const item = map[k];
     item.level = levelFromMinutes(item.totalMinutes);
     item.hasVerified = item.verifiedCount > 0;
+    item.kind = item.coachMinutes > 0 ? 'coach' : 'personal';
     return item;
   });
 

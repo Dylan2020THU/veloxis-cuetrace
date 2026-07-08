@@ -94,6 +94,8 @@ async function testCloudFunctionUpdatesUserProfile() {
     canSeeBirthDate: true,
     canSeeHometown: false,
     canSeePhone: false,
+    roles: ['member'],
+    currentRole: 'member',
     role: 'member',
     updatedAt: 'SERVER_DATE'
   });
@@ -176,6 +178,8 @@ async function testCloudFunctionPreservesExistingFieldsOnPartialUpdate() {
     canSeeBirthDate: false,
     canSeeHometown: true,
     canSeePhone: false,
+    roles: ['member', 'coach'],
+    currentRole: 'coach',
     role: 'coach',
     updatedAt: 'SERVER_DATE'
   });
@@ -271,6 +275,8 @@ async function testGetUserProfileReturnsSavedProfileFields() {
   assert.deepStrictEqual(result.user, {
     openid: 'user_openid',
     role: 'member',
+    roles: ['member'],
+    currentRole: 'member',
     nickname: '张三',
     avatar: 'cloud://avatar',
     gender: '男',

@@ -10,6 +10,22 @@ const adminAuth = require('../utils/adminAuth');
 const ACCOUNT_DELETION_KEY = 'dc_account_deletion_pending';
 const LOGIN_DEFAULT_NICKNAME_KEY = 'dc_login_default_nickname';
 const USER_PROFILE_KEY = 'dc_user_profile';
+const VALID_ROLES = ['member', 'coach', 'shop'];
+
+function normalizeRoles(role, roles) {
+  const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
+  if (list.length) return Array.from(new Set(list));
+  if (role === 'coach') return ['member', 'coach'];
+  if (role === 'shop') return ['shop'];
+  return ['member'];
+}
+
+function currentRoles() {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  const gd = app && app.globalData ? app.globalData : {};
+  const profile = gd.userProfile || {};
+  return normalizeRoles(gd.currentRole || gd.role || mock.getRole(), gd.roles || profile.roles);
+}
 
 function cloudReady() {
   // onLaunch 期间 getApp() 可能尚未就绪，访问 .globalData 会抛 TypeError。
@@ -60,13 +76,19 @@ function readLoginNickname(role) {
   }
 }
 
+function currentLoginName() {
+  const app = getApp();
+  const role = (app && app.globalData && (app.globalData.currentRole || app.globalData.role)) || mock.getRole() || 'member';
+  return readLoginNickname(role);
+}
+
 function applyDefaultNickname(user) {
   if (!user) return user;
   const app = typeof getApp === 'function' ? getApp() : null;
-  const role = user.role || (app && app.globalData && app.globalData.role) || mock.getRole() || 'member';
+  const role = user.currentRole || user.role || (app && app.globalData && (app.globalData.currentRole || app.globalData.role)) || mock.getRole() || 'member';
   const fallback = readLoginNickname(role);
   if (fallback && (!user.nickname || user.nickname === '大川会员')) {
-    return Object.assign({}, user, { role, nickname: fallback });
+    return Object.assign({}, user, { role, currentRole: role, nickname: fallback });
   }
   return user;
 }
@@ -75,16 +97,22 @@ function applyUserResult(r) {
   const app = getApp();
   if (!app || !app.globalData || !r) return;
   if (r.openid) app.globalData.openid = r.openid;
-  if (r.role) {
-    mock.setRole(r.role);
-    app.globalData.role = r.role;
+  const roles = normalizeRoles(r.role, r.roles);
+  const currentRole = r.currentRole || r.role || roles[0] || 'member';
+  app.globalData.roles = roles;
+  app.globalData.currentRole = currentRole;
+  if (currentRole) {
+    mock.setRole(currentRole);
+    app.globalData.role = currentRole;
   }
   if (r.firstLoginAt) app.globalData.firstLoginAt = r.firstLoginAt;
   if (r.plan) app.globalData.plan = r.plan;
   if (r.nickname !== undefined || r.avatar !== undefined) {
     app.globalData.userProfile = applyDefaultNickname({
       openid: r.openid || app.globalData.openid,
-      role: r.role || app.globalData.role,
+      role: currentRole,
+      roles,
+      currentRole,
       nickname: r.nickname || '',
       avatar: r.avatar || ''
     });
@@ -92,9 +120,9 @@ function applyUserResult(r) {
 }
 
 // 登录，返回 openid。role 可选：登录页选定身份，传入时写入云端 users 集合。
-function login(role) {
+function login(role, roles, loginName) {
   if (cloudReady()) {
-    return callCloud('login', role ? { role } : {}).then((r) => {
+    return callCloud('login', role ? { role, roles: normalizeRoles(role, roles), loginName: loginName || '' } : {}).then((r) => {
       if (r && r.ok === false) {
         const err = new Error(r.msg || '登录失败');
         err.code = r.code || '';
@@ -118,6 +146,9 @@ function login(role) {
     }
   }
   getApp().globalData.openid = mock.MOCK_OPENID;
+  getApp().globalData.roles = normalizeRoles(role, roles);
+  getApp().globalData.currentRole = role;
+  getApp().globalData.role = role;
   mock.setRole(role);
   return Promise.resolve(mock.MOCK_OPENID);
 }
@@ -162,14 +193,20 @@ function getUserProfile() {
     });
   }
   const stored = mock.readObject(USER_PROFILE_KEY, null) || {};
+  const currentRole = mock.getRole();
+  const roles = normalizeRoles(stored.role || currentRole, stored.roles);
   const user = applyDefaultNickname(Object.assign({
     openid: mock.MOCK_OPENID,
-    role: mock.getRole(),
+    role: currentRole,
+    roles,
+    currentRole,
     nickname: '大川会员',
     avatar: ''
   }, stored, {
     openid: mock.MOCK_OPENID,
-    role: mock.getRole()
+    role: currentRole,
+    roles,
+    currentRole
   }));
   applyUserResult(user);
   return Promise.resolve(user);
@@ -211,8 +248,11 @@ function saveUserProfile({
   }
   const existing = mock.readObject(USER_PROFILE_KEY, null) || {};
   const updated = Object.assign({}, existing);
+  const nextRole = role || existing.currentRole || existing.role || mock.getRole();
   const patch = {
-    role: role || existing.role || mock.getRole(),
+    roles: normalizeRoles(existing.role || nextRole, existing.roles),
+    currentRole: nextRole,
+    role: nextRole,
     nickname,
     avatar,
     gender,
@@ -269,7 +309,7 @@ function getHeatmap({ startKey, endKey, targetOpenid }) {
 
   // 教练查看自己的杆迹时：叠加「以教练身份计时」的课时（金色），与自主练球/客场打球（蓝色）并存。
   // 同一天若两种身份都有计时，总时长统一以金色表示（金 > 蓝优先级）。
-  const asCoachOwn = !targetOpenid && mock.getRole() === 'coach';
+  const asCoachOwn = !targetOpenid && currentRoles().indexOf('coach') !== -1;
   if (asCoachOwn) {
     mock.readArray(KEY_COACH_LESSONS)
       .filter((l) => l.coachOpenid === ownerOpenid && l.date >= startKey && l.date <= endKey)
@@ -305,7 +345,7 @@ function getDayDetail(dateKey, targetOpenid) {
     .filter((s) => s._openid === ownerOpenid && s.date === dateKey);
 
   // 教练查看自己当日明细：把「教练身份」的课时也列出来（标记 kind:'coach'），与杆迹热力图一致
-  const asCoachOwn = !targetOpenid && mock.getRole() === 'coach';
+  const asCoachOwn = !targetOpenid && currentRoles().indexOf('coach') !== -1;
   let rows = sessions.map((s) => Object.assign({ kind: 'personal' }, s));
   if (asCoachOwn) {
     const lessons = mock.readArray(KEY_COACH_LESSONS)
@@ -602,25 +642,24 @@ function getShopApplicationStatus() {
 }
 
 function getAdminStatus() {
+  const loginName = currentLoginName();
+  const accountAdmin = adminAuth.isAdminAccount(loginName);
   if (cloudReady()) {
-    return callCloud('getAdminStatus', {}).then((r) => r || { ok: true, isAdmin: false });
+    return callCloud('getAdminStatus', { loginName }).then((r) => r || { ok: true, isAdmin: false });
   }
-  const app = getApp();
-  const openid = (app && app.globalData && app.globalData.openid) || mock.MOCK_OPENID;
-  const admins = mock.readArray(mock.KEY_ADMINS);
-  const bootstrapOpenids = [mock.MOCK_OPENID].concat(adminAuth.BOOTSTRAP_ADMIN_OPENIDS);
-  const isAdmin = adminAuth.canAdmin(openid, admins, bootstrapOpenids);
   return Promise.resolve({
     ok: true,
-    isAdmin,
-    bootstrap: adminAuth.shouldBootstrapAdmin(openid, admins, bootstrapOpenids)
+    isAdmin: accountAdmin,
+    bootstrap: false,
+    accountAdmin
   });
 }
 
 // 管理员：拉取资质申请列表。status: 'pending'(默认) | 'approved' | 'rejected' | 'all'
 function getPendingShopApplications(status = 'pending') {
   if (cloudReady()) {
-    return callCloud('getPendingShopApplications', { status }).then((r) => {
+    const loginName = currentLoginName();
+    return callCloud('getPendingShopApplications', { status, loginName }).then((r) => {
       // 服务端白名单拒绝时抛出 FORBIDDEN，供页面区分「无权限」与「空队列」
       if (r && r.ok === false && r.code === 'FORBIDDEN') {
         const e = new Error('FORBIDDEN');
@@ -638,7 +677,8 @@ function getPendingShopApplications(status = 'pending') {
 // 管理员：审核（approve=true 通过 / false 驳回；驳回写 reason）
 function reviewShopApplication({ applicationId, approve, reason }) {
   if (cloudReady()) {
-    return callCloud('reviewShopApplication', { applicationId, approve, reason });
+    const loginName = currentLoginName();
+    return callCloud('reviewShopApplication', { applicationId, approve, reason, loginName });
   }
   const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS);
   const idx = list.findIndex((a) => a._id === applicationId);

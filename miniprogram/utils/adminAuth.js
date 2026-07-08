@@ -3,6 +3,14 @@ const BOOTSTRAP_ADMIN_OPENIDS = [
   'ovvdY3VKYCo7_jTzdpgGbuf26-tA'
 ];
 
+const ADMIN_ACCOUNTS = [
+  { account: 'admin_zhx', password: '2612694' }
+];
+
+function isAdminAccount(account) {
+  return ADMIN_ACCOUNTS.some((item) => item.account === account);
+}
+
 function isActiveAdmin(openid, admins) {
   if (!openid || !Array.isArray(admins)) return false;
   return admins.some((item) => item && item._openid === openid && item.status === 'active');
@@ -23,6 +31,8 @@ function canAdmin(openid, admins, bootstrapOpenids) {
 
 module.exports = {
   BOOTSTRAP_ADMIN_OPENIDS,
+  ADMIN_ACCOUNTS,
+  isAdminAccount,
   isActiveAdmin,
   hasActiveAdmins,
   shouldBootstrapAdmin,
