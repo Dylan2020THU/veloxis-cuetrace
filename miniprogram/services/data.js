@@ -9,6 +9,7 @@ const adminAuth = require('../utils/adminAuth');
 
 const ACCOUNT_DELETION_KEY = 'dc_account_deletion_pending';
 const LOGIN_DEFAULT_NICKNAME_KEY = 'dc_login_default_nickname';
+const ADMIN_LOGIN_NAME_KEY = 'dc_admin_login_name';
 const USER_PROFILE_KEY = 'dc_user_profile';
 const VALID_ROLES = ['member', 'coach', 'shop'];
 
@@ -77,9 +78,76 @@ function readLoginNickname(role) {
 }
 
 function currentLoginName() {
-  const app = getApp();
+  const app = typeof getApp === 'function' ? getApp() : null;
   const role = (app && app.globalData && (app.globalData.currentRole || app.globalData.role)) || mock.getRole() || 'member';
+  if (role === 'admin') return readAdminLoginName();
   return readLoginNickname(role);
+}
+
+function setAdminSession(loginName) {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  const name = (loginName || '').trim();
+  try {
+    wx.setStorageSync(ADMIN_LOGIN_NAME_KEY, name);
+  } catch (e) {}
+  mock.setRole('admin');
+  if (app && app.globalData) {
+    app.globalData.role = 'admin';
+    app.globalData.currentRole = 'admin';
+    app.globalData.adminMode = true;
+    app.globalData.adminLoginName = name;
+  }
+}
+
+function readAdminLoginName() {
+  try {
+    return wx.getStorageSync(ADMIN_LOGIN_NAME_KEY) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function logoutAdmin() {
+  try {
+    wx.removeStorageSync(ADMIN_LOGIN_NAME_KEY);
+  } catch (e) {}
+  mock.setRole('member');
+  const app = typeof getApp === 'function' ? getApp() : null;
+  if (app && app.globalData) {
+    app.globalData.role = 'member';
+    app.globalData.currentRole = 'member';
+    app.globalData.adminMode = false;
+    app.globalData.adminLoginName = '';
+  }
+}
+
+function getAdminProfile() {
+  return {
+    account: readAdminLoginName() || 'admin_zhx',
+    roleLabel: '平台管理员',
+    permissions: ['门店数据查看', '教练数据查看', '会员数据查看']
+  };
+}
+
+function loginAdmin({ account, password }) {
+  const loginName = (account || '').trim();
+  if (cloudReady()) {
+    return callCloud('adminLogin', { account: loginName, password }).then((r) => {
+      if (r && r.ok === false) {
+        const err = new Error(r.msg || '管理员登录失败');
+        err.code = r.code || '';
+        throw err;
+      }
+      setAdminSession(loginName);
+      return r || { ok: true };
+    });
+  }
+  const admin = adminAuth.ADMIN_ACCOUNTS.find((item) => item.account === loginName);
+  if (!admin || admin.password !== password) {
+    return Promise.reject(new Error('管理员账号或密码错误'));
+  }
+  setAdminSession(loginName);
+  return Promise.resolve({ ok: true, isAdmin: true });
 }
 
 function applyDefaultNickname(user) {
@@ -686,6 +754,136 @@ function reviewShopApplication({ applicationId, approve, reason }) {
   });
   mock.writeArray(mock.KEY_SHOP_APPLICATIONS, list);
   return Promise.resolve({ ok: true, status: approve ? 'approved' : 'rejected' });
+}
+
+function latestLocalApplication(applications, openid) {
+  return (applications || [])
+    .filter((item) => item._openid === openid)
+    .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))[0] || null;
+}
+
+function buildLocalAdminStores(stores, applications) {
+  const rows = (stores || []).map((store) => {
+    const app = latestLocalApplication(applications, store._openid);
+    return {
+      storeId: store._id || '',
+      storeName: store.name || store.hallName || '未命名门店',
+      ownerOpenid: store._openid || '',
+      ownerName: store.ownerName || '店主',
+      region: store.region || '',
+      address: store.address || '',
+      applicationStatus: (app && app.status) || 'none',
+      checkinEnabled: !!store.checkinEnabled,
+      createdAt: store.createdAt || ''
+    };
+  });
+  return {
+    summary: {
+      totalStores: rows.length,
+      approvedStores: rows.filter((item) => item.applicationStatus === 'approved').length,
+      pendingApplications: (applications || []).filter((item) => (item.status || 'pending') === 'pending').length,
+      rejectedApplications: (applications || []).filter((item) => item.status === 'rejected').length,
+      checkinEnabledStores: rows.filter((item) => item.checkinEnabled).length
+    },
+    stores: rows
+  };
+}
+
+function buildLocalAdminCoaches(coaches, links, applications) {
+  const activeLinks = (links || []).filter((item) => item.status === 'active' || !item.status);
+  const pendingApps = (applications || []).filter((item) => (item.status || 'pending') === 'pending');
+  const rows = (coaches || []).map((coach) => {
+    const openid = coach._openid || coach.openid || '';
+    const link = activeLinks.find((item) => item.coachOpenid === openid || item.openid === openid);
+    const pending = pendingApps.find((item) => item.coachOpenid === openid);
+    const bindingStatus = link ? 'approved' : pending ? 'pending' : 'none';
+    return {
+      coachOpenid: openid,
+      coachName: coach.nickname || coach.name || '教练',
+      avatar: coach.avatar || '',
+      boundStoreName: (link && (link.storeName || link.hallName)) || coach.hallName || '',
+      bindingStatus,
+      studentCount: coach.studentCount || 0,
+      createdAt: coach.createdAt || ''
+    };
+  });
+  return {
+    summary: {
+      totalCoaches: rows.length,
+      boundCoaches: rows.filter((item) => item.bindingStatus === 'approved').length,
+      pendingApplications: pendingApps.length,
+      unboundCoaches: rows.filter((item) => item.bindingStatus === 'none').length,
+      activeCoaches: rows.filter((item) => item.bindingStatus === 'approved').length
+    },
+    coaches: rows
+  };
+}
+
+function buildLocalAdminMembers(members, sessions) {
+  const rows = (members || []).map((member) => {
+    const openid = member._openid || member.openid || member.memberOpenid || '';
+    const memberSessions = (sessions || []).filter((item) => item.memberOpenid === openid);
+    const totalMinutes = member.totalMinutes || memberSessions.reduce((sum, item) => sum + (item.durationMinutes || 0), 0);
+    const lastSession = memberSessions.sort((a, b) => (b.endedAt || b.startedAt || 0) - (a.endedAt || a.startedAt || 0))[0] || {};
+    return {
+      memberOpenid: openid,
+      memberName: member.nickname || '会员',
+      avatar: member.avatar || '',
+      accountName: member.account || '',
+      totalTrainingHours: Number((totalMinutes / 60).toFixed(1)),
+      trainingDays: member.checkinDays || 0,
+      lastTrainingAt: member.lastTrainingAt || lastSession.endedAt || lastSession.startedAt || '',
+      lastStoreName: member.lastStoreName || '',
+      createdAt: member.createdAt || ''
+    };
+  });
+  return {
+    summary: {
+      totalMembers: rows.length,
+      newToday: 0,
+      newThisWeek: 0,
+      trainedMembers: rows.filter((item) => item.trainingDays > 0 || item.totalTrainingHours > 0).length,
+      activeMembers: rows.filter((item) => item.lastTrainingAt).length
+    },
+    members: rows
+  };
+}
+
+function getAdminStores() {
+  const loginName = readAdminLoginName();
+  if (cloudReady()) {
+    return callCloud('getAdminStores', { loginName }).then((r) => {
+      if (r && r.ok === false) throw Object.assign(new Error(r.msg || '无管理员权限'), { code: r.code || '' });
+      return r || { summary: {}, stores: [] };
+    });
+  }
+  return Promise.resolve(buildLocalAdminStores(mock.readArray(mock.KEY_STORES), mock.readArray(mock.KEY_SHOP_APPLICATIONS)));
+}
+
+function getAdminCoaches() {
+  const loginName = readAdminLoginName();
+  if (cloudReady()) {
+    return callCloud('getAdminCoaches', { loginName }).then((r) => {
+      if (r && r.ok === false) throw Object.assign(new Error(r.msg || '无管理员权限'), { code: r.code || '' });
+      return r || { summary: {}, coaches: [] };
+    });
+  }
+  return Promise.resolve(buildLocalAdminCoaches(
+    mock.readArray(mock.KEY_ALL_COACHES),
+    mock.readArray(mock.KEY_SHOP_COACHES),
+    mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS)
+  ));
+}
+
+function getAdminMembers() {
+  const loginName = readAdminLoginName();
+  if (cloudReady()) {
+    return callCloud('getAdminMembers', { loginName }).then((r) => {
+      if (r && r.ok === false) throw Object.assign(new Error(r.msg || '无管理员权限'), { code: r.code || '' });
+      return r || { summary: {}, members: [] };
+    });
+  }
+  return Promise.resolve(buildLocalAdminMembers(mock.readArray(mock.KEY_MEMBERS), mock.readArray(mock.KEY_SESSIONS)));
 }
 
 // ============ 品牌管理 ============
@@ -1756,7 +1954,7 @@ function getBookableCoaches() {
 
 // 约球桌：可预约球桌（按门店）。合成桌位数量与每小时价格用于演示。
 // 优先取该门店的 tableTypes（{name, pricePerHour} 对象数组），否则用 stores 默认值。
-// 云端模式下 getStores 已固定返回"大川激流·旗舰店"种子门店，stores.length ≥ 1 不会走 fallback；
+// 云端模式下 getStores 已固定返回"强化杆迹台球俱乐部"种子门店，stores.length ≥ 1 不会走 fallback；
 // fallbackStores 仅在云端完全失败时作为最后兜底。
 function getBookableTables() {
   const synth = {
@@ -1767,7 +1965,7 @@ function getBookableTables() {
   };
   const defaultTypes = [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }];
   const fallbackStores = [
-    { _id: 'seed_store_dachuan_flag', brandId: 'seed_brand_dachuan', name: '大川激流·旗舰店', address: '北京·朝阳区国贸 CBD 中心', cover: '', isSeed: true, tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }, { name: '美洲豹', pricePerHour: 58 }] }
+    { _id: 'seed_store_dachuan_flag', brandId: 'seed_brand_dachuan', name: '强化杆迹台球俱乐部', address: '北京·朝阳区国贸 CBD 中心', cover: '', isSeed: true, tableTypes: [{ name: '乔氏金腿', pricePerHour: 78 }, { name: '乔氏银腿', pricePerHour: 68 }, { name: '美洲豹', pricePerHour: 58 }] }
   ];
   return getStores().then((stores) => {
     const raw = stores.length ? stores : fallbackStores;
@@ -2274,6 +2472,9 @@ function deleteAccount(opts) {
 module.exports = {
   initData,
   login,
+  loginAdmin,
+  logoutAdmin,
+  getAdminProfile,
   rememberLoginNickname,
   sendSmsCode,
   verifySmsCode,
@@ -2303,6 +2504,9 @@ module.exports = {
   getAdminStatus,
   getPendingShopApplications,
   reviewShopApplication,
+  getAdminStores,
+  getAdminCoaches,
+  getAdminMembers,
   getBrands,
   saveShopBrand,
   getShopBrands,

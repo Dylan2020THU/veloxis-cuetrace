@@ -11,11 +11,9 @@ const ACCOUNT_LABELS = {
 const DELETE_REASONS = ['不再使用', '功能不好用', '隐私/数据顾虑', '换账号', '其他原因'];
 
 function canApplyCoach(profile) {
-  if (mock.getRole() !== 'member') return false;
   const app = getApp();
-  const roles = (app && app.globalData && app.globalData.roles) || (profile && profile.roles) || [];
-  if (Array.isArray(roles) && roles.indexOf('coach') !== -1) return false;
-  return !(profile && profile.role === 'coach');
+  const currentRole = (app && app.globalData && (app.globalData.currentRole || app.globalData.role)) || mock.getRole();
+  return currentRole === 'member';
 }
 
 Page({
@@ -45,10 +43,11 @@ Page({
       editLabel: labels.edit,
       qrLabel: labels.qr,
       isAdmin: false,
-      canApplyCoach: canApplyCoach(profile)
+      canApplyCoach: false
     });
     this.refreshCacheSize();
     this.refreshAdminStatus();
+    this.refreshCoachApplyEntry(profile);
   },
 
   refreshAdminStatus() {
@@ -56,6 +55,16 @@ Page({
       .getAdminStatus()
       .then((r) => this.setData({ isAdmin: !!(r && r.isAdmin) }))
       .catch(() => this.setData({ isAdmin: false }));
+  },
+
+  refreshCoachApplyEntry(profile) {
+    if (!canApplyCoach(profile)) {
+      this.setData({ canApplyCoach: false });
+      return;
+    }
+    data.getMyCoachShopBindingStatus()
+      .then((r) => this.setData({ canApplyCoach: ((r && r.status) || 'none') !== 'approved' }))
+      .catch(() => this.setData({ canApplyCoach: true }));
   },
 
   // ---------- 账户 ----------

@@ -1,6 +1,14 @@
 const data = require('../../services/data.js');
 
-const GAME_TYPES = ['中式八球', '斯诺克', '九球', '美式十六球', '不限'];
+const GAME_TYPES = [
+  '中式八球（Chinese 8-Ball）',
+  '中式九球（Chinese 9-Ball）',
+  '斯诺克（Snooker）',
+  '美式八球（8-Ball）',
+  '美式九球（9-Ball）',
+  '美式十球（10-Ball）',
+  '不限（Open）'
+];
 
 // 档位表：0~11级，对应不同水平描述
 const LEVELS = [

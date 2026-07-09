@@ -43,9 +43,15 @@ const HOME_BY_ROLE = {
   coach: '/pages/checkin/index',
   shop: '/pages/shop/hall-status/index'
 };
+const ADMIN_HOME = '/pages/admin/stores/index';
 
 // 属于 tabBar 的落地页需用 switchTab，其余用 reLaunch
 const TAB_HOMES = ['/pages/checkin/index', '/pages/coach/members/index', '/pages/shop/hall-status/index'];
+
+function isCloudFunctionNotFound(err) {
+  const text = `${(err && err.message) || ''} ${(err && err.errMsg) || ''} ${(err && err.code) || ''}`;
+  return (err && err.errCode === -501000) || text.indexOf('FUNCTION_NOT_FOUND') !== -1 || text.indexOf('FunctionName parameter could not be found') !== -1;
+}
 
 Page({
   behaviors: [require('../../utils/themeBehavior')],
@@ -162,6 +168,20 @@ Page({
   // 微信登录先绑定账号或手机号，绑定完成后再选身份
   wechatLogin() {
     this.setData({ mode: 'wechatBind', loginType: 'password', password: '', code: '', agreementChecked: false });
+  },
+
+  doAdminLogin(account, password) {
+    wx.showLoading({ title: '登录中', mask: true });
+    data
+      .loginAdmin({ account, password })
+      .then(() => {
+        wx.hideLoading();
+        wx.reLaunch({ url: ADMIN_HOME });
+      })
+      .catch((e) => {
+        wx.hideLoading();
+        wx.showToast({ title: isCloudFunctionNotFound(e) ? '请先部署 adminLogin 云函数' : ((e && e.message) || '管理员登录失败'), icon: 'none' });
+      });
   },
 
   doLogin(role, loginName, roles) {
@@ -431,6 +451,10 @@ Page({
       }
       if (!this.data.password) {
         return wx.showToast({ title: '请输入密码', icon: 'none' });
+      }
+      if (adminAuth.isAdminAccount(account)) {
+        this.doAdminLogin(account, this.data.password);
+        return;
       }
       const registered = this.findRegisteredAccount(account);
       if (!registered) {

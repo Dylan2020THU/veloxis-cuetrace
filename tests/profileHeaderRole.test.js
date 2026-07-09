@@ -162,8 +162,8 @@ function loadProfilePage(role, isAdmin) {
 }
 
 assert(
-  !profileWxml.includes('大川激流 · {{roleLabel}}') && !profileWxml.includes('大川激流 ·'),
-  'The shared 我的 page header should not show 大川激流 under the nickname.'
+  !profileWxml.includes('强化杆迹 · {{roleLabel}}') && !profileWxml.includes('强化杆迹 ·'),
+  'The shared 我的 page header should not show 强化杆迹 under the nickname.'
 );
 
 async function testAdminProfileHeaderShowsAdminForEveryRole() {

@@ -1,7 +1,7 @@
 {
   "name": "saveShopProfile",
   "version": "1.0.0",
-  "description": "大川激流 - 保存店铺资料",
+  "description": "强化杆迹 - 保存店铺资料",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

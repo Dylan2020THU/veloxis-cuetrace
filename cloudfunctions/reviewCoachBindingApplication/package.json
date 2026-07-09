@@ -1,7 +1,7 @@
 {
   "name": "reviewCoachBindingApplication",
   "version": "1.0.0",
-  "description": "大川激流 - 店主审核教练绑定球厅申请",
+  "description": "强化杆迹 - 店主审核教练绑定球厅申请",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "latest"

@@ -1,7 +1,7 @@
 {
   "name": "purgeDeletedAccounts",
   "version": "1.0.0",
-  "description": "大川激流 - 清理超过 7 天保留期的注销账号",
+  "description": "强化杆迹 - 清理超过 7 天保留期的注销账号",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

@@ -1,7 +1,7 @@
 {
   "name": "getCoachBindingApplications",
   "version": "1.0.0",
-  "description": "大川激流 - 店主查询教练绑定申请",
+  "description": "强化杆迹 - 店主查询教练绑定申请",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "latest"

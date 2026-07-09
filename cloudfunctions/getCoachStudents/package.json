@@ -1,7 +1,7 @@
 {
   "name": "getCoachStudents",
   "version": "1.0.0",
-  "description": "大川激流 - 某教练给哪些会员上过课",
+  "description": "强化杆迹 - 某教练给哪些会员上过课",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

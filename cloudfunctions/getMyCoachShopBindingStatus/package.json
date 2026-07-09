@@ -1,7 +1,7 @@
 {
   "name": "getMyCoachShopBindingStatus",
   "version": "1.0.0",
-  "description": "大川激流 - 查询教练绑定球厅状态",
+  "description": "强化杆迹 - 查询教练绑定球厅状态",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "latest"

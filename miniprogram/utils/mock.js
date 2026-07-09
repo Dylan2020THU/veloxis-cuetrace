@@ -91,7 +91,7 @@ function hashCode(str) {
 const BRANDS = [
   {
     _id: 'brand_01',
-    name: '大川激流',
+    name: '强化杆迹',
     logo: '',
     createdAt: Date.now()
   }
@@ -102,7 +102,7 @@ const STORES = [
   {
     _id: 'hall_01',
     brandId: 'brand_01',
-    name: '大川激流·旗舰店',
+    name: '强化杆迹台球俱乐部',
     address: '城市中心广场 3F',
     cover: '',
     region: '北京',
@@ -118,7 +118,7 @@ const STORES = [
   {
     _id: 'hall_02',
     brandId: 'brand_01',
-    name: '大川激流·滨江店',
+    name: '强化杆迹台球俱乐部·滨江店',
     address: '滨江路 88 号',
     cover: '',
     region: '北京',
@@ -164,7 +164,7 @@ const COACHES = [
     certificates: ['国家一级运动员', '高级教练员证'],
     availability: ['周一至周五 14:00-21:00', '周六日 10:00-21:00'],
     hallId: 'hall_01',
-    hallName: '大川激流·旗舰店',
+    hallName: '强化杆迹台球俱乐部',
     brandId: 'brand_01',
     gameTypes: ['斯诺克', '中式八球']
   },
@@ -179,7 +179,7 @@ const COACHES = [
     certificates: ['国家二级运动员', '中级教练员证'],
     availability: ['周二至周日 12:00-20:00'],
     hallId: 'hall_01',
-    hallName: '大川激流·旗舰店',
+    hallName: '强化杆迹台球俱乐部',
     brandId: 'brand_01',
     gameTypes: ['中式八球', '九球']
   },
@@ -194,7 +194,7 @@ const COACHES = [
     certificates: ['国家二级运动员'],
     availability: ['周一至周六 15:00-22:00'],
     hallId: 'hall_01',
-    hallName: '大川激流·旗舰店',
+    hallName: '强化杆迹台球俱乐部',
     brandId: 'brand_01',
     gameTypes: ['九球', '美式八球']
   },
@@ -209,7 +209,7 @@ const COACHES = [
     certificates: [],
     availability: ['周三至周日 10:00-18:00'],
     hallId: 'hall_01',
-    hallName: '大川激流·旗舰店',
+    hallName: '强化杆迹台球俱乐部',
     brandId: 'brand_01',
     gameTypes: ['中式八球']
   },
@@ -225,7 +225,7 @@ const COACHES = [
     certificates: ['国家二级运动员', '中级教练员证'],
     availability: ['周一至周五 13:00-21:00', '周六 10:00-18:00'],
     hallId: 'hall_02',
-    hallName: '大川激流·滨江店',
+    hallName: '强化杆迹台球俱乐部·滨江店',
     brandId: 'brand_01',
     gameTypes: ['中式八球', '斯诺克']
   },
@@ -240,7 +240,7 @@ const COACHES = [
     certificates: ['国家一级运动员', '高级教练员证', '青少年培训师'],
     availability: ['周二至周六 10:00-19:00'],
     hallId: 'hall_02',
-    hallName: '大川激流·滨江店',
+    hallName: '强化杆迹台球俱乐部·滨江店',
     brandId: 'brand_01',
     gameTypes: ['中式八球', '斯诺克']
   },
@@ -255,7 +255,7 @@ const COACHES = [
     certificates: [],
     availability: ['周三至周日 14:00-22:00'],
     hallId: 'hall_02',
-    hallName: '大川激流·滨江店',
+    hallName: '强化杆迹台球俱乐部·滨江店',
     brandId: 'brand_01',
     gameTypes: ['中式八球', '九球']
   },
@@ -499,14 +499,14 @@ function generateMatches() {
   const hour = 3600 * 1000;
 
   const raw = [
-    { openid: 'member_01', authorName: '李晨曦', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 20:00', gameType: '中式八球', note: '求一位进阶球友，一起练练攻防转换', myLevel: '6级（业余进阶）', targetLevel: '6级（业余进阶）', gender: '', age: '' },
-    { openid: 'member_04', authorName: '刘子琪', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '周六 14:00', gameType: '中式八球', note: '新手友好，重在交流', myLevel: '6级（业余进阶）', targetLevel: '5级（业余中级）', gender: '不限', age: '' },
-    { openid: 'member_10', authorName: '马锦程', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周日 10:00', gameType: '斯诺克', note: '想练练长台，欢迎同等水平球友', myLevel: '6级（业余进阶）', targetLevel: '6级（业余进阶）', gender: '', age: '' },
-    { openid: 'member_11', authorName: '朱雅婷', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周五 19:30', gameType: '中式八球', note: '刚学球不久，找个新手一起进步', myLevel: '5级（业余中级）', targetLevel: '3级（初学者）', gender: '女', age: '' },
-    { openid: 'member_16', authorName: '宋雨泽', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周六 15:00', gameType: '九球', note: '九球爱好者召集令，欢迎切磋', myLevel: '5级（业余中级）', targetLevel: '5级（业余中级）', gender: '', age: '' },
-    { openid: 'member_17', authorName: '唐梦瑶', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周日 11:00', gameType: '中式八球', note: '约个上午场，头脑清醒练练准度', myLevel: '6级（业余进阶）', targetLevel: '5级（业余中级）', gender: '', age: '' },
-    { openid: 'member_03', authorName: '张雨萱', hallId: 'hall_01', hallName: '大川激流·旗舰店', datetime: '今晚 21:00', gameType: '中式八球', note: '打了一会儿了，再来一局收尾', myLevel: '5级（业余中级）', targetLevel: '5级（业余中级）', gender: '', age: '' },
-    { openid: 'member_15', authorName: '梁志远', hallId: 'hall_02', hallName: '大川激流·滨江店', datetime: '周四 20:00', gameType: '中式八球', note: '周四之夜，有没有一起打球的？', myLevel: '3级（初学者）', targetLevel: '3级（初学者）', gender: '', age: '' }
+    { openid: 'member_01', authorName: '李晨曦', hallId: 'hall_01', hallName: '强化杆迹台球俱乐部', datetime: '今晚 20:00', gameType: '中式八球（Chinese 8-Ball）', note: '求一位进阶球友，一起练练攻防转换', myLevel: '6级（业余进阶）', targetLevel: '6级（业余进阶）', gender: '', age: '' },
+    { openid: 'member_04', authorName: '刘子琪', hallId: 'hall_01', hallName: '强化杆迹台球俱乐部', datetime: '周六 14:00', gameType: '中式八球（Chinese 8-Ball）', note: '新手友好，重在交流', myLevel: '6级（业余进阶）', targetLevel: '5级（业余中级）', gender: '不限', age: '' },
+    { openid: 'member_10', authorName: '马锦程', hallId: 'hall_02', hallName: '强化杆迹台球俱乐部·滨江店', datetime: '周日 10:00', gameType: '斯诺克（Snooker）', note: '想练练长台，欢迎同等水平球友', myLevel: '6级（业余进阶）', targetLevel: '6级（业余进阶）', gender: '', age: '' },
+    { openid: 'member_11', authorName: '朱雅婷', hallId: 'hall_02', hallName: '强化杆迹台球俱乐部·滨江店', datetime: '周五 19:30', gameType: '中式八球（Chinese 8-Ball）', note: '刚学球不久，找个新手一起进步', myLevel: '5级（业余中级）', targetLevel: '3级（初学者）', gender: '女', age: '' },
+    { openid: 'member_16', authorName: '宋雨泽', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周六 15:00', gameType: '美式九球（9-Ball）', note: '九球爱好者召集令，欢迎切磋', myLevel: '5级（业余中级）', targetLevel: '5级（业余中级）', gender: '', age: '' },
+    { openid: 'member_17', authorName: '唐梦瑶', hallId: 'hall_03', hallName: '星河台球俱乐部', datetime: '周日 11:00', gameType: '中式八球（Chinese 8-Ball）', note: '约个上午场，头脑清醒练练准度', myLevel: '6级（业余进阶）', targetLevel: '5级（业余中级）', gender: '', age: '' },
+    { openid: 'member_03', authorName: '张雨萱', hallId: 'hall_01', hallName: '强化杆迹台球俱乐部', datetime: '今晚 21:00', gameType: '中式八球（Chinese 8-Ball）', note: '打了一会儿了，再来一局收尾', myLevel: '5级（业余中级）', targetLevel: '5级（业余中级）', gender: '', age: '' },
+    { openid: 'member_15', authorName: '梁志远', hallId: 'hall_02', hallName: '强化杆迹台球俱乐部·滨江店', datetime: '周四 20:00', gameType: '中式八球（Chinese 8-Ball）', note: '周四之夜，有没有一起打球的？', myLevel: '3级（初学者）', targetLevel: '3级（初学者）', gender: '', age: '' }
   ];
 
   return raw.map((m, i) => ({
@@ -534,12 +534,12 @@ function generateBookings() {
   const hour = 3600 * 1000;
 
   return [
-    { _id: 'mock_b_01', _openid: 'member_01', bookerName: '李晨曦', bookerAvatar: avatarFor('member_01'), type: 'coach', targetId: 'coach_01', targetName: '周明辉教练', hallName: '大川激流·旗舰店', datetime: '明天 19:00', note: '想重点练习高杆控制', price: 5, status: 'pending', createdAt: now - 1 * hour },
-    { _id: 'mock_b_02', _openid: 'member_04', bookerName: '刘子琪', bookerAvatar: avatarFor('member_04'), type: 'coach', targetId: 'coach_01', targetName: '周明辉教练', hallName: '大川激流·旗舰店', datetime: '周六 14:00', note: '预约本周第二次课', price: 5, status: 'pending', createdAt: now - 3 * hour },
-    { _id: 'mock_b_03', _openid: 'member_10', bookerName: '马锦程', bookerAvatar: avatarFor('member_10'), type: 'coach', targetId: 'coach_06', targetName: '蒋伟文教练', hallName: '大川激流·滨江店', datetime: '周五 15:00', note: '', price: 5, status: 'pending', createdAt: now - 5 * hour },
-    { _id: 'mock_b_04', _openid: 'member_11', bookerName: '朱雅婷', bookerAvatar: avatarFor('member_11'), type: 'coach', targetId: 'coach_06', targetName: '蒋伟文教练', hallName: '大川激流·滨江店', datetime: '周六 10:00', note: '青少年课程第一节', price: 5, status: 'pending', createdAt: now - 8 * hour },
+    { _id: 'mock_b_01', _openid: 'member_01', bookerName: '李晨曦', bookerAvatar: avatarFor('member_01'), type: 'coach', targetId: 'coach_01', targetName: '周明辉教练', hallName: '强化杆迹台球俱乐部', datetime: '明天 19:00', note: '想重点练习高杆控制', price: 5, status: 'pending', createdAt: now - 1 * hour },
+    { _id: 'mock_b_02', _openid: 'member_04', bookerName: '刘子琪', bookerAvatar: avatarFor('member_04'), type: 'coach', targetId: 'coach_01', targetName: '周明辉教练', hallName: '强化杆迹台球俱乐部', datetime: '周六 14:00', note: '预约本周第二次课', price: 5, status: 'pending', createdAt: now - 3 * hour },
+    { _id: 'mock_b_03', _openid: 'member_10', bookerName: '马锦程', bookerAvatar: avatarFor('member_10'), type: 'coach', targetId: 'coach_06', targetName: '蒋伟文教练', hallName: '强化杆迹台球俱乐部·滨江店', datetime: '周五 15:00', note: '', price: 5, status: 'pending', createdAt: now - 5 * hour },
+    { _id: 'mock_b_04', _openid: 'member_11', bookerName: '朱雅婷', bookerAvatar: avatarFor('member_11'), type: 'coach', targetId: 'coach_06', targetName: '蒋伟文教练', hallName: '强化杆迹台球俱乐部·滨江店', datetime: '周六 10:00', note: '青少年课程第一节', price: 5, status: 'pending', createdAt: now - 8 * hour },
     { _id: 'mock_b_05', _openid: 'member_16', bookerName: '宋雨泽', bookerAvatar: avatarFor('member_16'), type: 'table', targetId: 'hall_03', targetName: '星河台球俱乐部', hallName: '星河台球俱乐部', datetime: '今晚 20:00', note: '预约乔氏金腿', tableType: '星牌钢库', price: 48, status: 'pending', createdAt: now - 2 * hour },
-    { _id: 'mock_b_06', _openid: 'member_17', bookerName: '唐梦瑶', bookerAvatar: avatarFor('member_17'), type: 'table', targetId: 'hall_01', targetName: '大川激流·旗舰店', hallName: '大川激流·旗舰店', datetime: '周日 10:00', note: '上午包台练习', tableType: '乔氏金腿', price: 78, status: 'pending', createdAt: now - 6 * hour }
+    { _id: 'mock_b_06', _openid: 'member_17', bookerName: '唐梦瑶', bookerAvatar: avatarFor('member_17'), type: 'table', targetId: 'hall_01', targetName: '强化杆迹台球俱乐部', hallName: '强化杆迹台球俱乐部', datetime: '周日 10:00', note: '上午包台练习', tableType: '乔氏金腿', price: 78, status: 'pending', createdAt: now - 6 * hour }
   ];
 }
 
@@ -767,7 +767,7 @@ function ensureSeeded() {
       if (!existingShop || !existingShop.storeId) {
         writeObject(KEY_SHOP, Object.assign({}, existingShop || {}, {
           _openid: MOCK_OPENID,
-          name: existingShop && existingShop.name ? existingShop.name : '大川激流',
+          name: existingShop && existingShop.name ? existingShop.name : '强化杆迹',
           storeId: STORES[0]._id,
           hallId: STORES[0]._id,
           hallName: STORES[0].name,
@@ -812,7 +812,7 @@ function ensureSeeded() {
   // 默认店家资料：storeId 指向第一个门店，用于「本店会员」统计等场景
   writeObject(KEY_SHOP, {
     _openid: MOCK_OPENID,
-    name: '大川激流',
+    name: '强化杆迹',
     hallId: STORES[0]._id,
     hallName: STORES[0].name,
     storeId: STORES[0]._id,

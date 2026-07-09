@@ -1,7 +1,7 @@
 {
   "name": "joinMatch",
   "version": "1.0.0",
-  "description": "大川激流 - 报名加入约球",
+  "description": "强化杆迹 - 报名加入约球",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

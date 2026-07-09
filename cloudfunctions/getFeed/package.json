@@ -1,7 +1,7 @@
 {
   "name": "getFeed",
   "version": "1.0.0",
-  "description": "大川激流 - 社区动态流",
+  "description": "强化杆迹 - 社区动态流",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

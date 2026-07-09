@@ -6,7 +6,7 @@ const db = cloud.database();
 const SEED_BRAND = {
   _id: 'seed_brand_dachuan',
   _openid: 'ot_test_dachuan_official',
-  name: '大川激流',
+  name: '强化杆迹',
   logo: '',
   isSeed: true,
   createdAt: new Date('2025-01-01T00:00:00.000Z')

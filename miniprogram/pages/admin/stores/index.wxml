@@ -1,0 +1,55 @@
+<view class="page">
+  <view class="admin-header">
+    <text class="title">门店</text>
+  </view>
+
+  <view class="section">
+    <view class="section-title">数据总览</view>
+    <view class="overview-grid">
+      <view class="overview-item"><text class="overview-value">{{summary.totalStores || 0}}</text><text class="overview-label">门店总数</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.pendingApplications || 0}}</text><text class="overview-label">待审核</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.approvedStores || 0}}</text><text class="overview-label">已通过</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.checkinEnabledStores || 0}}</text><text class="overview-label">已开通打卡</text></view>
+    </view>
+  </view>
+
+  <view class="section">
+    <input class="search" placeholder="搜索门店、店主、地址" value="{{keyword}}" bindinput="onKeyword" />
+    <view class="filter-row">
+      <view wx:for="{{statusOptions}}" wx:key="value" class="chip {{status === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="chooseStatus">{{item.label}}</view>
+    </view>
+    <view class="filter-row">
+      <view wx:for="{{checkinOptions}}" wx:key="value" class="chip {{checkin === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="chooseCheckin">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-head">
+      <view class="section-title">门店明细</view>
+      <button class="review-btn" bindtap="goReview">店主资质审核</button>
+    </view>
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{error}}" class="error">{{error}}</view>
+    <view wx:elif="{{!filteredStores.length}}" class="empty">暂无门店数据</view>
+    <view wx:else class="list">
+      <view wx:for="{{filteredStores}}" wx:key="storeId" class="row">
+        <view class="row-main">
+          <text class="row-title">{{item.storeName}}</text>
+        </view>
+        <view class="row-sub">{{item.region}} {{item.address}}</view>
+        <view class="row-sub">店主：{{item.ownerName}}</view>
+        <view class="row-meta">
+          <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+          <text class="tag {{item.checkinClass}}">{{item.checkinText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="admin-bottom-nav">
+    <view class="admin-tab active" data-url="/pages/admin/stores/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-store"></view><text class="admin-tab-text">门店</text></view>
+    <view class="admin-tab" data-url="/pages/admin/coaches/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-coach"></view><text class="admin-tab-text">教练</text></view>
+    <view class="admin-tab" data-url="/pages/admin/members/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-member"></view><text class="admin-tab-text">会员</text></view>
+    <view class="admin-tab" data-url="/pages/admin/profile/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-profile"></view><text class="admin-tab-text">我的</text></view>
+  </view>
+</view>

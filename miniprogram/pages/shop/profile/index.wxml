@@ -4,7 +4,7 @@
     <image wx:if="{{logo}}" class="hero-logo" src="{{logo}}" mode="aspectFill"></image>
     <view wx:else class="hero-logo hero-logo--ph">{{shopName[0]}}</view>
     <view class="hero-name">{{shopName}}</view>
-    <view class="hero-badge">大川激流 · 店家</view>
+    <view class="hero-badge">强化杆迹 · 店家</view>
   </view>
 
   <view wx:if="{{loading}}" class="loading">加载中…</view>

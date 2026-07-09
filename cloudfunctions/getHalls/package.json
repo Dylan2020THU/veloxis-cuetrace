@@ -1,7 +1,7 @@
 {
   "name": "getHalls",
   "version": "1.0.0",
-  "description": "大川激流 - 台球厅列表",
+  "description": "强化杆迹 - 台球厅列表",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

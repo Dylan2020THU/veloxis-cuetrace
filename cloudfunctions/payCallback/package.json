@@ -1,7 +1,7 @@
 {
   "name": "payCallback",
   "version": "1.0.0",
-  "description": "大川激流 - 基础支付(微信支付) cloudPay 回调发货(幂等)",
+  "description": "强化杆迹 - 基础支付(微信支付) cloudPay 回调发货(幂等)",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

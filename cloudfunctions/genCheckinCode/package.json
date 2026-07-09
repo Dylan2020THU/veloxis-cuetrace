@@ -1,7 +1,7 @@
 {
   "name": "genCheckinCode",
   "version": "1.0.0",
-  "description": "大川激流 - 生成门店到店码（小程序码）",
+  "description": "强化杆迹 - 生成门店到店码（小程序码）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

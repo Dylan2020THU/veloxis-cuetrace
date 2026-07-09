@@ -1,7 +1,7 @@
 {
   "name": "getShopCoaches",
   "version": "1.0.0",
-  "description": "大川激流 - 店家已管理教练列表",
+  "description": "强化杆迹 - 店家已管理教练列表",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

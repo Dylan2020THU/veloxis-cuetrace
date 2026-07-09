@@ -1,7 +1,7 @@
 {
   "name": "virtualPayCallback",
   "version": "1.0.0",
-  "description": "大川激流 - 虚拟支付发货回调（幂等）",
+  "description": "强化杆迹 - 虚拟支付发货回调（幂等）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

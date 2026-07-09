@@ -1,0 +1,39 @@
+<view class="page">
+  <view class="admin-header">
+    <text class="title">我的</text>
+  </view>
+
+  <view class="profile-card">
+    <view class="profile-name">{{profile.account || 'admin_zhx'}}</view>
+    <view class="profile-role">{{profile.roleLabel || '平台管理员'}}</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">账号信息</view>
+    <view class="info-row">
+      <text class="info-label">管理员账号</text>
+      <text class="info-value">{{profile.account || 'admin_zhx'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">身份</text>
+      <text class="info-value">{{profile.roleLabel || '平台管理员'}}</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">权限范围</view>
+    <view wx:for="{{profile.permissions}}" wx:key="*this" class="info-row">
+      <text class="info-label">{{item}}</text>
+      <text class="info-value">已开通</text>
+    </view>
+  </view>
+
+  <button class="danger-btn" bindtap="logout">退出登录</button>
+
+  <view class="admin-bottom-nav">
+    <view class="admin-tab" data-url="/pages/admin/stores/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-store"></view><text class="admin-tab-text">门店</text></view>
+    <view class="admin-tab" data-url="/pages/admin/coaches/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-coach"></view><text class="admin-tab-text">教练</text></view>
+    <view class="admin-tab" data-url="/pages/admin/members/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-member"></view><text class="admin-tab-text">会员</text></view>
+    <view class="admin-tab active" data-url="/pages/admin/profile/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-profile"></view><text class="admin-tab-text">我的</text></view>
+  </view>
+</view>

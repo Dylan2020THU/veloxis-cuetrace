@@ -305,14 +305,17 @@ function testSettingsEntryIsAdminOnly() {
   );
 }
 
-function testCachedAdminAccountSupportsAllRoles() {
+function testAdminLoginUsesDedicatedPortalPath() {
+  const fakeData = {
+    loginAdmin() {
+      return Promise.resolve({ ok: true });
+    }
+  };
   const page = loadLoginPage([
     { role: 'member', roles: ['member'], account: 'admin_zhx', password: '2612694' }
-  ]);
+  ], fakeData);
 
-  assert(page.findRegisteredAccount('admin_zhx', 'member'), 'Admin account should enter member port.');
-  assert(page.findRegisteredAccount('admin_zhx', 'coach'), 'Admin account should enter coach port.');
-  assert(page.findRegisteredAccount('admin_zhx', 'shop'), 'Admin account should enter shop port.');
+  assert.strictEqual(typeof page.doAdminLogin, 'function', 'Admin login should use a dedicated admin entry path.');
 }
 
 async function testAdminShopLoginSkipsQualificationGate() {
@@ -362,6 +365,6 @@ async function testAdminShopLoginSkipsQualificationGate() {
   await testCloudReviewListRequiresCurrentAdminAccount();
   testAdminCloudCallsIncludeCurrentLoginName();
   testSettingsEntryIsAdminOnly();
-  testCachedAdminAccountSupportsAllRoles();
+  testAdminLoginUsesDedicatedPortalPath();
   await testAdminShopLoginSkipsQualificationGate();
 })();

@@ -1,0 +1,51 @@
+<view class="page">
+  <view class="admin-header">
+    <text class="title">教练</text>
+  </view>
+
+  <view class="section">
+    <view class="section-title">数据总览</view>
+    <view class="overview-grid">
+      <view class="overview-item"><text class="overview-value">{{summary.totalCoaches || 0}}</text><text class="overview-label">教练总数</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.boundCoaches || 0}}</text><text class="overview-label">已绑定</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.pendingApplications || 0}}</text><text class="overview-label">待审核</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.unboundCoaches || 0}}</text><text class="overview-label">未绑定</text></view>
+    </view>
+  </view>
+
+  <view class="section">
+    <input class="search" placeholder="搜索教练、绑定门店" value="{{keyword}}" bindinput="onKeyword" />
+    <view class="filter-row">
+      <view wx:for="{{statusOptions}}" wx:key="value" class="chip {{status === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="chooseStatus">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">教练明细</view>
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{error}}" class="error">{{error}}</view>
+    <view wx:elif="{{!filteredCoaches.length}}" class="empty">暂无教练数据</view>
+    <view wx:else class="list">
+      <view wx:for="{{filteredCoaches}}" wx:key="coachOpenid" class="row">
+        <view class="person-main">
+          <image class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+          <view>
+            <view class="row-title">{{item.coachName}}</view>
+            <view class="row-sub">绑定门店：{{item.boundStoreName || '暂无'}}</view>
+          </view>
+        </view>
+        <view class="row-meta">
+          <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+          <text class="tag">学员 {{item.studentCount || 0}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="admin-bottom-nav">
+    <view class="admin-tab" data-url="/pages/admin/stores/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-store"></view><text class="admin-tab-text">门店</text></view>
+    <view class="admin-tab active" data-url="/pages/admin/coaches/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-coach"></view><text class="admin-tab-text">教练</text></view>
+    <view class="admin-tab" data-url="/pages/admin/members/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-member"></view><text class="admin-tab-text">会员</text></view>
+    <view class="admin-tab" data-url="/pages/admin/profile/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-profile"></view><text class="admin-tab-text">我的</text></view>
+  </view>
+</view>
