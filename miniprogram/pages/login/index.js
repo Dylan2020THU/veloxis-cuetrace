@@ -37,6 +37,12 @@ function roleOptions(roles) {
   return ROLES.map((item) => Object.assign({}, item, { enabled: unique.indexOf(item.key) !== -1 }));
 }
 
+function mergeRole(roles, role) {
+  const list = Array.isArray(roles) ? roles.slice() : [];
+  if (VALID_ROLES.indexOf(role) !== -1 && list.indexOf(role) === -1) list.push(role);
+  return Array.from(new Set(list.filter((r) => VALID_ROLES.indexOf(r) !== -1)));
+}
+
 // 各身份登录后的落地首页
 const HOME_BY_ROLE = {
   member: '/pages/checkin/index',
@@ -85,8 +91,11 @@ Page({
     availableRoles: []
   },
 
-  onLoad() {
+  onLoad(options = {}) {
     this.syncCloudReady();
+    if (options.switchRole === '1') {
+      this.openSwitchRolePicker();
+    }
     // probeCloud 是异步的，onLoad 时可能尚未完成；补一次延迟同步以纠正按钮文案
     this._cloudTimer = setTimeout(() => this.syncCloudReady(), 1500);
   },
@@ -124,6 +133,43 @@ Page({
       roleLabel: first.label,
       agreementChecked: false
     });
+  },
+
+  currentSessionRoles(loginName) {
+    const registered = this.findRegisteredAccount(loginName || '');
+    if (registered) return normalizeAccountRoles(registered);
+    const app = getApp();
+    const gd = (app && app.globalData) || {};
+    const profile = gd.userProfile || {};
+    const roles = Array.isArray(gd.roles) && gd.roles.length
+      ? gd.roles
+      : Array.isArray(profile.roles) && profile.roles.length
+        ? profile.roles
+        : [gd.currentRole || gd.role || profile.currentRole || profile.role || mock.getRole() || 'member'];
+    const valid = roles.filter((role) => VALID_ROLES.indexOf(role) !== -1);
+    return Array.from(new Set(valid.length ? valid : ['member']));
+  },
+
+  openSwitchRolePicker() {
+    const app = getApp();
+    const gd = (app && app.globalData) || {};
+    const profile = gd.userProfile || {};
+    const loginName = (typeof data.getCurrentLoginName === 'function' && data.getCurrentLoginName())
+      || profile.nickname
+      || '';
+    this.resolveApprovedRoles(this.currentSessionRoles(loginName))
+      .then((roles) => this.showRolePicker(loginName, roles));
+  },
+
+  resolveApprovedRoles(roles) {
+    const baseRoles = Array.isArray(roles) && roles.length ? roles.slice() : ['member'];
+    if (typeof data.getShopApplicationStatus !== 'function') {
+      return Promise.resolve(baseRoles);
+    }
+    return data
+      .getShopApplicationStatus()
+      .then((res) => ((res && res.status) === 'approved' ? mergeRole(baseRoles, 'shop') : baseRoles))
+      .catch(() => baseRoles);
   },
 
   chooseRole(e) {
@@ -467,7 +513,8 @@ Page({
       if (registered.password !== this.data.password) {
         return wx.showToast({ title: '密码错误', icon: 'none' });
       }
-      this.showRolePicker(account, normalizeAccountRoles(registered));
+      this.resolveApprovedRoles(normalizeAccountRoles(registered))
+        .then((roles) => this.showRolePicker(account, roles));
       return;
     } else {
       const phone = (this.data.phone || '').trim();
@@ -484,9 +531,10 @@ Page({
       wx.showLoading({ title: '校验中', mask: true });
       data
         .verifySmsCode(phone, (this.data.code || '').trim())
-        .then(() => {
+        .then(() => this.resolveApprovedRoles(normalizeAccountRoles(registered)))
+        .then((roles) => {
           wx.hideLoading();
-          this.showRolePicker(phone, normalizeAccountRoles(registered));
+          this.showRolePicker(phone, roles);
         })
         .catch((e) => {
           wx.hideLoading();
@@ -514,9 +562,11 @@ Page({
       if (registered.password !== this.data.password) {
         return wx.showToast({ title: '密码错误', icon: 'none' });
       }
-      const roles = normalizeAccountRoles(registered);
-      roles.forEach((item) => this.saveWechatBinding(account, item));
-      this.showRolePicker(account, roles);
+      this.resolveApprovedRoles(normalizeAccountRoles(registered))
+        .then((roles) => {
+          roles.forEach((item) => this.saveWechatBinding(account, item));
+          this.showRolePicker(account, roles);
+        });
       return;
     }
 
@@ -534,9 +584,9 @@ Page({
     wx.showLoading({ title: '校验中', mask: true });
     data
       .verifySmsCode(phone, (this.data.code || '').trim())
-      .then(() => {
+      .then(() => this.resolveApprovedRoles(normalizeAccountRoles(registered)))
+      .then((roles) => {
         wx.hideLoading();
-        const roles = normalizeAccountRoles(registered);
         roles.forEach((item) => this.saveWechatBinding(phone, item));
         this.showRolePicker(phone, roles);
       })

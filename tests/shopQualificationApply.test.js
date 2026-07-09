@@ -87,7 +87,27 @@ async function testRolePickerApplyDoesNotAutoEnterShopWhenStatusApproved() {
   assert.strictEqual(page.data.loading, false);
 }
 
+async function testRolePickerApplyNeverShowsAdminReviewEntry() {
+  const fakeData = {
+    getAdminStatus() {
+      return Promise.resolve({ isAdmin: true });
+    },
+    getShopApplicationStatus() {
+      return Promise.resolve({ status: 'pending', application: { _id: 'app1' } });
+    }
+  };
+  const page = loadShopApplyPage(fakeData);
+
+  page.onLoad({ source: 'rolePicker' });
+  await flushPromises();
+  await flushPromises();
+
+  assert.strictEqual(page.data.isAdmin, false, 'Role-picker shop application must not expose admin review entry.');
+  assert.strictEqual(page.data.status, 'pending');
+}
+
 (async () => {
   await testRolePickerApplyDoesNotTreatLegacyShopAsApproved();
   await testRolePickerApplyDoesNotAutoEnterShopWhenStatusApproved();
+  await testRolePickerApplyNeverShowsAdminReviewEntry();
 })();

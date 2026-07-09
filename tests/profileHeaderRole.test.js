@@ -12,10 +12,31 @@ function read(file) {
 }
 
 const profileWxml = read('miniprogram/pages/profile/index.wxml');
+const shopProfileWxml = read('miniprogram/pages/shop/profile/index.wxml');
+const settingsJs = read('miniprogram/pages/settings/index.js');
+const settingsWxml = read('miniprogram/pages/settings/index.wxml');
+const SHOP_OWNER_LABEL = '\u5e97\u4e3b';
+const SHOP_MERCHANT_LABEL = '\u5e97\u5bb6';
+const SWITCH_ROLE_LABEL = '\u5207\u6362\u8eab\u4efd';
 
 assert(
   !profileWxml.includes(SHOP_REVIEW_LABEL) && !profileWxml.includes('bindtap="goShopReview"'),
   'The shared profile page should not show shop qualification review entry; it belongs in settings only.'
+);
+
+assert(
+  shopProfileWxml.includes(SHOP_OWNER_LABEL) && !shopProfileWxml.includes(SHOP_MERCHANT_LABEL),
+  'The shop profile header should label the current identity as 店主, not 店家.'
+);
+
+assert(
+  settingsWxml.includes(SWITCH_ROLE_LABEL) && settingsWxml.includes('bindtap="switchIdentity"'),
+  'Settings should expose a 切换身份 entry for every role.'
+);
+
+assert(
+  settingsJs.includes('switchIdentity()') && settingsJs.includes('/pages/login/index?switchRole=1'),
+  'The settings 切换身份 entry should return to the post-login role picker.'
 );
 
 function flushPromises() {

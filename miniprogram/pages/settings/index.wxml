@@ -55,6 +55,13 @@
 
   <!-- 注销账号 -->
   <view class="card">
+    <view class="entry" bindtap="switchIdentity">
+      <text class="entry-title">切换身份</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <view class="card">
     <view class="entry entry-danger" bindtap="deleteAccount">
       <text class="entry-title">注销账号</text>
       <text class="arrow">›</text>

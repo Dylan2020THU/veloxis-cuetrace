@@ -29,6 +29,10 @@ Page({
   },
 
   refreshAdminStatus() {
+    if (this.data.source === 'rolePicker') {
+      this.setData({ isAdmin: false });
+      return;
+    }
     data
       .getAdminStatus()
       .then((r) => this.setData({ isAdmin: !!(r && r.isAdmin) }))
@@ -118,6 +122,10 @@ Page({
 
   // 管理员快捷入口：直达资质审核后台（仅管理员 openid 可见；方便审核自己/他人的申请）
   goReview() {
+    if (!this.data.isAdmin) {
+      wx.showToast({ title: '无审核权限', icon: 'none' });
+      return;
+    }
     wx.navigateTo({ url: '/pages/shop/admin/review/index' });
   },
 

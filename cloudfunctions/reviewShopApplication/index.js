@@ -7,6 +7,15 @@ const BOOTSTRAP_ADMIN_OPENIDS = [
   'ovvdY3VKYCo7_jTzdpgGbuf26-tA'
 ];
 const ADMIN_ACCOUNTS = ['admin_zhx'];
+const VALID_ROLES = ['member', 'coach', 'shop'];
+
+function mergeShopRole(user) {
+  const roles = Array.isArray(user && user.roles) ? user.roles.filter((role) => VALID_ROLES.indexOf(role) !== -1) : [];
+  if (user && VALID_ROLES.indexOf(user.role) !== -1 && roles.indexOf(user.role) === -1) roles.push(user.role);
+  if (roles.indexOf('member') === -1) roles.unshift('member');
+  if (roles.indexOf('shop') === -1) roles.push('shop');
+  return Array.from(new Set(roles));
+}
 
 async function getActiveAdmins() {
   try {
@@ -59,7 +68,13 @@ exports.main = async (event = {}) => {
         const users = db.collection('users');
         const u = await users.where({ _openid: application._openid }).get();
         if (u.data.length) {
-          await users.doc(u.data[0]._id).update({ data: { role: 'shop', updatedAt: db.serverDate() } });
+          await users.doc(u.data[0]._id).update({
+            data: {
+              role: 'shop',
+              roles: mergeShopRole(u.data[0]),
+              updatedAt: db.serverDate()
+            }
+          });
         }
       } catch (e) {
         console.error('set role after approve failed', e);

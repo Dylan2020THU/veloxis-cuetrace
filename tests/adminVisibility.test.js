@@ -285,6 +285,66 @@ async function testCloudReviewListRequiresCurrentAdminAccount() {
   assert.strictEqual(admin.ok, true, 'Configured admin account should list shop review applications.');
 }
 
+async function testCloudReviewApprovalAddsShopRoleToUserRoles() {
+  const updates = [];
+  const fakeDb = {
+    serverDate() {
+      return 'SERVER_DATE';
+    },
+    collection(name) {
+      return {
+        where(query) {
+          return {
+            async get() {
+              if (name === 'admins') {
+                return { data: [{ _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }] };
+              }
+              if (name === 'users') {
+                return { data: [{ _id: 'user_doc', _openid: query._openid, role: 'member', roles: ['member'] }] };
+              }
+              return { data: [] };
+            }
+          };
+        },
+        doc(id) {
+          return {
+            async get() {
+              if (name === 'shop_applications') {
+                return { data: { _id: id, _openid: 'shop_openid', status: 'pending' } };
+              }
+              return { data: null };
+            },
+            async update({ data }) {
+              updates.push({ name, id, data });
+            }
+          };
+        }
+      };
+    }
+  };
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'DYNAMIC_CURRENT_ENV',
+    init() {},
+    database() {
+      return fakeDb;
+    },
+    getWXContext() {
+      return { OPENID: 'admin_openid' };
+    }
+  };
+
+  const fnPath = path.join(root, 'cloudfunctions/reviewShopApplication/index.js');
+  delete require.cache[require.resolve(fnPath)];
+  const reviewShopApplication = withWxServerSdk(fakeCloud, () => require(fnPath));
+  const res = await reviewShopApplication.main({ loginName: 'admin_zhx', applicationId: 'app1', approve: true });
+
+  assert.strictEqual(res.ok, true);
+  const userUpdate = updates.find((item) => item.name === 'users' && item.id === 'user_doc');
+  assert(userUpdate, 'Approving a shop application should update the applicant user document.');
+  assert.deepStrictEqual(userUpdate.data.roles, ['member', 'shop']);
+  assert.strictEqual(userUpdate.data.role, 'shop');
+}
+
 function testAdminCloudCallsIncludeCurrentLoginName() {
   const dataJs = read('miniprogram/services/data.js');
   assert(
@@ -363,6 +423,7 @@ async function testAdminShopLoginSkipsQualificationGate() {
   await testCloudLoginSeedsAdminByAccount();
   await testCloudAdminStatusRequiresCurrentAdminAccount();
   await testCloudReviewListRequiresCurrentAdminAccount();
+  await testCloudReviewApprovalAddsShopRoleToUserRoles();
   testAdminCloudCallsIncludeCurrentLoginName();
   testSettingsEntryIsAdminOnly();
   testAdminLoginUsesDedicatedPortalPath();

@@ -2475,6 +2475,7 @@ module.exports = {
   loginAdmin,
   logoutAdmin,
   getAdminProfile,
+  getCurrentLoginName: currentLoginName,
   rememberLoginNickname,
   sendSmsCode,
   verifySmsCode,

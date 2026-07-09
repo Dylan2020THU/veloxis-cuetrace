@@ -166,6 +166,10 @@ Page({
     wx.navigateTo({ url: '/pages/legal/index?type=thirdparty' });
   },
 
+  switchIdentity() {
+    wx.reLaunch({ url: '/pages/login/index?switchRole=1' });
+  },
+
   // ---------- 账号 ----------
   // 账号注销：先调研原因，再进入 7 天保留期。
   deleteAccount() {

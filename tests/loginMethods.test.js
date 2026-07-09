@@ -13,7 +13,7 @@ function flushPromises() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
-function loadLoginPage(accounts, fakeData) {
+function loadLoginPage(accounts, fakeData, appData) {
   const loginPath = path.join(root, 'miniprogram/pages/login/index.js');
   const dataPath = path.join(root, 'miniprogram/services/data.js');
   const mockPath = path.join(root, 'miniprogram/utils/mock.js');
@@ -31,7 +31,7 @@ function loadLoginPage(accounts, fakeData) {
     page = def;
   };
   global.Behavior = (def) => def;
-  global.getApp = () => ({ globalData: { cloudReady: false } });
+  global.getApp = () => ({ globalData: Object.assign({ cloudReady: false }, appData || {}) });
   global.wx = {
     getStorageSync(key) {
       if (key === 'dc_accounts') return accounts;
@@ -185,6 +185,8 @@ async function testPasswordLoginShowsRolePickerBeforeLogin() {
   });
 
   page.submit();
+  await flushPromises();
+  await flushPromises();
 
   assert.strictEqual(loginCalls.length, 0, 'Account verification should not call data.login before role selection.');
   assert.strictEqual(page.data.step, 'role');
@@ -257,9 +259,97 @@ async function testLockedShopRoleOpensApplicationWithoutShopLogin() {
   assert.strictEqual(calls.reLaunch.length, 0, 'Opening shop identity should not reLaunch away from the role picker.');
 }
 
+async function testApprovedShopApplicationEnablesShopRolePickerOption() {
+  const fakeData = {
+    getShopApplicationStatus() {
+      return Promise.resolve({ status: 'approved' });
+    }
+  };
+  const page = loadLoginPage([
+    { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
+  ], fakeData);
+  page.setData({
+    account: 'member1',
+    password: '123456',
+    agreementChecked: true,
+    loginType: 'password'
+  });
+
+  page.submit();
+  await flushPromises();
+  await flushPromises();
+
+  const shop = page.data.availableRoles.find((item) => item.key === 'shop');
+  assert(shop && shop.enabled, 'Approved shop qualification should enable the shop role on the role picker.');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member', 'shop']);
+}
+
+async function testSwitchRoleParamOpensRolePickerFromCurrentSession() {
+  const fakeData = {
+    getCurrentLoginName() {
+      return 'zhx1';
+    },
+    getShopApplicationStatus() {
+      return Promise.resolve({ status: 'none' });
+    }
+  };
+  const page = loadLoginPage([], fakeData, {
+    currentRole: 'member',
+    roles: ['member', 'coach'],
+    userProfile: { nickname: 'zhx1', roles: ['member', 'coach'] }
+  });
+
+  page.onLoad({ switchRole: '1' });
+  await flushPromises();
+  await flushPromises();
+
+  assert.strictEqual(page.data.step, 'role');
+  assert.strictEqual(page.data.pendingAccount, 'zhx1');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member', 'coach']);
+  assert.deepStrictEqual(page.data.availableRoles.map((item) => [item.key, item.enabled]), [
+    ['member', true],
+    ['coach', true],
+    ['shop', false]
+  ]);
+}
+
+async function testSwitchRoleUsesRegisteredAccountRolesBeforeSessionRoles() {
+  const fakeData = {
+    getCurrentLoginName() {
+      return 'zhx1';
+    },
+    getShopApplicationStatus() {
+      return Promise.resolve({ status: 'approved' });
+    }
+  };
+  const page = loadLoginPage([
+    { account: 'zhx1', password: '123456', role: 'member', roles: ['member', 'shop'] }
+  ], fakeData, {
+    currentRole: 'member',
+    roles: ['member', 'coach', 'shop'],
+    userProfile: { nickname: 'zhx1', roles: ['member', 'coach', 'shop'] }
+  });
+
+  page.onLoad({ switchRole: '1' });
+  await flushPromises();
+  await flushPromises();
+
+  assert.strictEqual(page.data.step, 'role');
+  assert.strictEqual(page.data.pendingAccount, 'zhx1');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member', 'shop']);
+  assert.deepStrictEqual(page.data.availableRoles.map((item) => [item.key, item.enabled]), [
+    ['member', true],
+    ['coach', false],
+    ['shop', true]
+  ]);
+}
+
 (async () => {
   await testPasswordLoginShowsRolePickerBeforeLogin();
   await testLockedShopRoleOpensApplicationWithoutShopLogin();
+  await testApprovedShopApplicationEnablesShopRolePickerOption();
+  await testSwitchRoleParamOpensRolePickerFromCurrentSession();
+  await testSwitchRoleUsesRegisteredAccountRolesBeforeSessionRoles();
   const page = loadLoginPage([
     { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
   ]);
