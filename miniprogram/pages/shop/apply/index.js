@@ -17,11 +17,13 @@ Page({
     ownerEmail: '',
     licenseFileID: '',
     submitting: false,
+    source: '',
     // 当前用户是否为系统管理员（仅其可见"前往审核后台"快捷入口）
     isAdmin: false
   },
 
-  onLoad() {
+  onLoad(options = {}) {
+    this.setData({ source: options.source || '' });
     this.refreshAdminStatus();
     this.refresh();
   },
@@ -39,7 +41,9 @@ Page({
     data
       .getShopApplicationStatus()
       .then((res) => {
-        const status = (res && res.status) || 'none';
+        let status = (res && res.status) || 'none';
+        const fromRolePicker = this.data.source === 'rolePicker';
+        if (fromRolePicker && status === 'approved') status = 'none';
         if (status === 'approved') {
           wx.reLaunch({ url: HOME_SHOP });
           return;

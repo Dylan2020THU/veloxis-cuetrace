@@ -56,6 +56,38 @@ function loadLoginPage(accounts, fakeData) {
   return page;
 }
 
+function loadAdminStoresPage(fakeData) {
+  const pagePath = path.join(root, 'miniprogram/pages/admin/stores/index.js');
+  delete require.cache[require.resolve(pagePath)];
+
+  let page;
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '../../../services/data') return fakeData;
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  global.Page = (def) => {
+    page = def;
+  };
+  global.wx = {
+    navigateTo() {},
+    reLaunch() {}
+  };
+
+  try {
+    require(pagePath);
+  } finally {
+    Module._load = originalLoad;
+  }
+  page.data = JSON.parse(JSON.stringify(page.data));
+  page.setData = function setData(next, cb) {
+    this.data = Object.assign({}, this.data, next);
+    if (typeof cb === 'function') cb();
+  };
+  return page;
+}
+
 async function testAdminPasswordLoginBypassesRolePicker() {
   const calls = { loginAdmin: [], reLaunch: [] };
   const fakeData = {
@@ -247,6 +279,36 @@ async function testAdminStoresCloudIncludesOfficialSeedStore() {
   assert.strictEqual(res.stores[0].applicationStatus, 'approved');
 }
 
+async function testAdminStoresPageKeepsBackendPendingApplicationCount() {
+  const page = loadAdminStoresPage({
+    getAdminStores() {
+      return Promise.resolve({
+        summary: {
+          totalStores: 1,
+          approvedStores: 1,
+          pendingApplications: 1,
+          checkinEnabledStores: 1
+        },
+        stores: [
+          {
+            storeId: 'store1',
+            storeName: 'A厅',
+            ownerName: '店主',
+            applicationStatus: 'approved',
+            checkinEnabled: true
+          }
+        ]
+      });
+    }
+  });
+
+  page.load();
+  await flushPromises();
+  await flushPromises();
+
+  assert.strictEqual(page.data.summary.pendingApplications, 1);
+}
+
 function testAdminPagesExistAndRenderRequiredSections() {
   const storesJs = read('miniprogram/pages/admin/stores/index.js');
   const storesWxml = read('miniprogram/pages/admin/stores/index.wxml');
@@ -313,5 +375,6 @@ function testAdminPagesExistAndRenderRequiredSections() {
   testAdminDataServiceExports();
   await testAdminStoresCloudRequiresAdminLoginName();
   await testAdminStoresCloudIncludesOfficialSeedStore();
+  await testAdminStoresPageKeepsBackendPendingApplicationCount();
   testAdminPagesExistAndRenderRequiredSections();
 })();

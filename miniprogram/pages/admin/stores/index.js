@@ -30,6 +30,7 @@ Page({
     checkin: 'all',
     statusOptions: STATUS_OPTIONS,
     checkinOptions: CHECKIN_OPTIONS,
+    backendSummary: {},
     summary: {},
     stores: [],
     filteredStores: []
@@ -43,13 +44,14 @@ Page({
     this.setData({ loading: true, error: '' });
     data.getAdminStores()
       .then((res) => {
+        const backendSummary = (res && res.summary) || {};
         const stores = ((res && res.stores) || []).map((item) => Object.assign({}, item, {
           statusText: STATUS_TEXT[item.applicationStatus] || '未提交',
           statusClass: item.applicationStatus === 'approved' ? 'ok' : item.applicationStatus === 'pending' ? 'warn' : item.applicationStatus === 'rejected' ? 'bad' : '',
           checkinText: item.checkinEnabled ? '已开启打卡' : '未开启打卡',
           checkinClass: item.checkinEnabled ? 'ok' : ''
         }));
-        this.setData({ stores, loading: false });
+        this.setData({ stores, backendSummary, loading: false });
         this.applyFilters();
       })
       .catch((e) => this.setData({
@@ -86,10 +88,13 @@ Page({
 
   buildSummary(list) {
     const rows = list || [];
+    const backendSummary = this.data.backendSummary || {};
     return {
       totalStores: rows.length,
       approvedStores: rows.filter((item) => item.applicationStatus === 'approved').length,
-      pendingApplications: rows.filter((item) => item.applicationStatus === 'pending').length,
+      pendingApplications: backendSummary.pendingApplications === undefined
+        ? rows.filter((item) => item.applicationStatus === 'pending').length
+        : backendSummary.pendingApplications,
       checkinEnabledStores: rows.filter((item) => item.checkinEnabled).length
     };
   },

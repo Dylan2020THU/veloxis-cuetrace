@@ -43,6 +43,7 @@ const HOME_BY_ROLE = {
   coach: '/pages/checkin/index',
   shop: '/pages/shop/hall-status/index'
 };
+const SHOP_APPLY_URL = '/pages/shop/apply/index?source=rolePicker';
 const ADMIN_HOME = '/pages/admin/stores/index';
 
 // 属于 tabBar 的落地页需用 switchTab，其余用 reLaunch
@@ -157,7 +158,10 @@ Page({
       success: (res) => {
         if (!res.confirm) return;
         if (isShop) {
-          this.doLogin('shop', this.data.pendingAccount, Array.from(new Set((this.data.pendingRoles || []).concat('shop'))));
+          wx.navigateTo({
+            url: SHOP_APPLY_URL,
+            fail: () => wx.reLaunch({ url: SHOP_APPLY_URL })
+          });
           return;
         }
         wx.showToast({ title: '请联系已认证店主开通教练身份', icon: 'none' });

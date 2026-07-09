@@ -206,8 +206,60 @@ async function testPasswordLoginShowsRolePickerBeforeLogin() {
   assert.deepStrictEqual(loginCalls[0], ['coach', ['member', 'coach'], 'coach1']);
 }
 
+async function testLockedShopRoleOpensApplicationWithoutShopLogin() {
+  const calls = {
+    login: [],
+    navigateTo: [],
+    reLaunch: []
+  };
+  const fakeData = {
+    login(...args) {
+      calls.login.push(args);
+      return Promise.resolve('openid');
+    },
+    rememberLoginNickname() {},
+    getUserProfile() {
+      return Promise.resolve({});
+    },
+    getShopApplicationStatus() {
+      return Promise.resolve({ status: 'approved' });
+    },
+    markFirstLogin() {
+      return Promise.resolve();
+    }
+  };
+  const page = loadLoginPage([
+    { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
+  ], fakeData);
+  global.wx.showModal = (options) => options.success({ confirm: true });
+  global.wx.navigateTo = (args) => calls.navigateTo.push(args);
+  global.wx.reLaunch = (args) => calls.reLaunch.push(args);
+  page.setData({
+    step: 'role',
+    pendingAccount: 'member1',
+    pendingRoles: ['member'],
+    availableRoles: [
+      { key: 'member', label: '球员', enabled: true },
+      { key: 'coach', label: '教练', enabled: false },
+      { key: 'shop', label: '店主', enabled: false }
+    ],
+    role: 'member',
+    roleLabel: '球员'
+  });
+
+  page.chooseRole({ currentTarget: { dataset: { role: 'shop' } } });
+  await flushPromises();
+  await flushPromises();
+
+  assert.strictEqual(calls.login.length, 0, 'Opening shop identity should not call data.login before qualification approval.');
+  assert.strictEqual(calls.navigateTo[0].url, '/pages/shop/apply/index?source=rolePicker');
+  assert.strictEqual(typeof calls.navigateTo[0].fail, 'function');
+  assert.strictEqual(calls.reLaunch.length, 0, 'Opening shop identity should not reLaunch away from the role picker.');
+}
+
 (async () => {
   await testPasswordLoginShowsRolePickerBeforeLogin();
+  await testLockedShopRoleOpensApplicationWithoutShopLogin();
   const page = loadLoginPage([
     { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
   ]);
