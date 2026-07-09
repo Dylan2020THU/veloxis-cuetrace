@@ -1,7 +1,7 @@
 {
   "name": "requestCheckin",
   "version": "1.0.0",
-  "description": "大川激流 - 球员到店打卡请求",
+  "description": "强化杆迹 - 球员到店打卡请求",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

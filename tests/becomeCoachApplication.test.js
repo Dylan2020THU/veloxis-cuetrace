@@ -120,6 +120,8 @@ function testStaticWiring() {
   assert(appJson.includes('pages/coach/apply/index'), 'app.json should register the become coach application page.');
   assert(settingsJs.includes('canApplyCoach') && settingsJs.includes('goBecomeCoach'), 'Settings page should gate and navigate to become coach.');
   assert(settingsWxml.includes('wx:if="{{canApplyCoach}}"') && settingsWxml.includes('成为教练'), 'Settings page should show 成为教练 only when allowed.');
+  assert(!settingsJs.includes("profile && profile.role === 'coach'"), 'Settings should not hide 成为教练 based only on profile.role.');
+  assert(settingsJs.includes('refreshCoachApplyEntry') && settingsJs.includes('data.getMyCoachShopBindingStatus()'), 'Settings should refresh the entry from coach binding status.');
   assert(dataJs.includes('intro') && dataJs.includes('applyCoachShopBinding({ storeId, coachNickname, coachAvatar, intro })'), 'Data service should submit short intro with binding application.');
   assert(shopCoachesWxml.includes('item.intro') && shopCoachesWxml.includes('申请说明'), 'Shop coach review card should show application intro.');
   assert(applyBindingCloud.includes('intro'), 'applyCoachShopBinding cloud function should persist intro.');

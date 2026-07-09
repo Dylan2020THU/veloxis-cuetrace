@@ -1,7 +1,7 @@
 {
   "name": "getDayDetail",
   "version": "1.0.0",
-  "description": "大川激流 - 某日训练明细",
+  "description": "强化杆迹 - 某日训练明细",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

@@ -1,7 +1,7 @@
 {
   "name": "toggleLike",
   "version": "1.0.0",
-  "description": "大川激流 - 帖子点赞切换",
+  "description": "强化杆迹 - 帖子点赞切换",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

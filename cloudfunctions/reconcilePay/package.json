@@ -1,7 +1,7 @@
 {
   "name": "reconcilePay",
   "version": "1.0.0",
-  "description": "大川激流 - 支付对账/发货补偿定时任务（fulfill_failures 重试）",
+  "description": "强化杆迹 - 支付对账/发货补偿定时任务（fulfill_failures 重试）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

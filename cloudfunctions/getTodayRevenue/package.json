@@ -1,7 +1,7 @@
 {
   "name": "getTodayRevenue",
   "version": "1.0.0",
-  "description": "大川激流 - 统计当前店主今日营收（shop_orders 当日金额合计）",
+  "description": "强化杆迹 - 统计当前店主今日营收（shop_orders 当日金额合计）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

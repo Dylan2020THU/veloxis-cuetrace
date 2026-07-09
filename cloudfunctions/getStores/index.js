@@ -3,12 +3,12 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
-// 官方样板数据：作为线上常驻的"大川激流·旗舰店"展示。
+// 官方样板数据：作为线上常驻的"强化杆迹台球俱乐部"展示。
 // 使用固定 test openid 与正式 openid 区分；真实店主建店时不会与本条冲突。
 const SEED_BRAND = {
   _id: 'seed_brand_dachuan',
   _openid: 'ot_test_dachuan_official',
-  name: '大川激流',
+  name: '强化杆迹',
   logo: '',
   isSeed: true,
   createdAt: new Date('2025-01-01T00:00:00.000Z')
@@ -18,7 +18,7 @@ const SEED_STORE = {
   _id: 'seed_store_dachuan_flag',
   _openid: 'ot_test_dachuan_official',
   brandId: 'seed_brand_dachuan',
-  name: '大川激流·旗舰店',
+  name: '强化杆迹台球俱乐部',
   address: '北京·朝阳区国贸 CBD 中心',
   cover: '',
   region: '北京',

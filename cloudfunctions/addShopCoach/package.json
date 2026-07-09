@@ -1,7 +1,7 @@
 {
   "name": "addShopCoach",
   "version": "1.0.0",
-  "description": "大川激流 - 店家添加教练",
+  "description": "强化杆迹 - 店家添加教练",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

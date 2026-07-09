@@ -1,7 +1,7 @@
 {
   "name": "getShopCoachSettlement",
   "version": "1.0.0",
-  "description": "大川激流 - 店主端本店各教练结算概览（按周期）",
+  "description": "强化杆迹 - 店主端本店各教练结算概览（按周期）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

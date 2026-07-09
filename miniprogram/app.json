@@ -34,6 +34,10 @@
     "pages/shop/profile/edit/index",
     "pages/shop/apply/index",
     "pages/shop/admin/review/index",
+    "pages/admin/stores/index",
+    "pages/admin/coaches/index",
+    "pages/admin/members/index",
+    "pages/admin/profile/index",
     "pages/player/profile/index",
     "pages/player/profile/edit/index",
     "pages/profile/qrcode/index",
@@ -42,7 +46,7 @@
   "window": {
     "navigationBarBackgroundColor": "#067EF9",
     "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "大川激流",
+    "navigationBarTitleText": "强化杆迹",
     "backgroundColor": "#F4F6F8",
     "backgroundTextStyle": "light"
   },

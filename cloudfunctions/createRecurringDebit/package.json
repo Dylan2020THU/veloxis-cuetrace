@@ -1,7 +1,7 @@
 {
   "name": "createRecurringDebit",
   "version": "1.0.0",
-  "description": "大川激流 - 连续订阅周期扣款",
+  "description": "强化杆迹 - 连续订阅周期扣款",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

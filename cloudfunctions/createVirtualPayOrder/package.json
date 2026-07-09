@@ -1,7 +1,7 @@
 {
   "name": "createVirtualPayOrder",
   "version": "1.0.0",
-  "description": "大川激流 - 虚拟支付下单（服务端算价+签名）",
+  "description": "强化杆迹 - 虚拟支付下单（服务端算价+签名）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"

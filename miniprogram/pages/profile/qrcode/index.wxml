@@ -4,7 +4,7 @@
       <image wx:if="{{avatar}}" class="qr-avatar" src="{{avatar}}" mode="aspectFill"></image>
       <view wx:else class="qr-avatar qr-avatar--ph">{{nickname[0]}}</view>
       <view class="qr-name">{{nickname}}</view>
-      <view class="qr-role">大川激流 · {{roleLabel}}</view>
+      <view class="qr-role">强化杆迹 · {{roleLabel}}</view>
     </view>
 
     <view class="qr-box">

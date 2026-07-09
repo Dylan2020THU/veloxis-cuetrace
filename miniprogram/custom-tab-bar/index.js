@@ -55,6 +55,11 @@ const TABS = {
     { path: '/pages/shop/members/index', text: '会员', icon: icon('students') },
     { path: '/pages/shop/table-types/index', text: '球桌', icon: icon('layoutgrid') },
     { path: '/pages/profile/index', text: '我的', icon: icon('profile') }
+  ],
+  admin: [
+    { path: '/pages/admin/stores/index', text: '门店', icon: icon('layoutgrid') },
+    { path: '/pages/admin/coaches/index', text: '教练', icon: icon('necktie') },
+    { path: '/pages/admin/members/index', text: '会员', icon: icon('students') }
   ]
 };
 

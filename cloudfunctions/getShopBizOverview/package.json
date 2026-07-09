@@ -1,7 +1,7 @@
 {
   "name": "getShopBizOverview",
   "version": "1.0.0",
-  "description": "大川激流 - 店主端经营数据看板（今日快照+近7/30天关键数+营收趋势）",
+  "description": "强化杆迹 - 店主端经营数据看板（今日快照+近7/30天关键数+营收趋势）",
   "main": "index.js",
   "dependencies": {
     "wx-server-sdk": "~2.6.3"
