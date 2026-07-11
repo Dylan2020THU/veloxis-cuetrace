@@ -68,13 +68,35 @@ function validateRegistration(account, password) {
 
 function authResult(account, user) {
   const roles = normalizeServerRoles(user);
+  const currentRole = roles.indexOf(user.currentRole) !== -1
+    ? user.currentRole
+    : (roles.indexOf(user.role) !== -1 ? user.role : roles[0]);
   return {
     ok: true,
     account: account.account,
     roles,
-    currentRole: user.currentRole || user.role || roles[0],
+    currentRole,
     wechatBound: true
   };
+}
+
+function isAccountIdentity(account, accountDocId) {
+  return !!account &&
+    account._id === accountDocId &&
+    account.accountNormalized === normalizeAccount(account.account) &&
+    accountId(account.account) === accountDocId;
+}
+
+function isBindingIdentity(binding, bindingDocId, openid, account) {
+  return !!binding &&
+    binding._id === bindingDocId &&
+    binding._openid === openid &&
+    binding.accountId === account._id &&
+    binding.account === account.account;
+}
+
+function isUserIdentity(user, bindingDocId, openid) {
+  return !!user && user._id === bindingDocId && user._openid === openid;
 }
 
 function messageFor(code) {
@@ -121,8 +143,10 @@ async function register(event, context) {
     const userRef = transaction.collection('users').doc(bindingDocId);
     const existingAccount = await getOptional(accountRef);
     const existingBinding = await getOptional(bindingRef);
+    const existingUser = await getOptional(userRef);
     if (existingAccount) throw authError('ACCOUNT_EXISTS');
     if (existingBinding) throw authError('WECHAT_ALREADY_BOUND');
+    if (existingUser) throw authError('ACCOUNT_NOT_BOUND');
 
     const salt = crypto.randomBytes(16).toString('hex');
     const accountData = {
@@ -160,14 +184,28 @@ async function resolveWechatAccount(openid) {
   const bindingDocId = bindingId(openid);
   const binding = await getOptional(db.collection('wechat_bindings').doc(bindingDocId));
   if (!binding) throw authError('WECHAT_NOT_BOUND');
-  if (!binding.accountId || binding._openid !== openid) throw authError('ACCOUNT_NOT_BOUND');
+  if (
+    binding._id !== bindingDocId ||
+    !binding.accountId ||
+    !binding.account ||
+    binding._openid !== openid ||
+    accountId(binding.account) !== binding.accountId
+  ) {
+    throw authError('ACCOUNT_NOT_BOUND');
+  }
 
   const account = await getOptional(db.collection('accounts').doc(binding.accountId));
-  if (!account || account._openid !== openid) throw authError('ACCOUNT_NOT_BOUND');
+  if (
+    !isAccountIdentity(account, binding.accountId) ||
+    account._openid !== openid ||
+    !isBindingIdentity(binding, bindingDocId, openid, account)
+  ) {
+    throw authError('ACCOUNT_NOT_BOUND');
+  }
   if (account.status !== 'active') throw authError('ACCOUNT_DISABLED');
 
   const user = await getOptional(db.collection('users').doc(bindingDocId));
-  if (!user || user._openid !== openid) throw authError('ACCOUNT_NOT_BOUND');
+  if (!isUserIdentity(user, bindingDocId, openid)) throw authError('ACCOUNT_NOT_BOUND');
   return { account, user };
 }
 
@@ -175,7 +213,11 @@ async function passwordLogin(event, context) {
   const normalized = normalizeAccount(event.account);
   const accountDocId = accountId(normalized);
   const account = await getOptional(db.collection('accounts').doc(accountDocId));
-  if (!account || typeof event.password !== 'string' || !verifyPassword(event.password, account)) {
+  if (
+    !isAccountIdentity(account, accountDocId) ||
+    typeof event.password !== 'string' ||
+    !verifyPassword(event.password, account)
+  ) {
     throw authError('INVALID_CREDENTIALS');
   }
   if (account.status !== 'active') throw authError('ACCOUNT_DISABLED');
@@ -189,7 +231,12 @@ async function passwordLogin(event, context) {
 
   if (account._openid === OPENID && binding && binding.accountId === accountDocId) {
     const user = await getOptional(db.collection('users').doc(bindingDocId));
-    if (!user || user._openid !== OPENID) throw authError('ACCOUNT_NOT_BOUND');
+    if (
+      !isBindingIdentity(binding, bindingDocId, OPENID, account) ||
+      !isUserIdentity(user, bindingDocId, OPENID)
+    ) {
+      throw authError('ACCOUNT_NOT_BOUND');
+    }
     return authResult(account, user);
   }
   if (account._openid || binding) throw authError('ACCOUNT_NOT_BOUND');
@@ -200,7 +247,8 @@ async function passwordLogin(event, context) {
     const userRef = transaction.collection('users').doc(bindingDocId);
     const currentAccount = await getOptional(accountRef);
     const currentBinding = await getOptional(bindingRef);
-    if (!currentAccount || !verifyPassword(event.password, currentAccount)) {
+    const currentUser = await getOptional(userRef);
+    if (!isAccountIdentity(currentAccount, accountDocId) || !verifyPassword(event.password, currentAccount)) {
       throw authError('INVALID_CREDENTIALS');
     }
     if (currentAccount.status !== 'active') throw authError('ACCOUNT_DISABLED');
@@ -210,6 +258,7 @@ async function passwordLogin(event, context) {
     if (currentBinding && currentBinding.accountId !== accountDocId) {
       throw authError('WECHAT_ALREADY_BOUND');
     }
+    if (currentUser) throw authError('ACCOUNT_NOT_BOUND');
     if (currentAccount._openid || currentBinding) throw authError('ACCOUNT_NOT_BOUND');
 
     const bindingData = {
@@ -247,7 +296,7 @@ async function status(event, context) {
   const resolved = await resolveWechatAccount(context.OPENID);
   return Object.assign(authResult(resolved.account, resolved.user), {
     passwordSet: true,
-    phone: resolved.user.phone || ''
+    phone: resolved.user.phoneVerifiedAt ? (resolved.user.phone || '') : ''
   });
 }
 

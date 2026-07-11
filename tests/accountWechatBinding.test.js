@@ -398,6 +398,21 @@ async function run() {
   assert.strictEqual(findAccount(state, 'admin_zhx'), undefined);
   assert.strictEqual(findBinding(state, 'wechat_X'), undefined);
 
+  const orphanRegisterState = makeState({
+    users: [{
+      _id: sha256('wechat:wechat_orphan_register'),
+      _openid: 'wechat_orphan_register',
+      roles: ['shop'],
+      currentRole: 'shop'
+    }]
+  });
+  const orphanRegisterBefore = snapshot(orphanRegisterState);
+  const orphanRegister = await loadAccountAuth('wechat_orphan_register', orphanRegisterState).main({
+    action: 'register', account: 'MemberOrphanRegister', password: '123456'
+  });
+  assert.strictEqual(orphanRegister.code, 'ACCOUNT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(orphanRegisterState), orphanRegisterBefore);
+
   const unboundState = makeState();
   const unboundSalt = '11'.repeat(16);
   unboundState.accounts.push({
@@ -416,6 +431,30 @@ async function run() {
   assert.strictEqual(findAccount(unboundState, 'MemberU')._openid, 'wechat_U');
   assert.strictEqual(findBinding(unboundState, 'wechat_U').accountId, sha256('account:memberu'));
   assert.deepStrictEqual(firstPasswordBinding.roles, ['member']);
+
+  const orphanPasswordState = makeState();
+  const orphanPasswordSalt = '22'.repeat(16);
+  orphanPasswordState.accounts.push({
+    _id: sha256('account:memberorphanpassword'),
+    account: 'MemberOrphanPassword',
+    accountNormalized: 'memberorphanpassword',
+    passwordAlgorithm: 'scrypt-v1',
+    passwordSalt: orphanPasswordSalt,
+    passwordHash: crypto.scryptSync('123456', Buffer.from(orphanPasswordSalt, 'hex'), 64).toString('hex'),
+    status: 'active'
+  });
+  orphanPasswordState.users.push({
+    _id: sha256('wechat:wechat_orphan_password'),
+    _openid: 'wechat_orphan_password',
+    roles: ['member'],
+    currentRole: 'member'
+  });
+  const orphanPasswordBefore = snapshot(orphanPasswordState);
+  const orphanPassword = await loadAccountAuth('wechat_orphan_password', orphanPasswordState).main({
+    action: 'passwordLogin', account: 'MemberOrphanPassword', password: '123456'
+  });
+  assert.strictEqual(orphanPassword.code, 'ACCOUNT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(orphanPasswordState), orphanPasswordBefore);
 
   const first = await loadAccountAuth('wechat_A', seed, 'union_A').main({
     action: 'register',
@@ -444,6 +483,33 @@ async function run() {
   const resumed = await loadAccountAuth('wechat_A', state).main({ action: 'wechatLogin' });
   assert.strictEqual(resumed.ok, true);
   assert.strictEqual(resumed.account, 'MemberA');
+
+  const tamperedRoleState = makeState(snapshot(state));
+  const tamperedRoleUser = findById(tamperedRoleState.users, sha256('wechat:wechat_A'));
+  tamperedRoleUser.roles = ['member'];
+  tamperedRoleUser.currentRole = 'shop';
+  tamperedRoleUser.role = 'shop';
+  const tamperedRole = await loadAccountAuth('wechat_A', tamperedRoleState).main({ action: 'wechatLogin' });
+  assert.deepStrictEqual(tamperedRole.roles, ['member']);
+  assert.strictEqual(tamperedRole.currentRole, 'member');
+
+  const tamperedBindingState = makeState(snapshot(state));
+  findBinding(tamperedBindingState, 'wechat_A').account = 'DifferentAccount';
+  const tamperedBindingBefore = snapshot(tamperedBindingState);
+  const tamperedBinding = await loadAccountAuth('wechat_A', tamperedBindingState).main({
+    action: 'passwordLogin', account: 'MemberA', password: '123456'
+  });
+  assert.strictEqual(tamperedBinding.code, 'ACCOUNT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(tamperedBindingState), tamperedBindingBefore);
+
+  const tamperedWechatState = makeState(snapshot(state));
+  findBinding(tamperedWechatState, 'wechat_A').account = 'DifferentAccount';
+  const tamperedWechatBefore = snapshot(tamperedWechatState);
+  const tamperedWechat = await loadAccountAuth('wechat_A', tamperedWechatState).main({
+    action: 'wechatLogin'
+  });
+  assert.strictEqual(tamperedWechat.code, 'ACCOUNT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(tamperedWechatState), tamperedWechatBefore);
 
   const passwordLogin = await loadAccountAuth('wechat_A', state).main({
     action: 'passwordLogin', account: 'MemberA', password: '123456'
@@ -481,6 +547,8 @@ async function run() {
   assert.strictEqual(unknownWechat.code, 'WECHAT_NOT_BOUND');
   assert.deepStrictEqual(snapshot(state), unknownBefore);
 
+  const boundUser = findById(state.users, sha256('wechat:wechat_A'));
+  boundUser.phone = '13800138000';
   const status = await loadAccountAuth('wechat_A', state).main({ action: 'status' });
   assert.strictEqual(status.ok, true);
   assert.strictEqual(status.account, 'MemberA');
@@ -489,6 +557,10 @@ async function run() {
   ['passwordHash', 'passwordSalt', '_openid', 'unionidHash'].forEach((field) => {
     assert.strictEqual(status[field], undefined);
   });
+
+  boundUser.phoneVerifiedAt = 1710000000000;
+  const verifiedStatus = await loadAccountAuth('wechat_A', state).main({ action: 'status' });
+  assert.strictEqual(verifiedStatus.phone, '13800138000');
 
   const inconsistentState = makeState(snapshot(state));
   findBinding(inconsistentState, 'wechat_A')._openid = 'wechat_other';

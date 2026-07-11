@@ -147,10 +147,6 @@ Page({
     this.setData({ [name]: !this.data[name] });
   },
 
-  onPhoneInput(e) {
-    this.setData({ phone: e.detail.value });
-  },
-
   onLocateCity() {
     this.setData({ locationLoading: true });
     wx.getLocation({
@@ -235,7 +231,7 @@ Page({
   },
 
   save() {
-    const { nickname, genderOptions, genderIndex, birthDate, phone,
+    const { nickname, genderOptions, genderIndex, birthDate,
             locationCity, hometown, yearsOptions, yearsIndex, levels, levelIndex } = this.data;
     if (!nickname.trim()) {
       wx.showToast({ title: '请输入昵称', icon: 'none' });
@@ -247,7 +243,6 @@ Page({
       avatar: this.data.avatar,
       gender: genderOptions[genderIndex],
       birthDate,
-      phone,
       locationCity,
       hometown,
       years: yearsOptions[yearsIndex],

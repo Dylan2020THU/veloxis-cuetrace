@@ -12,6 +12,7 @@ const RESEND_MS = 60 * 1000;
 const SMS_HOST = 'sms.tencentcloudapi.com';
 const SMS_SERVICE = 'sms';
 const SMS_VERSION = '2021-01-11';
+const SMS_TIMEOUT_MS = 8000;
 
 function sha256(value, encoding) {
   return crypto.createHash('sha256').update(value).digest(encoding || 'hex');
@@ -24,6 +25,10 @@ function hmac(key, value, encoding) {
 function hashCode(phone, code) {
   const secret = process.env.SMS_CODE_HASH_SECRET || process.env.CUETRACE_SMS_SECRET_KEY || '';
   return sha256(`${phone}:${code}:${secret}`);
+}
+
+function smsCodeId(openid, phone) {
+  return sha256(`sms:${openid}:${phone}`);
 }
 
 function config() {
@@ -121,6 +126,9 @@ function sendTencentSms(phone, code, cfg) {
       });
     });
     req.on('error', reject);
+    req.setTimeout(SMS_TIMEOUT_MS, () => {
+      req.destroy(new Error('SMS request timeout'));
+    });
     req.write(body);
     req.end();
   });
@@ -129,6 +137,7 @@ function sendTencentSms(phone, code, cfg) {
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const phone = String(event.phone || '').trim();
+  if (!OPENID) return { ok: false, code: 'UNAUTHORIZED', msg: '无法识别微信身份' };
   if (!PHONE_RE.test(phone)) return { ok: false, code: 'INVALID_PHONE', msg: '请输入正确的手机号' };
 
   const { cfg, missing } = config();
@@ -136,36 +145,90 @@ exports.main = async (event = {}) => {
     return { ok: false, code: 'CONFIG_MISSING', msg: '短信服务未配置', missing };
   }
 
-  const now = Date.now();
-  const codes = db.collection('sms_codes');
-  const recent = await codes
-    .where({ phone, _openid: OPENID, used: false })
-    .limit(20)
-    .get();
-  const last = (recent.data || [])
-    .filter((item) => item.createdAt)
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
-  if (last && last.createdAt && now - last.createdAt < RESEND_MS) {
-    return { ok: false, code: 'TOO_FREQUENT', msg: '请稍后再获取验证码' };
+  const codeId = smsCodeId(OPENID, phone);
+  const attemptId = crypto.randomBytes(16).toString('hex');
+  const claim = await db.runTransaction(async (transaction) => {
+    const codeRef = transaction.collection('sms_codes').doc(codeId);
+    const result = await codeRef.get();
+    const current = result && result.data;
+    const transactionNow = Date.now();
+    if (
+      current
+      && (
+        current._id !== codeId
+        || current._openid !== OPENID
+        || current.phone !== phone
+      )
+    ) {
+      return { ok: false, code: 'SMS_STATE_INVALID', msg: '验证码状态异常，请稍后重试' };
+    }
+    if (
+      current
+      && Number.isFinite(current.lastSendAttemptAt)
+      && transactionNow - current.lastSendAttemptAt < RESEND_MS
+    ) {
+      return { ok: false, code: 'TOO_FREQUENT', msg: '请稍后再获取验证码' };
+    }
+
+    const data = {
+      _openid: OPENID,
+      phone,
+      attemptId,
+      lastSendAttemptAt: transactionNow,
+      codeHash: '',
+      failedAttempts: 0,
+      locked: false,
+      lockedAt: 0,
+      used: true,
+      usedAt: 0,
+      expiresAt: 0,
+      updatedAt: db.serverDate()
+    };
+    if (current) await codeRef.update({ data });
+    else await codeRef.set({ data });
+    return { ok: true };
+  });
+  if (!claim || claim.ok !== true) {
+    return claim || { ok: false, code: 'SMS_SEND_FAILED', msg: '验证码发送失败，请稍后重试' };
   }
 
-  const smsCode = String(Math.floor(100000 + Math.random() * 900000));
+  const smsCode = String(crypto.randomInt(100000, 1000000));
   try {
     await sendTencentSms(phone, smsCode, cfg);
   } catch (e) {
-    return { ok: false, code: 'SMS_SEND_FAILED', msg: e.message || '短信发送失败' };
+    return { ok: false, code: 'SMS_SEND_FAILED', msg: '验证码发送失败，请稍后重试' };
   }
 
-  await codes.add({
-    data: {
-      _openid: OPENID,
-      phone,
-      codeHash: hashCode(phone, smsCode),
-      used: false,
-      createdAt: now,
-      expiresAt: now + CODE_TTL_MS
+  const finalized = await db.runTransaction(async (transaction) => {
+    const codeRef = transaction.collection('sms_codes').doc(codeId);
+    const result = await codeRef.get();
+    const current = result && result.data;
+    if (
+      !current
+      || current._id !== codeId
+      || current._openid !== OPENID
+      || current.phone !== phone
+      || current.attemptId !== attemptId
+    ) {
+      return false;
     }
+    const transactionNow = Date.now();
+    await codeRef.update({
+      data: {
+        codeHash: hashCode(phone, smsCode),
+        failedAttempts: 0,
+        locked: false,
+        used: false,
+        createdAt: transactionNow,
+        expiresAt: transactionNow + CODE_TTL_MS,
+        updatedAt: db.serverDate()
+      }
+    });
+    return true;
   });
+  if (!finalized) {
+    return { ok: false, code: 'SMS_SEND_CONFLICT', msg: '验证码状态已变更，请重新获取' };
+  }
 
   return { ok: true, expiresIn: CODE_TTL_MS / 1000 };
 };

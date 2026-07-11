@@ -26,8 +26,8 @@ function normalizeServerRoles(user) {
   return ['member'];
 }
 
-async function getBindingByOpenid(openid) {
-  const result = await db.collection('wechat_bindings').doc(bindingId(openid)).get();
+async function getOptional(ref) {
+  const result = await ref.get();
   return result && result.data ? result.data : null;
 }
 
@@ -46,65 +46,94 @@ function safeUserResult(user, roles, currentRole, account, deletionCanceled) {
 
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
-  const users = db.collection('users');
   const requestedRole = VALID_ROLES.indexOf(event.role) !== -1 ? event.role : 'member';
-  const binding = await getBindingByOpenid(OPENID);
-  if (!binding || binding._id !== bindingId(OPENID) || binding._openid !== OPENID || !binding.accountId) {
-    return fail('ACCOUNT_NOT_BOUND', '请先登录或注册账号');
-  }
-  const accountResult = await db.collection('accounts').doc(binding.accountId).get();
-  const account = accountResult && accountResult.data ? accountResult.data : null;
-  if (
-    !account ||
-    account.status !== 'active' ||
-    account._openid !== OPENID ||
-    account._id !== binding.accountId ||
-    account.account !== binding.account
-  ) {
-    return fail('ACCOUNT_NOT_BOUND', '账号绑定信息不完整');
-  }
+  const userId = bindingId(OPENID);
 
-  const userResult = await users.doc(binding._id).get();
-  const user = userResult && userResult.data ? userResult.data : null;
-  if (!user || user._id !== binding._id || user._openid !== OPENID) {
-    return fail('ACCOUNT_NOT_BOUND', '账号资料不存在');
-  }
-  let deletionCanceled = false;
-  if (user.deletionStatus === 'pending') {
-    const scheduledAt = user.deletionScheduledAt || 0;
-    if (scheduledAt && Date.now() >= scheduledAt) {
+  return db.runTransaction(async (transaction) => {
+    const binding = await getOptional(transaction.collection('wechat_bindings').doc(userId));
+    if (
+      !binding ||
+      binding._id !== userId ||
+      binding._openid !== OPENID ||
+      !binding.accountId ||
+      !binding.account
+    ) {
+      return fail('ACCOUNT_NOT_BOUND', '请先登录或注册账号');
+    }
+    const account = await getOptional(transaction.collection('accounts').doc(binding.accountId));
+    const userRef = transaction.collection('users').doc(userId);
+    const requestRef = transaction.collection('account_deletion_requests').doc(userId);
+    const user = await getOptional(userRef);
+    const request = await getOptional(requestRef);
+    if (
+      !account ||
+      account.status !== 'active' ||
+      account._openid !== OPENID ||
+      account._id !== binding.accountId ||
+      account.account !== binding.account ||
+      !user ||
+      user._id !== userId ||
+      user._openid !== OPENID
+    ) {
+      return fail('ACCOUNT_NOT_BOUND', '账号绑定信息不完整');
+    }
+    if (user.deletionStatus === 'purging') {
       return fail('ACCOUNT_DELETION_LOCKED', '账号注销已进入删除流程，无法继续登录');
     }
-    deletionCanceled = true;
-    await users.doc(user._id).update({
-      data: {
+
+    const roles = normalizeServerRoles(user);
+    if (roles.indexOf(requestedRole) === -1) {
+      return fail('ROLE_NOT_ALLOWED', '该账号未开通此身份');
+    }
+
+    let deletionCanceled = false;
+    const userUpdate = {
+      roles,
+      currentRole: requestedRole,
+      role: requestedRole,
+      updatedAt: db.serverDate()
+    };
+    if (user.deletionStatus === 'pending') {
+      const consistentRequest = !!(
+        request &&
+        request._id === userId &&
+        request._openid === OPENID &&
+        request.accountId === binding.accountId &&
+        request.account === binding.account &&
+        request.deletionStatus === 'pending' &&
+        Number.isFinite(user.deletionRequestedAt) &&
+        Number.isFinite(user.deletionScheduledAt) &&
+        Number.isFinite(request.deletionRequestedAt) &&
+        Number.isFinite(request.deletionScheduledAt) &&
+        request.deletionRequestedAt === user.deletionRequestedAt &&
+        request.deletionScheduledAt === user.deletionScheduledAt
+      );
+      if (!consistentRequest) {
+        return fail('DELETION_REQUEST_INCONSISTENT', '注销申请状态不一致，请稍后重试');
+      }
+      if (Date.now() >= user.deletionScheduledAt) {
+        return fail('ACCOUNT_DELETION_LOCKED', '账号注销已进入删除流程，无法继续登录');
+      }
+      deletionCanceled = true;
+      Object.assign(userUpdate, {
         deletionStatus: _.remove(),
         deletionReason: _.remove(),
         deletionRequestedAt: _.remove(),
         deletionScheduledAt: _.remove(),
-        deletionCanceledAt: db.serverDate(),
-        updatedAt: db.serverDate()
-      }
-    });
-    try {
-      await db.collection('account_deletion_requests')
-        .where({ _openid: OPENID, deletionStatus: 'pending' })
-        .update({
-          data: {
-            deletionStatus: 'canceled',
-            deletionCanceledAt: db.serverDate()
-          }
-        });
-    } catch (e) {}
-  }
+        deletionCanceledAt: db.serverDate()
+      });
+      await requestRef.update({
+        data: {
+          deletionStatus: 'canceled',
+          deletionCanceledAt: db.serverDate(),
+          updatedAt: db.serverDate()
+        }
+      });
+    } else if (request && request.deletionStatus === 'pending') {
+      return fail('DELETION_REQUEST_INCONSISTENT', '注销申请状态不一致，请稍后重试');
+    }
 
-  const roles = normalizeServerRoles(user);
-  if (roles.indexOf(requestedRole) === -1) {
-    return fail('ROLE_NOT_ALLOWED', '该账号未开通此身份');
-  }
-  await users.doc(user._id).update({
-    data: { roles, currentRole: requestedRole, role: requestedRole, updatedAt: db.serverDate() }
+    await userRef.update({ data: userUpdate });
+    return safeUserResult(user, roles, requestedRole, account, deletionCanceled);
   });
-
-  return safeUserResult(user, roles, requestedRole, account, deletionCanceled);
 };

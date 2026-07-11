@@ -164,12 +164,133 @@ node tests/profileAvatarEdit.test.js
 git commit -m "fix: trust only verified phone numbers"
 ```
 
+## Task 12：账户生命周期与资料入口确定性收口
+
+**Files**
+
+- Modify: `cloudfunctions/deleteAccount/index.js`
+- Modify: `cloudfunctions/purgeDeletedAccounts/index.js`
+- Modify: `cloudfunctions/saveUserProfile/index.js`
+- Modify: `cloudfunctions/getUserProfile/index.js`
+- Modify: `miniprogram/services/data.js`
+- Modify: `README.md`
+- Modify: `tests/accountDeletionGracePeriod.test.js`
+- Modify: `tests/saveUserProfile.test.js`
+
+### RED
+
+1. 未绑定 OPENID 调用 `deleteAccount` 返回 `ACCOUNT_NOT_BOUND`，不得创建随机 user 或注销请求。
+2. 已绑定账号只更新 `users/{bindingId}`，注销请求使用确定性文档；同 OPENID 的伪 legacy user 不得被修改；重复提交不得延后已存在的到期时间。
+3. `saveUserProfile/getUserProfile` 只读取确定性 user；随机 legacy coach/shop 记录不得影响资料与角色视图。
+4. 到期清理必须移除确定性 account、binding、user，并把请求标记 purged；任一辅助集合清理失败时保留认证链供重试，任一认证文档删除失败时事务整体回滚。
+5. 部署文档必须明确上传 `getUserProfile`、`deleteAccount` 和带定时触发器的 `purgeDeletedAccounts`，避免云端继续运行旧生命周期逻辑。
+6. 客户端注销 service 遇到 `{ok:false}` 必须 reject，设置页不得把未绑定或服务端失败误显示为注销成功。
+
+### GREEN
+
+- `deleteAccount` 在一个事务内验证 binding/account/user/request，更新确定性 user 并 set `account_deletion_requests/{bindingId}`；永不 `users.add()`，已有一致 pending 请求沿用原到期时间。
+- `saveUserProfile/getUserProfile` 验证 binding/account/确定性 user，角色只来自 `user.roles`，不读取 legacy `user.role` 授权。
+- `purgeDeletedAccounts` 只处理 `_id===bindingId(_openid)` 的到期 user；先预检完整身份/request 链，辅助清理列表移除 `users`、补入 `stores` 且失败即停止当前账号；随后在事务内重读并使用事务 `delete` 原子删除 account、binding、user，同时更新确定性注销请求。
+- `data.deleteAccount` 将云端业务失败转换成带 `code/result` 的异常，保持设置页现有成功/失败分支可靠。
+- README 的云函数上传清单加入资料读取、账号注销与定时清理函数，并保留真实云端验收为未完成状态。
+- B 方案不迁移旧随机文档；测试环境部署前按 README 清空重建。
+
+### Verify / Commit
+
+```powershell
+node tests/accountDeletionGracePeriod.test.js
+node tests/saveUserProfile.test.js
+node tests/coachMemberCompatibility.test.js
+git commit -m "fix: enforce deterministic account lifecycle"
+```
+
+## Task 13：定时清理隐私边界与审查补救
+
+**Files**
+
+- Modify: `cloudfunctions/deleteAccount/index.js`
+- Modify: `cloudfunctions/purgeDeletedAccounts/index.js`
+- Modify: `cloudfunctions/saveUserProfile/index.js`
+- Modify: `cloudfunctions/createRecurringContract/index.js`
+- Modify: `cloudfunctions/recurringContractCallback/index.js`
+- Modify: `cloudfunctions/cancelRecurringContract/index.js`
+- Modify: `cloudfunctions/login/index.js`
+- Modify: `README.md`
+- Modify: `tests/accountDeletionGracePeriod.test.js`
+- Modify: `tests/saveUserProfile.test.js`
+- Create: `tests/recurringSubscriptionGuard.test.js`
+
+### RED
+
+1. 带真实微信 `OPENID` 的客户端即使伪造 Timer event，也不得运行清理；响应不得包含其他用户 OPENID、原始错误或逐集合删除明细。
+2. pending user/request 的时间缺失、非数字或不一致时不得延后期限或删除认证链；purged/canceled tombstone 不得阻塞同微信新账号的后续注销。
+3. 超过 100 个到期候选时必须稳定分页；畸形候选要计为失败，不能让合法候选永久饥饿。
+4. 资料保存与角色撤销并发时不得把旧 `roles` 快照写回；资料测试必须实际执行全字段、部分更新、手机号门控和确定性读取回归。
+5. account、binding、user 删除或 request 更新任一事务步骤失败时全部回滚；云文件删除失败时保留认证链。
+6. 注销必须覆盖明确列出的非财务个人数据与云文件；支付、订单、订阅、结算数据不得无依据删除，README 要记录依法留存边界与部署方确认责任。
+7. 注销事务与新建连续订阅并发时，二者必须竞争同一个确定性 user guard；pending 注销账号不得创建订阅，未解约订阅不得删除认证链。
+8. 到期清理必须先在事务内领取带过期时间的 `purging` lease，再做任何不可逆辅助清理；登录拒绝 purging，崩溃后可由下一轮定时任务接管。
+
+### GREEN
+
+- 清理函数同时验证无用户 OPENID、平台 Timer 类型和固定触发器名；返回值仅保留聚合计数，失败明细只写脱敏服务端日志。
+- 到期查询使用稳定排序和分页预取；完整校验 binding/account/user/request 及有限数时间字段，所有跳过计入失败。
+- terminal tombstone 可由完整新身份覆盖；pending 身份或时间矛盾失败关闭且不改写原期限。
+- 资料接口只更新资料字段，不写 `roles/currentRole/role`；并发撤销回归证明角色不会复活。
+- 非财务个人集合按明确查询规则清理，并删除已收集的 `cloud://` 用户文件；缺集合或文件删除错误不进入认证删除事务。
+- README 列出清理依赖集合、非财务删除范围、依法留存集合，以及真实 Timer、transaction delete、deleteFile 和权限验收。
+- 连续订阅创建、状态回调和解约在确定性 user 上维护 `subscriptionStatus/subscriptionId` guard；创建与注销事务都写同一 user 文档，由事务冲突和重读关闭竞态。
+- purge 在辅助清理前事务化写入 user/request 的 `purging` lease；只有 lease 持有者可执行最终认证删除，未过期 lease 不被并发任务抢占，登录对 purging 一律锁定。
+
+### Verify
+
+```powershell
+node tests/accountDeletionGracePeriod.test.js
+node tests/saveUserProfile.test.js
+node tests/coachMemberCompatibility.test.js
+node tests/recurringSubscriptionGuard.test.js
+```
+
+## Task 14：管理员客户端与短信验证码最终审计补救
+
+**Files**
+
+- Modify: `miniprogram/services/data.js`
+- Modify: `cloudfunctions/sendSmsCode/index.js`
+- Modify: `cloudfunctions/verifySmsCode/index.js`
+- Modify: `tests/adminPortal.test.js`
+- Modify: `tests/smsLogin.test.js`
+- Modify: `README.md`
+
+### RED
+
+1. 管理员云端响应为空、缺少 `isAdmin` 或明确返回 `isAdmin:false` 时，客户端不得建立管理员会话。
+2. 同一可信 `OPENID` / 手机号的两个并发发送请求只能有一个触达短信提供商；失败发送仍需保留冷却，避免重试轰炸。
+3. 新验证码必须覆盖旧验证码；验证码使用加密安全随机数，错误五次后锁定，错误与正确并发不得绕过计数或双消费。
+4. 缺少有限时间、失败次数或锁定字段的验证码文档必须失败关闭。
+5. 短信认证必须重读完整的确定性 binding/account/user 链；缺失账号名、规范名不一致或非确定性 account ID 均不得消费验证码或写手机号。
+
+### GREEN
+
+- `data.loginAdmin` 仅在云端明确返回 `{ok:true,isAdmin:true}` 后写管理员会话。
+- `sendSmsCode` 使用 `sms_codes/{sha256(sms:OPENID:phone)}` 单一最新码文档；事务先 claim 60 秒发送冷却，再以 `crypto.randomInt` 生成验证码并调用带 8 秒超时的腾讯短信，最后只由同一 claim 落库。
+- `verifySmsCode` 在事务内校验最新码、有限时间、0–4 次失败计数和完整确定性账号链；错误原子计数，第五次锁定，正确消费与 `phoneVerifiedAt` 写入同事务完成。
+- B 方案不迁移随机 ID 旧验证码；README 只允许在可重建纯测试环境清空旧 `sms_codes`。
+
+### Verify
+
+```powershell
+node tests/smsLogin.test.js
+node tests/adminPortal.test.js
+node tests/accountWechatBinding.test.js
+node tests/saveUserProfile.test.js
+```
+
 ## 最终验证
 
 - 全量运行 `tests/*.test.js` 并汇总失败。
-- `node --check` 所有 `6eb125f..HEAD` 变更的 `.js` 文件。
-- `git diff --check 6eb125f..HEAD`。
+- `node --check` 所有 `6eb125f` 到当前工作树变更的 `.js` 文件。
+- `git diff --check 6eb125f -- . ':(exclude).agents/**'`。
 - 扫描 `event.roles`、随机 `users.add` 角色写、客户端管理员密码、bootstrap 管理员 fallback、本地认证读取。
 - 再做一次整分支只读审查；Critical/Important 必须为零。
 - 真云、真实 OPENID、短信、跨设备与冲突仍按 README 人工验收，未执行不得勾选。
-

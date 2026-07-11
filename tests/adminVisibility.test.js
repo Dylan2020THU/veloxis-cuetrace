@@ -337,6 +337,9 @@ async function testCloudLoginDoesNotSeedAdminByAccount() {
     serverDate() {
       return 'SERVER_DATE';
     },
+    runTransaction(callback) {
+      return callback(fakeDb);
+    },
     collection(name) {
       return {
         where(query) {

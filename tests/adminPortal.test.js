@@ -162,6 +162,82 @@ async function testOfflineAdminLoginFailsClosedWithoutSession() {
   assert.strictEqual(app.globalData.adminMode, undefined, 'Offline administrator login must not enable admin mode.');
 }
 
+async function testAdminLoginOnlyCreatesSessionForExplicitAdminSuccess() {
+  const dataPath = path.join(root, 'miniprogram/services/data.js');
+  const mockPath = path.join(root, 'miniprogram/utils/mock.js');
+  const deniedResponses = [
+    undefined,
+    { ok: true },
+    { ok: true, isAdmin: false },
+    { ok: false, code: 'INVALID_ADMIN', msg: 'denied' }
+  ];
+
+  for (const response of deniedResponses) {
+    delete require.cache[require.resolve(dataPath)];
+    delete require.cache[require.resolve(mockPath)];
+    const writes = [];
+    const app = {
+      globalData: {
+        cloudReady: true,
+        role: 'member',
+        currentRole: 'member',
+        adminMode: false
+      }
+    };
+    global.getApp = () => app;
+    global.wx = {
+      cloud: {
+        callFunction() {
+          return Promise.resolve({ result: response });
+        }
+      },
+      getStorageSync() { return ''; },
+      setStorageSync(key, value) { writes.push({ key, value }); },
+      removeStorageSync() {}
+    };
+
+    const data = require(dataPath);
+    await assert.rejects(
+      () => data.loginAdmin({ account: 'admin_zhx', password: TEST_ADMIN_PASSWORD })
+    );
+    assert.deepStrictEqual(writes, [], `Denied response must not write a session: ${JSON.stringify(response)}`);
+    assert.strictEqual(app.globalData.role, 'member');
+    assert.strictEqual(app.globalData.currentRole, 'member');
+    assert.strictEqual(app.globalData.adminMode, false);
+  }
+
+  delete require.cache[require.resolve(dataPath)];
+  delete require.cache[require.resolve(mockPath)];
+  const writes = [];
+  const app = {
+    globalData: {
+      cloudReady: true,
+      role: 'member',
+      currentRole: 'member',
+      adminMode: false
+    }
+  };
+  global.getApp = () => app;
+  global.wx = {
+    cloud: {
+      callFunction() {
+        return Promise.resolve({ result: { ok: true, isAdmin: true } });
+      }
+    },
+    getStorageSync() { return ''; },
+    setStorageSync(key, value) { writes.push({ key, value }); },
+    removeStorageSync() {}
+  };
+
+  const data = require(dataPath);
+  const result = await data.loginAdmin({ account: 'admin_zhx', password: TEST_ADMIN_PASSWORD });
+  assert.deepStrictEqual(result, { ok: true, isAdmin: true });
+  assert(writes.some((item) => item.key === 'dc_admin_login_name' && item.value === 'admin_zhx'));
+  assert.strictEqual(app.globalData.role, 'admin');
+  assert.strictEqual(app.globalData.currentRole, 'admin');
+  assert.strictEqual(app.globalData.adminMode, true);
+}
+
 async function testAdminPasswordLoginBypassesRolePicker() {
   const calls = { loginAdmin: [], reLaunch: [] };
   const fakeData = {
@@ -385,6 +461,7 @@ function loadAdminLogin(openid, fakeDb) {
 }
 
 function testProductionAdminSourceHasNoEmbeddedCredential() {
+  const adminJs = read('miniprogram/utils/admin.js');
   const adminAuthJs = read('miniprogram/utils/adminAuth.js');
   const adminLoginJs = read('cloudfunctions/adminLogin/index.js');
   const productionJs = [
@@ -394,14 +471,29 @@ function testProductionAdminSourceHasNoEmbeddedCredential() {
 
   assert(!productionJs.includes('2612694'), 'Production JavaScript must not contain the existing administrator password.');
   assert(!adminAuthJs.includes('password'), 'Client administrator routing metadata must not contain a password field.');
+  assert(!adminJs.includes('MOCK_OPENID'), 'Client administrator utility must not authorize the mock identity.');
+  assert(!adminJs.includes('BOOTSTRAP_ADMIN_OPENIDS'), 'Client administrator utility must not authorize bootstrap identities.');
+  assert(!adminAuthJs.includes('BOOTSTRAP_ADMIN_OPENIDS'), 'Client routing metadata must not expose bootstrap identities.');
   assert(adminLoginJs.includes('CUETRACE_ADMIN_PASSWORD_SALT'));
   assert(adminLoginJs.includes('CUETRACE_ADMIN_PASSWORD_HASH'));
   assert(adminLoginJs.includes('crypto.scryptSync'));
   assert(adminLoginJs.includes('crypto.timingSafeEqual'));
 }
 
+function testClientAdminUtilityNeverAuthorizesLocalIdentity() {
+  const adminPath = path.join(root, 'miniprogram/utils/admin.js');
+  delete require.cache[require.resolve(adminPath)];
+  const admin = require(adminPath);
+
+  assert.deepStrictEqual(admin.ADMIN_OPENIDS, []);
+  assert.strictEqual(admin.isAdmin('local-demo-user'), false);
+  assert.strictEqual(admin.isAdmin('ovvdY3VKYCo7_jTzdpgGbuf26-tA'), false);
+  assert.strictEqual(admin.isAdmin('any-client-openid'), false);
+}
+
 async function testAdminLoginRejectsMissingConfiguration() {
   for (const missingKey of [
+    'CUETRACE_ADMIN_ACCOUNT',
     'CUETRACE_ADMIN_PASSWORD_SALT',
     'CUETRACE_ADMIN_PASSWORD_HASH',
     'CUETRACE_ADMIN_BOOTSTRAP_OPENIDS'
@@ -476,6 +568,7 @@ async function testAdminLoginAllowsRepeatedBoundIdentityOutsideBootstrapList() {
 async function testAdministratorEnvironmentContract() {
   const cases = [
     ['production source', testProductionAdminSourceHasNoEmbeddedCredential],
+    ['client administrator utility', testClientAdminUtilityNeverAuthorizesLocalIdentity],
     ['missing configuration', testAdminLoginRejectsMissingConfiguration],
     ['configured credential', testAdminLoginUsesConfiguredScryptCredential],
     ['first binding whitelist', testAdminLoginRejectsUnlistedFirstWechat],
@@ -802,6 +895,7 @@ function testAdminPagesExistAndRenderRequiredSections() {
 
 (async () => {
   await testOfflineAdminLoginFailsClosedWithoutSession();
+  await testAdminLoginOnlyCreatesSessionForExplicitAdminSuccess();
   await testAdministratorEnvironmentContract();
   await withAdminEnvironment(testAdminEnvironment(), async () => {
     await testAdminLoginPropagatesUnknownTransactionFailure();

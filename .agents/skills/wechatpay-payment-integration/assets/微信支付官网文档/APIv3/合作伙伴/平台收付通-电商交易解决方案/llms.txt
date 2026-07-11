@@ -1,4 +1,4 @@
->更新时间：2026.06.25
+>更新时间：2026.07.11
 
 # 微信支付 - 平台收付通-电商交易解决方案（普通服务商）文档索引
 
@@ -161,7 +161,6 @@
 - [申请分账账单](https://pay.weixin.qq.com/doc/v3/partner/4012761131.md)
 - [下载账单](https://pay.weixin.qq.com/doc/v3/partner/4012124894.md)
 - [申请二级商户资金账单](https://pay.weixin.qq.com/doc/v3/partner/4012760697.md)
-- [申请单个子商户资金账单](https://pay.weixin.qq.com/doc/v3/partner/4012760249.md)
 - [下载单个子商户/二级商户资金账单](https://pay.weixin.qq.com/doc/v3/partner/4014314390.md)
 ## 跨境付款
 > 跨境付款依托境内收付通，解决境内平台向境外供应商结算需求，支持多币种汇兑、全球分发、海关一键推单。手续费率可由平台或二级商户承担，提供合规出境、快速结算、报关一体化服务。

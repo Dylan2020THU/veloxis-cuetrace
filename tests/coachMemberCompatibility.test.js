@@ -185,6 +185,9 @@ function createFakeDb(seed) {
     serverDate() {
       return 'SERVER_DATE';
     },
+    runTransaction(callback) {
+      return callback(db);
+    },
     __updates: updates,
     __adds: adds,
     __failNextRead: false

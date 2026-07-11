@@ -7,11 +7,11 @@ const { levelFromMinutes } = require('../utils/color');
 const billing = require('../utils/billing');
 const adminAuth = require('../utils/adminAuth');
 
-const ACCOUNT_DELETION_KEY = 'dc_account_deletion_pending';
 const LOGIN_DEFAULT_NICKNAME_KEY = 'dc_login_default_nickname';
 const ADMIN_LOGIN_NAME_KEY = 'dc_admin_login_name';
 const USER_PROFILE_KEY = 'dc_user_profile';
 const VALID_ROLES = ['member', 'coach', 'shop'];
+let uploadIdentityPromise = null;
 
 function normalizeRoles(role, roles) {
   const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
@@ -187,13 +187,13 @@ function loginAdmin({ account, password }) {
   const loginName = (account || '').trim();
   if (!cloudReady()) return Promise.reject(cloudNotReadyError());
   return callCloud('adminLogin', { account: loginName, password }).then((r) => {
-    if (r && r.ok === false) {
-      const err = new Error(r.msg || '管理员登录失败');
-      err.code = r.code || '';
+    if (!r || r.ok !== true || r.isAdmin !== true) {
+      const err = new Error((r && r.msg) || '管理员登录失败');
+      err.code = (r && r.code) || 'ADMIN_LOGIN_FAILED';
       throw err;
     }
     setAdminSession(loginName);
-    return r || { ok: true };
+    return r;
   });
 }
 
@@ -212,6 +212,9 @@ function applyUserResult(r) {
   const app = getApp();
   if (!app || !app.globalData || !r) return;
   if (r.openid) app.globalData.openid = r.openid;
+  if (/^[0-9a-f]{64}$/.test(String(r.storageNamespace || ''))) {
+    app.globalData.storageNamespace = r.storageNamespace;
+  }
   const roles = normalizeRoles(r.role, r.roles);
   const currentRole = r.currentRole || r.role || roles[0] || 'member';
   app.globalData.roles = roles;
@@ -319,7 +322,6 @@ function saveUserProfile({
   avatar,
   gender,
   birthDate,
-  phone,
   locationCity,
   hometown,
   years,
@@ -336,7 +338,6 @@ function saveUserProfile({
       avatar,
       gender,
       birthDate,
-      phone,
       locationCity,
       hometown,
       years,
@@ -358,7 +359,6 @@ function saveUserProfile({
     avatar,
     gender,
     birthDate,
-    phone,
     locationCity,
     hometown,
     years,
@@ -1587,12 +1587,45 @@ function uploadImage(tempFilePath) {
   return uploadFile(tempFilePath, 'coach');
 }
 
+function uploadPathError() {
+  return Object.assign(new Error('上传路径或账号身份无效'), { code: 'INVALID_UPLOAD_PATH' });
+}
+
+function isSafeUploadNamespace(value) {
+  return /^[0-9a-f]{64}$/.test(String(value || ''));
+}
+
+function resolveUploadNamespace() {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  const current = app && app.globalData && app.globalData.storageNamespace;
+  if (isSafeUploadNamespace(current)) return Promise.resolve(current);
+  if (uploadIdentityPromise) return uploadIdentityPromise;
+  uploadIdentityPromise = getUserProfile().then((user) => {
+    const namespace = user && user.storageNamespace;
+    if (!isSafeUploadNamespace(namespace)) throw uploadPathError();
+    return namespace;
+  });
+  uploadIdentityPromise.then(
+    () => { uploadIdentityPromise = null; },
+    () => { uploadIdentityPromise = null; }
+  );
+  return uploadIdentityPromise;
+}
+
 // 通用文件上传（图片 / 视频）。dir 为云存储目录前缀。
 function uploadFile(tempFilePath, dir) {
   if (cloudReady()) {
     const ext = (tempFilePath.split('.').pop() || 'dat').toLowerCase().split('?')[0];
-    const cloudPath = `${dir || 'misc'}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
-    return wx.cloud.uploadFile({ cloudPath, filePath: tempFilePath }).then((res) => res.fileID);
+    const directory = String(dir || 'misc');
+    if (!/^[a-z0-9-]+(?:\/[a-z0-9-]+)*$/.test(directory)) {
+      return Promise.reject(uploadPathError());
+    }
+    const safeExt = /^[a-z0-9]{1,10}$/.test(ext) ? ext : 'dat';
+    return resolveUploadNamespace().then((namespace) => {
+      const filename = `${Date.now()}-${Math.floor(Math.random() * 1e6)}.${safeExt}`;
+      const cloudPath = `user-content/${namespace}/${directory}/${filename}`;
+      return wx.cloud.uploadFile({ cloudPath, filePath: tempFilePath }).then((res) => res.fileID);
+    });
   }
   return Promise.resolve(tempFilePath);
 }
@@ -2474,17 +2507,17 @@ function getTodayShopRevenue() {
 function deleteAccount(opts) {
   const reason = (opts && opts.reason) || '';
   if (cloudReady()) {
-    return callCloud('deleteAccount', { reason });
+    return callCloud('deleteAccount', { reason }).then((result) => {
+      if (result && result.ok === false) {
+        const error = new Error(result.msg || '账号注销申请失败');
+        error.code = result.code || 'ACCOUNT_DELETION_FAILED';
+        error.result = result;
+        throw error;
+      }
+      return result;
+    });
   }
-  const now = Date.now();
-  const deletionScheduledAt = now + 7 * 24 * 60 * 60 * 1000;
-  mock.writeObject(ACCOUNT_DELETION_KEY, {
-    deletionStatus: 'pending',
-    deletionReason: reason,
-    deletionRequestedAt: now,
-    deletionScheduledAt
-  });
-  return Promise.resolve({ ok: true, deletionStatus: 'pending', deletionScheduledAt });
+  return Promise.reject(cloudNotReadyError());
 }
 
 module.exports = {

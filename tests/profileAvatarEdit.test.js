@@ -11,6 +11,8 @@ function read(file) {
 const profileJs = read('miniprogram/pages/profile/index.js');
 const profileWxml = read('miniprogram/pages/profile/index.wxml');
 const profileWxss = read('miniprogram/pages/profile/index.wxss');
+const profileEditJs = read('miniprogram/pages/player/profile/edit/index.js');
+const profileEditWxml = read('miniprogram/pages/player/profile/edit/index.wxml');
 
 assert(
   /class="head-avatar-wrap"[\s\S]*bindtap="chooseAvatar"/.test(profileWxml),
@@ -41,3 +43,13 @@ assert(
     /\.head-avatar-edit-ic\s*\{[\s\S]*?mask-image/.test(profileWxss),
   'Profile avatar edit badge should be positioned and rendered with an icon mask.'
 );
+
+const phoneInput = profileEditWxml.match(/<input[^>]*value="\{\{phone\}\}"[^>]*\/>/);
+assert(phoneInput, 'Profile edit should keep the verified phone visible.');
+assert(/\bdisabled\b/.test(phoneInput[0]), 'Profile phone should be read-only.');
+assert(!/\bbindinput\b/.test(phoneInput[0]), 'Profile phone must not accept direct edits.');
+assert(profileEditWxml.includes('短信验证'), 'Profile edit should explain that phone changes require SMS verification.');
+
+const savePayload = profileEditJs.match(/const payload\s*=\s*\{([\s\S]*?)\};\s*data\.saveUserProfile/);
+assert(savePayload, 'Profile edit should build a save payload.');
+assert(!/\bphone\b/.test(savePayload[1]), 'Profile edit must not submit phone in the save payload.');
