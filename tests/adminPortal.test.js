@@ -1,4 +1,5 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');
@@ -185,40 +186,103 @@ function withWxServerSdk(fakeCloud, fn) {
   }
 }
 
-function loadAdminLogin(openid, adminSeed) {
-  const admins = (adminSeed || []).map((item) => Object.assign({}, item));
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function adminRecordId(openid) {
+  return sha256(`admin-openid:${openid}`);
+}
+
+function adminAccountBindingId(account) {
+  return sha256(`admin-account:${String(account || '').trim().toLowerCase()}`);
+}
+
+function createAdminDatabase(seed) {
+  const source = seed || {};
+  const state = {
+    admins: clone(source.admins || []),
+    admin_account_bindings: clone(source.admin_account_bindings || [])
+  };
+  let transactionQueue = Promise.resolve();
+
+  function collection(target, name) {
+    const documents = target[name] || (target[name] = []);
+    return {
+      where(query) {
+        return {
+          async get() {
+            return {
+              data: clone(documents.filter((item) => (
+                Object.keys(query || {}).every((key) => item[key] === query[key])
+              )))
+            };
+          }
+        };
+      },
+      doc(id) {
+        return {
+          async get() {
+            return { data: clone(documents.find((record) => record._id === id) || null) };
+          },
+          async update({ data }) {
+            const item = documents.find((record) => record._id === id);
+            if (item) Object.assign(item, clone(data));
+          },
+          async set({ data }) {
+            const next = Object.assign({}, clone(data), { _id: id });
+            const index = documents.findIndex((record) => record._id === id);
+            if (index === -1) documents.push(next);
+            else documents[index] = next;
+          }
+        };
+      },
+      async add({ data }) {
+        const id = `${name}_${documents.length + 1}`;
+        documents.push(Object.assign({ _id: id }, clone(data)));
+        return { _id: id };
+      }
+    };
+  }
+
   const fakeDb = {
+    __state: state,
+    __failNextTransaction: false,
     serverDate() {
       return 'SERVER_DATE';
     },
     collection(name) {
-      assert.strictEqual(name, 'admins');
-      return {
-        where(query) {
-          return {
-            async get() {
-              return {
-                data: admins.filter((item) => (
-                  Object.keys(query || {}).every((key) => item[key] === query[key])
-                ))
-              };
-            }
-          };
-        },
-        doc(id) {
-          return {
-            async update({ data }) {
-              const item = admins.find((record) => record._id === id);
-              if (item) Object.assign(item, data);
-            }
-          };
-        },
-        async add({ data }) {
-          admins.push(Object.assign({ _id: `admin_${admins.length + 1}` }, data));
+      return collection(state, name);
+    },
+    runTransaction(callback) {
+      const execute = async () => {
+        if (fakeDb.__failNextTransaction) {
+          fakeDb.__failNextTransaction = false;
+          throw new Error('simulated transaction failure');
         }
+        const working = clone(state);
+        const result = await callback({
+          collection(name) {
+            return collection(working, name);
+          }
+        });
+        state.admins = working.admins;
+        state.admin_account_bindings = working.admin_account_bindings;
+        return result;
       };
+      const result = transactionQueue.then(execute, execute);
+      transactionQueue = result.then(() => undefined, () => undefined);
+      return result;
     }
   };
+  return fakeDb;
+}
+
+function loadAdminLogin(openid, fakeDb) {
   const fakeCloud = {
     DYNAMIC_CURRENT_ENV: 'DYNAMIC_CURRENT_ENV',
     init() {},
@@ -231,42 +295,112 @@ function loadAdminLogin(openid, adminSeed) {
   };
   const fnPath = path.join(root, 'cloudfunctions/adminLogin/index.js');
   delete require.cache[require.resolve(fnPath)];
-  return {
-    adminLogin: withWxServerSdk(fakeCloud, () => require(fnPath)),
-    admins
-  };
+  return withWxServerSdk(fakeCloud, () => require(fnPath));
 }
 
 async function testAdminLoginRejectsAccountBoundToOtherWechat() {
   const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
-  const { adminLogin, admins } = loadAdminLogin('other_wechat', [{
-    _id: 'admin_existing',
-    _openid: 'bound_wechat',
-    account: 'admin_zhx',
-    status: 'active'
-  }]);
+  const fakeDb = createAdminDatabase({
+    admins: [{
+      _id: adminRecordId('bound_wechat'),
+      _openid: 'bound_wechat',
+      account: 'admin_zhx',
+      accountNormalized: 'admin_zhx',
+      status: 'active'
+    }],
+    admin_account_bindings: [{
+      _id: adminAccountBindingId('admin_zhx'),
+      _openid: 'bound_wechat',
+      account: 'admin_zhx',
+      accountNormalized: 'admin_zhx'
+    }]
+  });
+  const adminLogin = loadAdminLogin('other_wechat', fakeDb);
 
   const result = await adminLogin.main({ account: 'admin_zhx', password });
 
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.code, 'ACCOUNT_ALREADY_BOUND');
-  assert.strictEqual(admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admin_account_bindings.length, 1);
 }
 
 async function testAdminLoginRejectsWechatBoundToOtherAccount() {
   const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
-  const { adminLogin, admins } = loadAdminLogin('bound_wechat', [{
-    _id: 'admin_existing',
-    _openid: 'bound_wechat',
-    account: 'legacy_admin',
-    status: 'active'
-  }]);
+  const fakeDb = createAdminDatabase({
+    admins: [{
+      _id: adminRecordId('bound_wechat'),
+      _openid: 'bound_wechat',
+      account: 'legacy_admin',
+      accountNormalized: 'legacy_admin',
+      status: 'active'
+    }],
+    admin_account_bindings: [{
+      _id: adminAccountBindingId('legacy_admin'),
+      _openid: 'bound_wechat',
+      account: 'legacy_admin',
+      accountNormalized: 'legacy_admin'
+    }]
+  });
+  const adminLogin = loadAdminLogin('bound_wechat', fakeDb);
 
   const result = await adminLogin.main({ account: 'admin_zhx', password });
 
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.code, 'WECHAT_ALREADY_BOUND');
-  assert.strictEqual(admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admin_account_bindings.length, 1);
+}
+
+async function testAdminLoginWritesDeterministicTransactionLocks() {
+  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const fakeDb = createAdminDatabase();
+  const adminLogin = loadAdminLogin('admin_wechat', fakeDb);
+
+  const result = await adminLogin.main({ account: 'admin_zhx', password });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(fakeDb.__state.admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admins[0]._id, adminRecordId('admin_wechat'));
+  assert.strictEqual(fakeDb.__state.admins[0]._openid, 'admin_wechat');
+  assert.strictEqual(fakeDb.__state.admin_account_bindings.length, 1);
+  assert.strictEqual(fakeDb.__state.admin_account_bindings[0]._id, adminAccountBindingId('admin_zhx'));
+  assert.strictEqual(fakeDb.__state.admin_account_bindings[0]._openid, 'admin_wechat');
+}
+
+async function testConcurrentAdminLoginAllowsOnlyOneWechatOwner() {
+  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const fakeDb = createAdminDatabase();
+  const firstLogin = loadAdminLogin('wechat_first', fakeDb);
+  const secondLogin = loadAdminLogin('wechat_second', fakeDb);
+
+  const results = await Promise.all([
+    firstLogin.main({ account: 'admin_zhx', password }),
+    secondLogin.main({ account: 'admin_zhx', password })
+  ]);
+
+  assert.strictEqual(results.filter((item) => item.ok).length, 1);
+  assert.strictEqual(results.filter((item) => item.code === 'ACCOUNT_ALREADY_BOUND').length, 1);
+  assert.strictEqual(fakeDb.__state.admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admin_account_bindings.length, 1);
+  assert.strictEqual(
+    fakeDb.__state.admins[0]._openid,
+    fakeDb.__state.admin_account_bindings[0]._openid
+  );
+}
+
+async function testAdminLoginPropagatesUnknownTransactionFailure() {
+  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const fakeDb = createAdminDatabase();
+  fakeDb.__failNextTransaction = true;
+  const adminLogin = loadAdminLogin('admin_wechat', fakeDb);
+
+  await assert.rejects(
+    () => adminLogin.main({ account: 'admin_zhx', password }),
+    /simulated transaction failure/
+  );
+  assert.deepStrictEqual(fakeDb.__state.admins, []);
+  assert.deepStrictEqual(fakeDb.__state.admin_account_bindings, []);
 }
 
 async function testAdminStoresCloudRequiresAdminLoginName() {
@@ -453,6 +587,9 @@ function testAdminPagesExistAndRenderRequiredSections() {
 }
 
 (async () => {
+  await testAdminLoginPropagatesUnknownTransactionFailure();
+  await testConcurrentAdminLoginAllowsOnlyOneWechatOwner();
+  await testAdminLoginWritesDeterministicTransactionLocks();
   await testAdminPasswordLoginBypassesRolePicker();
   await testAdminMissingCloudFunctionShowsDeployMessage();
   await testAdminLoginRejectsAccountBoundToOtherWechat();

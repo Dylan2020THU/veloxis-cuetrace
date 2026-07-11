@@ -149,6 +149,12 @@ async function testCloudLoginDoesNotSeedAdminByAccount() {
       accountId: crypto.createHash('sha256').update('account:member1').digest('hex'),
       account: 'member1'
     }],
+    accounts: [{
+      _id: crypto.createHash('sha256').update('account:member1').digest('hex'),
+      _openid: openid,
+      account: 'member1',
+      status: 'active'
+    }],
     admins: []
   };
   const fakeDb = {

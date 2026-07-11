@@ -17,7 +17,10 @@ exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const users = db.collection('users');
   const existing = await users.where({ _openid: OPENID }).get();
-  const current = (existing.data && existing.data[0]) || {};
+  if (!existing.data || !existing.data.length) {
+    return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号资料不存在' };
+  }
+  const current = existing.data[0];
   const roles = normalizeRoles(current.role, current.roles);
   const requestedRole = event.role || current.currentRole || current.role || roles[0];
   if (roles.indexOf(requestedRole) === -1) {
@@ -45,11 +48,7 @@ exports.main = async (event = {}) => {
     updatedAt: db.serverDate()
   };
 
-  if (existing.data.length) {
-    await users.doc(existing.data[0]._id).update({ data: profile });
-  } else {
-    await users.add({ data: Object.assign({ _openid: OPENID }, profile) });
-  }
+  await users.doc(current._id).update({ data: profile });
 
   return { ok: true };
 };

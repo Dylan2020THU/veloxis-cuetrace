@@ -29,14 +29,14 @@ function normalizeServerRoles(user) {
 }
 
 async function getBindingByOpenid(openid) {
-  const result = await db.collection('wechat_bindings').doc(bindingId(openid)).get().catch(() => null);
+  const result = await db.collection('wechat_bindings').doc(bindingId(openid)).get();
   return result && result.data ? result.data : null;
 }
 
-function safeUserResult(user, roles, currentRole, binding, deletionCanceled) {
+function safeUserResult(user, roles, currentRole, account, deletionCanceled) {
   return {
     openid: user._openid,
-    account: binding.account,
+    account: account.account,
     role: currentRole,
     roles,
     currentRole,
@@ -51,8 +51,19 @@ exports.main = async (event = {}) => {
   const users = db.collection('users');
   const requestedRole = VALID_ROLES.indexOf(event.role) !== -1 ? event.role : 'member';
   const binding = await getBindingByOpenid(OPENID);
-  if (!binding || binding._openid !== OPENID) {
+  if (!binding || binding._openid !== OPENID || !binding.accountId) {
     return fail('ACCOUNT_NOT_BOUND', '请先登录或注册账号');
+  }
+  const accountResult = await db.collection('accounts').doc(binding.accountId).get();
+  const account = accountResult && accountResult.data ? accountResult.data : null;
+  if (
+    !account ||
+    account.status !== 'active' ||
+    account._openid !== OPENID ||
+    account._id !== binding.accountId ||
+    account.account !== binding.account
+  ) {
+    return fail('ACCOUNT_NOT_BOUND', '账号绑定信息不完整');
   }
 
   const userRes = await users.where({ _openid: OPENID }).limit(1).get();
@@ -93,8 +104,8 @@ exports.main = async (event = {}) => {
     return fail('ROLE_NOT_ALLOWED', '该账号未开通此身份');
   }
   await users.doc(user._id).update({
-    data: { currentRole: requestedRole, role: requestedRole, updatedAt: db.serverDate() }
+    data: { roles, currentRole: requestedRole, role: requestedRole, updatedAt: db.serverDate() }
   });
 
-  return safeUserResult(user, roles, requestedRole, binding, deletionCanceled);
+  return safeUserResult(user, roles, requestedRole, account, deletionCanceled);
 };
