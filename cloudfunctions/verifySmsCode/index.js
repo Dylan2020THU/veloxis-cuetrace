@@ -33,34 +33,6 @@ exports.main = async (event = {}) => {
     return { ok: false, code: 'CONFIG_MISSING', msg: '短信服务未配置' };
   }
 
-  const bindingId = sha256(`wechat:${OPENID}`);
-  const bindingRes = await db.collection('wechat_bindings').doc(bindingId).get().catch(() => null);
-  const binding = bindingRes && bindingRes.data;
-  if (!binding) {
-    return { ok: false, code: 'WECHAT_NOT_BOUND', msg: '请先绑定或注册账号' };
-  }
-  if (!binding.accountId || binding._openid !== OPENID) {
-    return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定不完整' };
-  }
-
-  const accountRes = await db.collection('accounts').doc(binding.accountId).get().catch(() => null);
-  const account = accountRes && accountRes.data;
-  if (!account || account._openid !== OPENID || account.account !== binding.account) {
-    return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定不完整' };
-  }
-  if (account.status !== 'active') {
-    return { ok: false, code: 'ACCOUNT_DISABLED', msg: '账号已停用' };
-  }
-
-  const userRes = await db.collection('users').doc(bindingId).get().catch(() => null);
-  const user = userRes && userRes.data;
-  if (!user || user._openid !== OPENID) {
-    return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定不完整' };
-  }
-  if (user.phone !== phone) {
-    return { ok: false, code: 'PHONE_NOT_MATCH', msg: '手机号与当前账号不匹配' };
-  }
-
   const now = Date.now();
   const codes = db.collection('sms_codes');
   const found = await codes
@@ -71,29 +43,84 @@ exports.main = async (event = {}) => {
   const matched = (found.data || [])
     .filter((item) => item.expiresAt > now)
     .sort((a, b) => b.createdAt - a.createdAt)
-    .find((item) => item.codeHash === expected);
+    .find((item) => item._id && item.codeHash === expected);
   if (!matched) return { ok: false, code: 'INVALID_CODE', msg: '验证码错误或已过期' };
 
-  await codes.doc(matched._id).update({
-    data: {
-      used: true,
-      usedAt: now
+  const bindingId = sha256(`wechat:${OPENID}`);
+  return db.runTransaction(async (transaction) => {
+    const bindingRef = transaction.collection('wechat_bindings').doc(bindingId);
+    const bindingRes = await bindingRef.get();
+    const binding = bindingRes && bindingRes.data;
+    if (!binding) {
+      return { ok: false, code: 'WECHAT_NOT_BOUND', msg: '请先绑定或注册账号' };
     }
+    if (binding._id !== bindingId || !binding.accountId || binding._openid !== OPENID) {
+      return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定不完整' };
+    }
+
+    const accountRef = transaction.collection('accounts').doc(binding.accountId);
+    const accountRes = await accountRef.get();
+    const account = accountRes && accountRes.data;
+    if (
+      !account
+      || binding.accountId !== account._id
+      || account._openid !== OPENID
+      || account.account !== binding.account
+    ) {
+      return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定不完整' };
+    }
+    if (account.status !== 'active') {
+      return { ok: false, code: 'ACCOUNT_DISABLED', msg: '账号已停用' };
+    }
+
+    const userRef = transaction.collection('users').doc(bindingId);
+    const userRes = await userRef.get();
+    const user = userRes && userRes.data;
+    if (!user || user._id !== bindingId || user._openid !== OPENID) {
+      return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定不完整' };
+    }
+    if (user.phone !== phone) {
+      return { ok: false, code: 'PHONE_NOT_MATCH', msg: '手机号与当前账号不匹配' };
+    }
+
+    const codeRef = transaction.collection('sms_codes').doc(matched._id);
+    const codeRes = await codeRef.get();
+    const code = codeRes && codeRes.data;
+    const transactionNow = Date.now();
+    if (
+      !code
+      || code._id !== matched._id
+      || code.used !== false
+      || code._openid !== OPENID
+      || code.phone !== phone
+      || code.codeHash !== expected
+      || code.expiresAt <= transactionNow
+    ) {
+      return { ok: false, code: 'INVALID_CODE', msg: '验证码错误或已过期' };
+    }
+
+    await codeRef.update({
+      data: {
+        used: true,
+        usedAt: transactionNow
+      }
+    });
+    await userRef.update({
+      data: {
+        phone,
+        phoneVerifiedAt: transactionNow,
+        updatedAt: db.serverDate()
+      }
+    });
+
+    const roles = serverRoles(user);
+    const currentRole = [user.currentRole, user.role].find((role) => roles.indexOf(role) !== -1) || roles[0];
+    return {
+      ok: true,
+      phone,
+      account: account.account,
+      roles,
+      currentRole
+    };
   });
-
-  const phoneData = {
-    phone,
-    phoneVerifiedAt: now,
-    updatedAt: db.serverDate()
-  };
-  await db.collection('users').doc(bindingId).update({ data: phoneData });
-
-  const roles = serverRoles(user);
-  return {
-    ok: true,
-    phone,
-    account: account.account,
-    roles,
-    currentRole: user.currentRole || user.role || roles[0]
-  };
 };

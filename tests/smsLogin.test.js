@@ -33,56 +33,104 @@ function matches(document, query) {
 function loadVerifySms(openid, seed) {
   const state = seed;
   const writes = [];
+  const controls = {
+    afterSmsQuery: null,
+    failReadCollection: '',
+    failTransactionWriteAt: 0,
+    transactionWriteCount: 0
+  };
   const verifyPath = path.join(root, 'cloudfunctions/verifySmsCode/index.js');
+  let transactionQueue = Promise.resolve();
 
-  function collection(name) {
-    const documents = state[name] || (state[name] = []);
+  function makeDatabase(targetState, stagedWrites, transactionMode) {
+    function collection(name) {
+      const documents = targetState[name] || (targetState[name] = []);
+      return {
+        doc(id) {
+          return {
+            async get() {
+              if (controls.failReadCollection === name) {
+                controls.failReadCollection = '';
+                throw new Error(`simulated ${name} read failure`);
+              }
+              const found = documents.find((item) => item._id === id);
+              return { data: found ? clone(found) : null };
+            },
+            async update({ data }) {
+              if (transactionMode) {
+                controls.transactionWriteCount += 1;
+                if (controls.transactionWriteCount === controls.failTransactionWriteAt) {
+                  throw new Error('simulated transaction write failure');
+                }
+              }
+              const index = documents.findIndex((item) => item._id === id);
+              if (index === -1) throw new Error(`document ${id} does not exist`);
+              documents[index] = Object.assign({}, documents[index], clone(data));
+              stagedWrites.push({ type: 'update', collection: name, id, data: clone(data) });
+              return { stats: { updated: 1 } };
+            }
+          };
+        },
+        where(query) {
+          const get = async (limit) => {
+            const result = {
+              data: clone(documents.filter((item) => matches(item, query)).slice(0, limit))
+            };
+            if (name === 'sms_codes' && controls.afterSmsQuery) {
+              const callback = controls.afterSmsQuery;
+              controls.afterSmsQuery = null;
+              callback(state);
+            }
+            return result;
+          };
+          return {
+            limit(limit) {
+              return { get: () => get(limit) };
+            },
+            get: () => get(documents.length)
+          };
+        },
+        async add({ data }) {
+          const id = data._id || `${name}_${documents.length + 1}`;
+          documents.push(Object.assign({}, clone(data), { _id: id }));
+          stagedWrites.push({ type: 'add', collection: name, id, data: clone(data) });
+          return { _id: id };
+        }
+      };
+    }
+
     return {
-      doc(id) {
-        return {
-          async get() {
-            const found = documents.find((item) => item._id === id);
-            return { data: found ? clone(found) : null };
-          },
-          async update({ data }) {
-            const index = documents.findIndex((item) => item._id === id);
-            if (index === -1) throw new Error(`document ${id} does not exist`);
-            documents[index] = Object.assign({}, documents[index], clone(data));
-            writes.push({ type: 'update', collection: name, id, data: clone(data) });
-            return { stats: { updated: 1 } };
-          }
-        };
+      collection,
+      serverDate() {
+        return 'server-date';
       },
-      where(query) {
-        const get = async (limit) => ({
-          data: clone(documents.filter((item) => matches(item, query)).slice(0, limit))
-        });
-        return {
-          limit(limit) {
-            return { get: () => get(limit) };
-          },
-          get: () => get(documents.length)
+      runTransaction(callback) {
+        if (transactionMode) throw new Error('nested transactions are unsupported');
+        const execute = async () => {
+          const workingState = clone(state);
+          const transactionWrites = [];
+          controls.transactionWriteCount = 0;
+          const result = await callback(makeDatabase(workingState, transactionWrites, true));
+          Object.keys(workingState).forEach((name) => {
+            if (Array.isArray(workingState[name])) state[name] = workingState[name];
+          });
+          writes.push(...transactionWrites);
+          return result;
         };
-      },
-      async add({ data }) {
-        const id = data._id || `${name}_${documents.length + 1}`;
-        documents.push(Object.assign({}, clone(data), { _id: id }));
-        writes.push({ type: 'add', collection: name, id, data: clone(data) });
-        return { _id: id };
+        const pending = transactionQueue.then(execute);
+        transactionQueue = pending.catch(() => {});
+        return pending;
       }
     };
   }
+
+  const fakeDb = makeDatabase(state, writes, false);
 
   const fakeCloud = {
     DYNAMIC_CURRENT_ENV: 'test-env',
     init() {},
     database() {
-      return {
-        collection,
-        serverDate() {
-          return 'server-date';
-        }
-      };
+      return fakeDb;
     },
     getWXContext() {
       return { OPENID: openid };
@@ -95,7 +143,20 @@ function loadVerifySms(openid, seed) {
   };
   try {
     delete require.cache[require.resolve(verifyPath)];
-    return { fn: require(verifyPath), state, writes };
+    return {
+      fn: require(verifyPath),
+      state,
+      writes,
+      afterSmsQuery(callback) {
+        controls.afterSmsQuery = callback;
+      },
+      failReadOf(collectionName) {
+        controls.failReadCollection = collectionName;
+      },
+      failTransactionWriteAt(writeNumber) {
+        controls.failTransactionWriteAt = writeNumber;
+      }
+    };
   } finally {
     Module._load = originalLoad;
   }
@@ -168,7 +229,7 @@ assert(verifySmsCode.includes('expiresAt'), 'verifySmsCode should reject expired
 assert(verifySmsCode.includes('used'), 'verifySmsCode should mark successful codes as used.');
 assert(verifySmsCode.includes('INVALID_CODE'), 'verifySmsCode should report invalid codes clearly.');
 assert(!verifySmsCode.includes('.orderBy('), 'verifySmsCode should not require a database index for code checks.');
-assert(verifySmsCode.includes("db.collection('users')"), 'verifySmsCode should bind the verified phone to the current user.');
+assert(verifySmsCode.includes("transaction.collection('users')"), 'verifySmsCode should update the verified phone inside the transaction.');
 assert(verifySmsCode.includes('phoneVerifiedAt'), 'verifySmsCode should record when the phone was verified.');
 
 const dataJs = read('miniprogram/services/data.js');
@@ -260,10 +321,140 @@ async function testBoundSmsReturnsServerIdentity() {
   }
 }
 
+async function testForgedUserAssociationAfterCandidateIsRejectedWithoutWrites() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_user_race';
+  const phone = '13800138000';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, boundSeed(openid, phone, secret));
+    fixture.afterSmsQuery((state) => {
+      state.users[0]._openid = 'forged_openid';
+    });
+
+    const result = await fixture.fn.main({ phone, code: '123456' });
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'ACCOUNT_NOT_BOUND');
+    assert.strictEqual(fixture.state.sms_codes[0].used, false);
+    assert.strictEqual(fixture.writes.length, 0, 'Changed user association must be rejected before consuming the code.');
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+async function testTransactionRollsBackCodeWhenUserUpdateFails() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_transaction_failure';
+  const phone = '13800138000';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, boundSeed(openid, phone, secret));
+    fixture.failTransactionWriteAt(2);
+
+    await assert.rejects(
+      () => fixture.fn.main({ phone, code: '123456' }),
+      /simulated transaction write failure/
+    );
+
+    assert.strictEqual(fixture.state.sms_codes[0].used, false);
+    assert.strictEqual(fixture.state.users[0].phoneVerifiedAt, undefined);
+    assert.strictEqual(fixture.writes.length, 0, 'A failed transaction must expose no partial writes.');
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+async function testConcurrentVerificationConsumesCodeOnce() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_concurrent';
+  const phone = '13800138000';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, boundSeed(openid, phone, secret));
+    const results = await Promise.all([
+      fixture.fn.main({ phone, code: '123456' }),
+      fixture.fn.main({ phone, code: '123456' })
+    ]);
+
+    assert.strictEqual(results.filter((result) => result.ok).length, 1);
+    const rejected = results.find((result) => !result.ok);
+    assert(rejected, 'One concurrent verification should be rejected.');
+    assert.strictEqual(rejected.code, 'INVALID_CODE');
+    assert.strictEqual(fixture.writes.filter((item) => item.collection === 'sms_codes').length, 1);
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+async function testCurrentRoleMustBelongToServerRoles() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_contradictory_role';
+  const phone = '13800138000';
+  const seed = boundSeed(openid, phone, secret);
+  seed.users[0].currentRole = 'shop';
+  seed.users[0].role = 'shop';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, seed);
+    const result = await fixture.fn.main({ phone, code: '123456' });
+
+    assert.strictEqual(result.ok, true);
+    assert.deepStrictEqual(result.roles, ['member']);
+    assert.strictEqual(result.currentRole, 'member');
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+async function testBindingReadFailurePropagatesWithoutWrites() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_read_failure';
+  const phone = '13800138000';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, boundSeed(openid, phone, secret));
+    fixture.failReadOf('wechat_bindings');
+
+    await assert.rejects(
+      () => fixture.fn.main({ phone, code: '123456' }),
+      /simulated wechat_bindings read failure/
+    );
+
+    assert.strictEqual(fixture.state.sms_codes[0].used, false);
+    assert.strictEqual(fixture.writes.length, 0);
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+function testVerifySmsUsesExplicitDeterministicRelations() {
+  assert(/user\._id\s*!==\s*bindingId/.test(verifySmsCode), 'verifySmsCode should explicitly validate the deterministic user id.');
+  assert(/binding\.accountId\s*!==\s*account\._id/.test(verifySmsCode), 'verifySmsCode should validate binding-to-account document identity.');
+  assert(verifySmsCode.includes('db.runTransaction'), 'Code consumption and user verification must share one transaction.');
+  assert(!verifySmsCode.includes('.get().catch(() => null)'), 'Database read failures must propagate instead of becoming missing records.');
+}
+
 (async () => {
   await testUnboundWechatCannotConsumeCodeOrCreateUser();
   await testSmsPhoneMustMatchBoundUser();
   await testBoundSmsReturnsServerIdentity();
+  await testForgedUserAssociationAfterCandidateIsRejectedWithoutWrites();
+  await testTransactionRollsBackCodeWhenUserUpdateFails();
+  await testConcurrentVerificationConsumesCodeOnce();
+  await testCurrentRoleMustBelongToServerRoles();
+  await testBindingReadFailurePropagatesWithoutWrites();
+  testVerifySmsUsesExplicitDeterministicRelations();
   assert(!loginJs.includes('findRegisteredAccount'), 'SMS login must not consult local account records.');
   assert(!loginJs.includes('readRegisteredAccounts'), 'Login page must not expose a local authentication source.');
   assert(!loginJs.includes('normalizeAccountRoles'), 'Login page must not derive roles from local account records.');
