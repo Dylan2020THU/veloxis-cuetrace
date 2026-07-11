@@ -1,4 +1,5 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const path = require('path');
 const Module = require('module');
 
@@ -8,68 +9,127 @@ function matches(record, query) {
   return Object.keys(query || {}).every((key) => record[key] === query[key]);
 }
 
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function bindingId(openid) {
+  return crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
+}
+
 function createFakeDb(seed) {
   const updates = [];
   const adds = [];
+  const controls = { failTransactionWriteAt: 0, transactionWriteCount: 0 };
 
-  class Query {
-    constructor(name) {
-      this.name = name;
-      this.query = {};
-      this.limitCount = null;
+  function makeFacade(targetState, stagedUpdates, stagedAdds, transactionMode) {
+    function maybeFailWrite() {
+      if (!transactionMode) return;
+      controls.transactionWriteCount += 1;
+      if (controls.transactionWriteCount === controls.failTransactionWriteAt) {
+        throw new Error('simulated transaction write failure');
+      }
     }
 
-    where(query) {
-      this.query = query || {};
-      return this;
+    class Query {
+      constructor(name) {
+        this.name = name;
+        this.query = {};
+        this.limitCount = null;
+      }
+
+      where(query) {
+        this.query = query || {};
+        return this;
+      }
+
+      limit(count) {
+        this.limitCount = Number(count) || 0;
+        return this;
+      }
+
+      async get() {
+        let data = (targetState[this.name] || []).filter((item) => matches(item, this.query));
+        if (this.limitCount) data = data.slice(0, this.limitCount);
+        return { data: clone(data) };
+      }
     }
 
-    limit(count) {
-      this.limitCount = Number(count) || 0;
-      return this;
-    }
-
-    async get() {
-      let data = (seed[this.name] || []).filter((item) => matches(item, this.query));
-      if (this.limitCount) data = data.slice(0, this.limitCount);
-      return { data };
-    }
+    return {
+      collection(name) {
+        const documents = targetState[name] || (targetState[name] = []);
+        return {
+          where(query) {
+            return new Query(name).where(query);
+          },
+          doc(id) {
+            return {
+              async get() {
+                const item = documents.find((record) => record._id === id);
+                return { data: item ? clone(item) : null };
+              },
+              async set({ data }) {
+                maybeFailWrite();
+                const item = Object.assign({}, clone(data), { _id: id });
+                const index = documents.findIndex((record) => record._id === id);
+                if (index === -1) documents.push(item);
+                else documents[index] = item;
+                stagedAdds.push({ collection: name, id, data: clone(data) });
+                return { _id: id };
+              },
+              async update({ data }) {
+                maybeFailWrite();
+                const index = documents.findIndex((record) => record._id === id);
+                if (index === -1) throw new Error(`document ${id} does not exist`);
+                documents[index] = Object.assign({}, documents[index], clone(data), { _id: id });
+                stagedUpdates.push({ collection: name, id, data: clone(data) });
+                return { updated: 1 };
+              }
+            };
+          },
+          async add({ data }) {
+            maybeFailWrite();
+            const id = data._id || `${name}_new`;
+            const item = Object.assign({}, clone(data), { _id: id });
+            documents.push(item);
+            stagedAdds.push({ collection: name, id, data: clone(data) });
+            return { _id: id };
+          }
+        };
+      },
+      serverDate() {
+        return 'SERVER_DATE';
+      },
+      async runTransaction(callback) {
+        if (transactionMode) throw new Error('nested transactions are unsupported');
+        const workingState = clone(targetState);
+        const transactionUpdates = [];
+        const transactionAdds = [];
+        controls.transactionWriteCount = 0;
+        const result = await callback(
+          makeFacade(workingState, transactionUpdates, transactionAdds, true)
+        );
+        Object.keys(workingState).forEach((name) => {
+          if (Array.isArray(workingState[name])) targetState[name] = workingState[name];
+        });
+        updates.push(...transactionUpdates);
+        adds.push(...transactionAdds);
+        return result;
+      }
+    };
   }
 
-  const db = {
-    collection(name) {
-      return {
-        where(query) {
-          return new Query(name).where(query);
-        },
-        doc(id) {
-          return {
-            async get() {
-              const item = (seed[name] || []).find((record) => record._id === id);
-              return { data: item || null };
-            },
-            async update({ data }) {
-              updates.push({ collection: name, id, data });
-              const item = (seed[name] || []).find((record) => record._id === id);
-              if (item) Object.assign(item, data);
-              return { updated: item ? 1 : 0 };
-            }
-          };
-        },
-        async add({ data }) {
-          const item = Object.assign({ _id: `${name}_new` }, data);
-          adds.push({ collection: name, data });
-          (seed[name] || (seed[name] = [])).push(item);
-          return { _id: item._id };
-        }
-      };
+  const db = makeFacade(seed, updates, adds, false);
+  db.__updates = updates;
+  db.__adds = adds;
+  Object.defineProperty(db, 'failTransactionWriteAt', {
+    get() {
+      return controls.failTransactionWriteAt;
     },
-    serverDate() {
-      return 'SERVER_DATE';
-    },
-    __updates: updates,
-    __adds: adds
-  };
+    set(value) {
+      controls.failTransactionWriteAt = Number(value) || 0;
+    }
+  });
   return db;
 }
 
@@ -207,11 +267,12 @@ async function testRolePickerApplyNeverShowsAdminReviewEntry() {
 }
 
 async function testShopApprovalUpsertsRoleLedgerForBoundAccount() {
+  const shopUserId = bindingId('shop_openid');
   const state = {
     admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: 'shop_openid', status: 'pending' }],
     wechat_bindings: [{
-      _id: 'binding1',
+      _id: shopUserId,
       _openid: 'shop_openid',
       accountId: 'account1',
       account: 'shop_account'
@@ -234,6 +295,7 @@ async function testShopApprovalUpsertsRoleLedgerForBoundAccount() {
 
   assert.strictEqual(result.ok, true);
   assert.strictEqual(state.users.length, 1, 'Approval should restore the missing authoritative user ledger.');
+  assert.strictEqual(state.users[0]._id, shopUserId);
   assert.strictEqual(state.users[0]._openid, 'shop_openid');
   assert.deepStrictEqual(state.users[0].roles, ['member', 'shop']);
   assert.strictEqual(state.users[0].role, 'member');
@@ -241,11 +303,24 @@ async function testShopApprovalUpsertsRoleLedgerForBoundAccount() {
 }
 
 async function testShopApprovalPreservesExistingRolesAndCurrentRole() {
+  const coachUserId = bindingId('coach_openid');
   const state = {
     admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: 'coach_openid', status: 'pending' }],
+    wechat_bindings: [{
+      _id: coachUserId,
+      _openid: 'coach_openid',
+      accountId: 'account1',
+      account: 'coach_account'
+    }],
+    accounts: [{
+      _id: 'account1',
+      _openid: 'coach_openid',
+      account: 'coach_account',
+      status: 'active'
+    }],
     users: [{
-      _id: 'user1',
+      _id: coachUserId,
       _openid: 'coach_openid',
       roles: ['member', 'coach'],
       role: 'coach',
@@ -264,6 +339,196 @@ async function testShopApprovalPreservesExistingRolesAndCurrentRole() {
   assert.deepStrictEqual(state.users[0].roles, ['member', 'coach', 'shop']);
   assert.strictEqual(state.users[0].role, 'coach');
   assert.strictEqual(state.users[0].currentRole, 'coach');
+}
+
+async function testShopApprovalRejectsInvalidIdentityRelationsWithoutWrites() {
+  const applicantOpenid = 'shop_openid';
+  const applicantId = bindingId(applicantOpenid);
+  const variants = [
+    {
+      name: 'missing binding',
+      wechat_bindings: [],
+      accounts: []
+    },
+    {
+      name: 'disabled account',
+      wechat_bindings: [{
+        _id: applicantId,
+        _openid: applicantOpenid,
+        accountId: 'account1',
+        account: 'shop_account'
+      }],
+      accounts: [{
+        _id: 'account1',
+        _openid: applicantOpenid,
+        account: 'shop_account',
+        status: 'disabled'
+      }]
+    },
+    {
+      name: 'mismatched account owner',
+      wechat_bindings: [{
+        _id: applicantId,
+        _openid: applicantOpenid,
+        accountId: 'account1',
+        account: 'shop_account'
+      }],
+      accounts: [{
+        _id: 'account1',
+        _openid: 'another_openid',
+        account: 'shop_account',
+        status: 'active'
+      }]
+    },
+    {
+      name: 'mismatched user owner',
+      wechat_bindings: [{
+        _id: applicantId,
+        _openid: applicantOpenid,
+        accountId: 'account1',
+        account: 'shop_account'
+      }],
+      accounts: [{
+        _id: 'account1',
+        _openid: applicantOpenid,
+        account: 'shop_account',
+        status: 'active'
+      }],
+      userOpenid: 'another_openid'
+    }
+  ];
+  const observed = [];
+
+  for (const variant of variants) {
+    const state = {
+      admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+      shop_applications: [{ _id: 'shop-app', _openid: applicantOpenid, status: 'pending' }],
+      wechat_bindings: variant.wechat_bindings,
+      accounts: variant.accounts,
+      users: [{
+        _id: applicantId,
+        _openid: variant.userOpenid || applicantOpenid,
+        roles: ['member'],
+        role: 'member',
+        currentRole: 'member'
+      }]
+    };
+    const { fn, fakeDb } = loadCloudFunction(
+      'cloudfunctions/reviewShopApplication/index.js',
+      'admin_openid',
+      state
+    );
+    const result = await fn.main({
+      applicationId: 'shop-app',
+      approve: true,
+      loginName: 'admin_zhx'
+    });
+    observed.push({
+      name: variant.name,
+      ok: result.ok,
+      code: result.code,
+      applicationStatus: state.shop_applications[0].status,
+      roles: state.users[0].roles,
+      writes: fakeDb.__updates.length + fakeDb.__adds.length
+    });
+  }
+
+  assert.deepStrictEqual(observed, variants.map((variant) => ({
+    name: variant.name,
+    ok: false,
+    code: 'ACCOUNT_NOT_BOUND',
+    applicationStatus: 'pending',
+    roles: ['member'],
+    writes: 0
+  })));
+}
+
+async function testShopApprovalDoesNotPromoteLegacyRoleField() {
+  const applicantOpenid = 'legacy_openid';
+  const applicantId = bindingId(applicantOpenid);
+  const state = {
+    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    shop_applications: [{ _id: 'shop-app', _openid: applicantOpenid, status: 'pending' }],
+    wechat_bindings: [{
+      _id: applicantId,
+      _openid: applicantOpenid,
+      accountId: 'account1',
+      account: 'legacy_account'
+    }],
+    accounts: [{
+      _id: 'account1',
+      _openid: applicantOpenid,
+      account: 'legacy_account',
+      status: 'active'
+    }],
+    users: [{
+      _id: applicantId,
+      _openid: applicantOpenid,
+      roles: ['member'],
+      role: 'coach',
+      currentRole: 'coach'
+    }]
+  };
+  const { fn } = loadCloudFunction(
+    'cloudfunctions/reviewShopApplication/index.js',
+    'admin_openid',
+    state
+  );
+
+  const result = await fn.main({ applicationId: 'shop-app', approve: true, loginName: 'admin_zhx' });
+
+  assert.strictEqual(result.ok, true);
+  assert.deepStrictEqual(state.users[0].roles, ['member', 'shop']);
+  assert.strictEqual(state.users[0].role, 'coach');
+  assert.strictEqual(state.users[0].currentRole, 'coach');
+}
+
+async function testShopApprovalRollsBackApplicationWhenUserWriteFails() {
+  const applicantOpenid = 'shop_openid';
+  const applicantId = bindingId(applicantOpenid);
+  const state = {
+    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    shop_applications: [{ _id: 'shop-app', _openid: applicantOpenid, status: 'pending' }],
+    wechat_bindings: [{
+      _id: applicantId,
+      _openid: applicantOpenid,
+      accountId: 'account1',
+      account: 'shop_account'
+    }],
+    accounts: [{
+      _id: 'account1',
+      _openid: applicantOpenid,
+      account: 'shop_account',
+      status: 'active'
+    }],
+    users: [{
+      _id: applicantId,
+      _openid: applicantOpenid,
+      roles: ['member'],
+      role: 'member',
+      currentRole: 'member'
+    }]
+  };
+  const { fn, fakeDb } = loadCloudFunction(
+    'cloudfunctions/reviewShopApplication/index.js',
+    'admin_openid',
+    state
+  );
+  fakeDb.failTransactionWriteAt = 2;
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  let result;
+  try {
+    result = await fn.main({ applicationId: 'shop-app', approve: true, loginName: 'admin_zhx' });
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(state.shop_applications[0].status, 'pending');
+  assert.deepStrictEqual(state.users[0].roles, ['member']);
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
 }
 
 async function testShopApprovalRejectsMissingUserWithoutAccountBinding() {
@@ -380,6 +645,9 @@ async function testSaveShopProfileCreatesProfileFromAuthoritativeShopRole() {
   await testRolePickerApplyNeverShowsAdminReviewEntry();
   await testShopApprovalUpsertsRoleLedgerForBoundAccount();
   await testShopApprovalPreservesExistingRolesAndCurrentRole();
+  await testShopApprovalRejectsInvalidIdentityRelationsWithoutWrites();
+  await testShopApprovalDoesNotPromoteLegacyRoleField();
+  await testShopApprovalRollsBackApplicationWhenUserWriteFails();
   await testShopApprovalRejectsMissingUserWithoutAccountBinding();
   await testSaveShopProfileRejectsMemberWithoutWrites();
   await testSaveShopProfileAllowsAuthorizedShopWithoutRoleWrites();

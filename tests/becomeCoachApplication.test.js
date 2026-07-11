@@ -176,6 +176,13 @@ async function testAuthorizedCoachCanBeAddedToShop() {
   const { fn, fakeDb } = loadCloudFunction('cloudfunctions/addShopCoach/index.js', 'shop_openid', {
     users: [
       {
+        _id: 'shop-user',
+        _openid: 'shop_openid',
+        roles: ['member', 'shop'],
+        role: 'member',
+        currentRole: 'member'
+      },
+      {
         _id: 'coach-user',
         _openid: 'coach_openid',
         roles: ['member', 'coach'],
@@ -183,6 +190,7 @@ async function testAuthorizedCoachCanBeAddedToShop() {
         currentRole: 'member'
       }
     ],
+    stores: [{ _id: 'store1', _openid: 'shop_openid', name: 'Canonical Store' }],
     shop_coach_links: []
   });
 
@@ -197,7 +205,52 @@ async function testAuthorizedCoachCanBeAddedToShop() {
   assert(linkAdd, 'An approved coach should be linked to the shop.');
   assert.strictEqual(linkAdd.data.coachOpenid, 'coach_openid');
   assert.strictEqual(linkAdd.data.shopOpenid, 'shop_openid');
+  assert.strictEqual(linkAdd.data.storeName, 'Canonical Store');
   assert.strictEqual(linkAdd.data.status, 'active');
+}
+
+async function testReactivatedCoachLinkUsesCanonicalStoreName() {
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/addShopCoach/index.js', 'shop_openid', {
+    users: [
+      {
+        _id: 'shop-user',
+        _openid: 'shop_openid',
+        roles: ['member', 'shop'],
+        role: 'member',
+        currentRole: 'member'
+      },
+      {
+        _id: 'coach-user',
+        _openid: 'coach_openid',
+        roles: ['member', 'coach'],
+        role: 'member',
+        currentRole: 'member'
+      }
+    ],
+    stores: [{ _id: 'store1', _openid: 'shop_openid', name: 'Canonical Store' }],
+    shop_coach_links: [{
+      _id: 'link1',
+      shopOpenid: 'shop_openid',
+      coachOpenid: 'coach_openid',
+      storeId: 'store1',
+      storeName: 'Old Store',
+      status: 'inactive'
+    }]
+  });
+
+  const result = await fn.main({
+    coachOpenid: 'coach_openid',
+    storeId: 'store1',
+    storeName: 'Forged Store'
+  });
+
+  assert.strictEqual(result.ok, true);
+  const linkUpdate = fakeDb.__updates.find(
+    (item) => item.collection === 'shop_coach_links' && item.id === 'link1'
+  );
+  assert(linkUpdate, 'An inactive authorized link should be reactivated.');
+  assert.strictEqual(linkUpdate.data.storeName, 'Canonical Store');
+  assert.strictEqual(linkUpdate.data.status, 'active');
 }
 
 (async () => {
@@ -205,4 +258,5 @@ async function testAuthorizedCoachCanBeAddedToShop() {
   testApplyPageExists();
   await testApprovalAddsCoachRoleWithoutDroppingMember();
   await testAuthorizedCoachCanBeAddedToShop();
+  await testReactivatedCoachLinkUsesCanonicalStoreName();
 })();

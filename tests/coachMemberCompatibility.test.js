@@ -473,13 +473,22 @@ async function testTargetDayDetailDoesNotMergeCoachLessons() {
 
 async function testAddShopCoachRejectsMemberWithoutLinkWrites() {
   const state = {
-    users: [{
-      _id: 'member-user',
-      _openid: 'member_openid',
-      roles: ['member'],
-      role: 'member',
-      currentRole: 'member'
-    }],
+    users: [
+      {
+        _id: 'shop-user',
+        _openid: 'shop_openid',
+        roles: ['member', 'shop'],
+        role: 'member',
+        currentRole: 'member'
+      },
+      {
+        _id: 'member-user',
+        _openid: 'member_openid',
+        roles: ['member'],
+        role: 'member',
+        currentRole: 'member'
+      }
+    ],
     shop_coach_links: []
   };
   const { fn, fakeDb } = loadCloudFunction(
@@ -492,6 +501,81 @@ async function testAddShopCoachRejectsMemberWithoutLinkWrites() {
 
   assert.strictEqual(result.ok, false);
   assert.strictEqual(result.code, 'COACH_ROLE_REQUIRED');
+  assert.strictEqual(state.shop_coach_links.length, 0);
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
+}
+
+async function testAddShopCoachRejectsNonShopCallerWithoutLinkWrites() {
+  const state = {
+    users: [
+      {
+        _id: 'caller-user',
+        _openid: 'member_caller',
+        roles: ['member'],
+        role: 'member',
+        currentRole: 'member'
+      },
+      {
+        _id: 'coach-user',
+        _openid: 'coach_openid',
+        roles: ['member', 'coach'],
+        role: 'member',
+        currentRole: 'member'
+      }
+    ],
+    shop_coach_links: []
+  };
+  const { fn, fakeDb } = loadCloudFunction(
+    'cloudfunctions/addShopCoach/index.js',
+    'member_caller',
+    state
+  );
+
+  const result = await fn.main({ coachOpenid: 'coach_openid' });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'SHOP_ROLE_REQUIRED');
+  assert.strictEqual(state.shop_coach_links.length, 0);
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
+}
+
+async function testAddShopCoachRejectsForeignStoreWithoutLinkWrites() {
+  const state = {
+    users: [
+      {
+        _id: 'shop-user',
+        _openid: 'shop_openid',
+        roles: ['member', 'shop'],
+        role: 'member',
+        currentRole: 'member'
+      },
+      {
+        _id: 'coach-user',
+        _openid: 'coach_openid',
+        roles: ['member', 'coach'],
+        role: 'member',
+        currentRole: 'member'
+      }
+    ],
+    stores: [{ _id: 'foreign-store', _openid: 'another_shop', name: 'Foreign Store' }],
+    shop_coach_links: []
+  };
+  const { fn, fakeDb } = loadCloudFunction(
+    'cloudfunctions/addShopCoach/index.js',
+    'shop_openid',
+    state
+  );
+
+  const result = await fn.main({
+    coachOpenid: 'coach_openid',
+    storeId: 'foreign-store',
+    storeName: 'Forged Name'
+  });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'STORE_NOT_OWNED');
   assert.strictEqual(state.shop_coach_links.length, 0);
   assert.strictEqual(fakeDb.__updates.length, 0);
   assert.strictEqual(fakeDb.__adds.length, 0);
@@ -523,6 +607,8 @@ function testCheckinPageExposesDetailFilters() {
   await testTargetHeatmapDoesNotMergeCoachLessons();
   await testOwnDayDetailMergesCoachLessons();
   await testTargetDayDetailDoesNotMergeCoachLessons();
+  await testAddShopCoachRejectsNonShopCallerWithoutLinkWrites();
+  await testAddShopCoachRejectsForeignStoreWithoutLinkWrites();
   await testAddShopCoachRejectsMemberWithoutLinkWrites();
   testCheckinPageExposesDetailFilters();
 })();

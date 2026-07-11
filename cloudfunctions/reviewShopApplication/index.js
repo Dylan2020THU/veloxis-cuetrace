@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk');
+const crypto = require('crypto');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
@@ -9,27 +10,38 @@ const BOOTSTRAP_ADMIN_OPENIDS = [
 const ADMIN_ACCOUNTS = ['admin_zhx'];
 const VALID_ROLES = ['member', 'coach', 'shop'];
 
+function bindingId(openid) {
+  return crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
+}
+
 function mergeShopRole(user) {
   const roles = Array.isArray(user && user.roles) ? user.roles.filter((role) => VALID_ROLES.indexOf(role) !== -1) : [];
-  if (user && VALID_ROLES.indexOf(user.role) !== -1 && roles.indexOf(user.role) === -1) roles.push(user.role);
   if (roles.indexOf('member') === -1) roles.unshift('member');
   if (roles.indexOf('shop') === -1) roles.push('shop');
   return Array.from(new Set(roles));
 }
 
-async function hasActiveAccountBinding(openid) {
-  const bindingRes = await db.collection('wechat_bindings').where({ _openid: openid }).limit(1).get();
-  const binding = bindingRes.data && bindingRes.data[0];
-  if (!binding || !binding.accountId || !binding.account) return false;
-  const accountRes = await db.collection('accounts').doc(binding.accountId).get();
+async function getBoundIdentity(transaction, openid) {
+  const bindingDocId = bindingId(openid);
+  const bindingRes = await transaction.collection('wechat_bindings').doc(bindingDocId).get();
+  const binding = bindingRes && bindingRes.data;
+  if (
+    !binding ||
+    binding._id !== bindingDocId ||
+    binding._openid !== openid ||
+    !binding.accountId ||
+    !binding.account
+  ) return null;
+  const accountRes = await transaction.collection('accounts').doc(binding.accountId).get();
   const account = accountRes && accountRes.data;
-  return !!(
-    account &&
-    account._id === binding.accountId &&
-    account._openid === openid &&
-    account.account === binding.account &&
-    account.status === 'active'
-  );
+  if (
+    !account ||
+    account._id !== binding.accountId ||
+    account._openid !== openid ||
+    account.account !== binding.account ||
+    account.status !== 'active'
+  ) return null;
+  return { binding, account, userDocId: bindingDocId };
 }
 
 async function getActiveAdmins() {
@@ -62,57 +74,65 @@ exports.main = async (event = {}) => {
   const { applicationId, approve, reason } = event;
   if (!applicationId) return { ok: false, msg: '缺少申请 ID' };
 
-  const apps = db.collection('shop_applications');
   try {
-    const res = await apps.doc(applicationId).get();
-    const application = res.data;
-    if (!application) return { ok: false, msg: '申请不存在' };
+    return await db.runTransaction(async (transaction) => {
+      const apps = transaction.collection('shop_applications');
+      const res = await apps.doc(applicationId).get();
+      const application = res.data;
+      if (!application) return { ok: false, msg: '申请不存在' };
 
-    const users = db.collection('users');
-    let user = null;
-    if (approve) {
-      const userRes = await users.where({ _openid: application._openid }).get();
-      user = userRes.data && userRes.data[0];
-      if (!user && !(await hasActiveAccountBinding(application._openid))) {
-        return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定信息不完整' };
+      const users = transaction.collection('users');
+      let user = null;
+      let identity = null;
+      if (approve) {
+        identity = await getBoundIdentity(transaction, application._openid);
+        if (!identity) {
+          return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定信息不完整' };
+        }
+        const userRes = await users.doc(identity.userDocId).get();
+        user = userRes && userRes.data;
+        if (user && (user._id !== identity.userDocId || user._openid !== application._openid)) {
+          return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定信息不完整' };
+        }
       }
-    }
 
-    const status = approve ? 'approved' : 'rejected';
-    await apps.doc(applicationId).update({
-      data: {
-        status,
-        reason: approve ? '' : (reason || '资料未通过核验'),
-        reviewedBy: OPENID,
-        reviewedAt: db.serverDate()
+      const status = approve ? 'approved' : 'rejected';
+      await apps.doc(applicationId).update({
+        data: {
+          status,
+          reason: approve ? '' : (reason || '资料未通过核验'),
+          reviewedBy: OPENID,
+          reviewedAt: db.serverDate()
+        }
+      });
+
+      if (approve) {
+        if (user) {
+          await users.doc(identity.userDocId).update({
+            data: {
+              roles: mergeShopRole(user),
+              updatedAt: db.serverDate()
+            }
+          });
+        } else {
+          await users.doc(identity.userDocId).set({
+            data: {
+              _id: identity.userDocId,
+              _openid: application._openid,
+              roles: ['member', 'shop'],
+              currentRole: 'member',
+              role: 'member',
+              nickname: '',
+              avatar: '',
+              createdAt: db.serverDate(),
+              updatedAt: db.serverDate()
+            }
+          });
+        }
       }
+
+      return { ok: true, status };
     });
-
-    if (approve) {
-      if (user) {
-        await users.doc(user._id).update({
-          data: {
-            roles: mergeShopRole(user),
-            updatedAt: db.serverDate()
-          }
-        });
-      } else {
-        await users.add({
-          data: {
-            _openid: application._openid,
-            roles: ['member', 'shop'],
-            currentRole: 'member',
-            role: 'member',
-            nickname: '',
-            avatar: '',
-            createdAt: db.serverDate(),
-            updatedAt: db.serverDate()
-          }
-        });
-      }
-    }
-
-    return { ok: true, status };
   } catch (err) {
     console.error('reviewShopApplication failed', err);
     return { ok: false, msg: '审核失败，请重试' };

@@ -318,39 +318,81 @@ async function testCloudReviewListRequiresCurrentAdminAccount() {
 
 async function testCloudReviewApprovalAddsShopRoleToUserRoles() {
   const updates = [];
+  const userDocId = crypto.createHash('sha256').update('wechat:shop_openid').digest('hex');
+  const documents = {
+    admins: {
+      admin1: { _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }
+    },
+    shop_applications: {
+      app1: { _id: 'app1', _openid: 'shop_openid', status: 'pending' }
+    },
+    wechat_bindings: {
+      [userDocId]: {
+        _id: userDocId,
+        _openid: 'shop_openid',
+        accountId: 'account1',
+        account: 'shop_account'
+      }
+    },
+    accounts: {
+      account1: {
+        _id: 'account1',
+        _openid: 'shop_openid',
+        account: 'shop_account',
+        status: 'active'
+      }
+    },
+    users: {
+      [userDocId]: {
+        _id: userDocId,
+        _openid: 'shop_openid',
+        role: 'member',
+        currentRole: 'member',
+        roles: ['member']
+      }
+    }
+  };
+
+  function collection(name) {
+    const records = documents[name] || (documents[name] = {});
+    return {
+      where(query) {
+        return {
+          async get() {
+            return {
+              data: Object.values(records).filter((item) => (
+                Object.keys(query || {}).every((key) => item[key] === query[key])
+              ))
+            };
+          }
+        };
+      },
+      doc(id) {
+        return {
+          async get() {
+            return { data: records[id] || null };
+          },
+          async update({ data }) {
+            if (!records[id]) throw new Error(`document ${id} does not exist`);
+            records[id] = Object.assign({}, records[id], data);
+            updates.push({ name, id, data });
+          },
+          async set({ data }) {
+            records[id] = Object.assign({}, data, { _id: id });
+            updates.push({ name, id, data });
+          }
+        };
+      }
+    };
+  }
+
   const fakeDb = {
     serverDate() {
       return 'SERVER_DATE';
     },
-    collection(name) {
-      return {
-        where(query) {
-          return {
-            async get() {
-              if (name === 'admins') {
-                return { data: [{ _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }] };
-              }
-              if (name === 'users') {
-                return { data: [{ _id: 'user_doc', _openid: query._openid, role: 'member', roles: ['member'] }] };
-              }
-              return { data: [] };
-            }
-          };
-        },
-        doc(id) {
-          return {
-            async get() {
-              if (name === 'shop_applications') {
-                return { data: { _id: id, _openid: 'shop_openid', status: 'pending' } };
-              }
-              return { data: null };
-            },
-            async update({ data }) {
-              updates.push({ name, id, data });
-            }
-          };
-        }
-      };
+    collection,
+    runTransaction(callback) {
+      return callback({ collection });
     }
   };
   const fakeCloud = {
@@ -370,7 +412,7 @@ async function testCloudReviewApprovalAddsShopRoleToUserRoles() {
   const res = await reviewShopApplication.main({ loginName: 'admin_zhx', applicationId: 'app1', approve: true });
 
   assert.strictEqual(res.ok, true);
-  const userUpdate = updates.find((item) => item.name === 'users' && item.id === 'user_doc');
+  const userUpdate = updates.find((item) => item.name === 'users' && item.id === userDocId);
   assert(userUpdate, 'Approving a shop application should update the applicant user document.');
   assert.deepStrictEqual(userUpdate.data.roles, ['member', 'shop']);
   assert.strictEqual(
