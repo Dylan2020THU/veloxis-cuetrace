@@ -297,13 +297,31 @@ param([string]$Baseline = 'main')
 $ErrorActionPreference = 'Stop'
 
 function Invoke-Git([string[]]$Arguments, [switch]$AllowFailure) {
-  $output = @(& git -c core.quotePath=false -c core.excludesFile= @Arguments 2>&1)
-  $exitCode = $LASTEXITCODE
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = @(& git -c core.quotePath=false -c core.excludesFile= @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousPreference
+  }
   $clean = @($output | Where-Object { $_ -notmatch '^warning:' })
   if ($exitCode -ne 0 -and -not $AllowFailure) {
     throw ($clean -join "`n")
   }
   return [PSCustomObject]@{ ExitCode = $exitCode; Output = $clean }
+}
+
+function Invoke-Node([string[]]$Arguments) {
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = @(& node @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousPreference
+  }
+  return [PSCustomObject]@{ ExitCode = $exitCode; Output = $output }
 }
 
 $testFailures = @()
@@ -318,9 +336,9 @@ try {
   try {
     $testFiles = @(Get-ChildItem -LiteralPath tests -Filter '*.test.js' | Sort-Object Name)
     foreach ($file in $testFiles) {
-      $output = @(& node $file.FullName 2>&1)
-      if ($LASTEXITCODE -ne 0) {
-        $testFailures += [PSCustomObject]@{ File = $file.Name; Output = $output }
+      $result = Invoke-Node @($file.FullName)
+      if ($result.ExitCode -ne 0) {
+        $testFailures += [PSCustomObject]@{ File = $file.Name; Output = $result.Output }
       }
     }
 
@@ -330,9 +348,9 @@ try {
     $changed = @($tracked + $untracked | Sort-Object -Unique)
     $jsFiles = @($changed | Where-Object { $_ -match '\.js$' -and (Test-Path -LiteralPath $_ -PathType Leaf) })
     foreach ($file in $jsFiles) {
-      $output = @(& node --check $file 2>&1)
-      if ($LASTEXITCODE -ne 0) {
-        $jsFailures += [PSCustomObject]@{ File = $file; Output = $output }
+      $result = Invoke-Node @('--check', $file)
+      if ($result.ExitCode -ne 0) {
+        $jsFailures += [PSCustomObject]@{ File = $file; Output = $result.Output }
       }
     }
 
@@ -445,7 +463,7 @@ Append to `AGENTS.md` before `# Strict Rules`：
 - 任务开始优先运行 `scripts/codex-context.ps1` 和 `scripts/codex-status.ps1`；机械检查使用脚本摘要，失败时才展开详情。
 - 业务状态默认排除 `.agents/**`；任务未明确涉及技能或缓存时，不读取、同步或修改 `.agents`。
 - 禁止打印完整 session、模型缓存、全量配置或大型状态列表，只选择当前任务需要的字段。
-- 行为修改后运行 focused 测试；全量测试、全分支语法、diff 和文本检查只由根任务在最终收口运行一次。
+- 行为修改后运行 focused 测试；全量测试、全分支语法、diff 和文本检查只由根任务通过 `scripts/codex-verify.ps1` 在最终收口运行一次。
 - 子代理仅用于真正独立且值得并行的高风险工作；使用短 brief 或 `fork_turns: "none"`，不得默认复制完整线程或嵌套派生。
 - commentary 只在里程碑、风险变化或持续工作接近 60 秒时发送，保持两句以内。
 - `scripts/codex-context.ps1` 输出 `NEW_TASK_RECOMMENDED` 时，完成当前小阶段后更新 `docs/codex/HANDOFF.md`，并建议在新 Codex 任务继续下一独立目标。

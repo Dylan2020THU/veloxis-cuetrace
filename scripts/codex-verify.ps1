@@ -4,13 +4,31 @@ param([string]$Baseline = 'main')
 $ErrorActionPreference = 'Stop'
 
 function Invoke-Git([string[]]$Arguments, [switch]$AllowFailure) {
-  $output = @(& git -c core.quotePath=false -c core.excludesFile= @Arguments 2>&1)
-  $exitCode = $LASTEXITCODE
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = @(& git -c core.quotePath=false -c core.excludesFile= @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousPreference
+  }
   $clean = @($output | Where-Object { $_ -notmatch '^warning:' })
   if ($exitCode -ne 0 -and -not $AllowFailure) {
     throw ($clean -join "`n")
   }
   return [PSCustomObject]@{ ExitCode = $exitCode; Output = $clean }
+}
+
+function Invoke-Node([string[]]$Arguments) {
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    $output = @(& node @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousPreference
+  }
+  return [PSCustomObject]@{ ExitCode = $exitCode; Output = $output }
 }
 
 $testFailures = @()
@@ -25,9 +43,9 @@ try {
   try {
     $testFiles = @(Get-ChildItem -LiteralPath tests -Filter '*.test.js' | Sort-Object Name)
     foreach ($file in $testFiles) {
-      $output = @(& node $file.FullName 2>&1)
-      if ($LASTEXITCODE -ne 0) {
-        $testFailures += [PSCustomObject]@{ File = $file.Name; Output = $output }
+      $result = Invoke-Node @($file.FullName)
+      if ($result.ExitCode -ne 0) {
+        $testFailures += [PSCustomObject]@{ File = $file.Name; Output = $result.Output }
       }
     }
 
@@ -37,9 +55,9 @@ try {
     $changed = @($tracked + $untracked | Sort-Object -Unique)
     $jsFiles = @($changed | Where-Object { $_ -match '\.js$' -and (Test-Path -LiteralPath $_ -PathType Leaf) })
     foreach ($file in $jsFiles) {
-      $output = @(& node --check $file 2>&1)
-      if ($LASTEXITCODE -ne 0) {
-        $jsFailures += [PSCustomObject]@{ File = $file; Output = $output }
+      $result = Invoke-Node @('--check', $file)
+      if ($result.ExitCode -ne 0) {
+        $jsFailures += [PSCustomObject]@{ File = $file; Output = $result.Output }
       }
     }
 
