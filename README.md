@@ -14,11 +14,11 @@ Import this directory in WeChat DevTools, then compile and run.
 
 - `project.config.json` 已配置小程序 AppID `wxa7c9920cda26d7ca`。
 - `miniprogram/app.js` 当前使用云环境 `cloud1-d4g2abcud02b40531`。导入项目后，先确认该云环境与上述 AppID 属于同一个小程序；如果实际部署到其他环境，先同步修改 `CLOUD_ENV`，不要让客户端与云函数落在不同环境。
-- 本次账号系统按“仅测试数据、可重建”实施，不包含生产数据迁移，也不会迁移旧的本地 `dc_accounts` / `dc_wechat_bindings`。部署前清空下表所列测试集合中的旧测试数据，再按当前结构重建；不要在有生产数据的环境直接执行这一步。
+- 本次账号系统按 B 方案“仅测试数据、可重建”实施，不包含生产数据迁移，也不会迁移旧的本地 `dc_accounts` / `dc_wechat_bindings`。部署前清空下表所列测试集合中的旧测试数据，再按当前结构重建；清空仅适用于纯测试环境，不能用于生产环境或任何需要保留的数据。
 
 ### 2. 集合与权限
 
-本次认证和角色链路使用以下已有集合：
+先进入云开发控制台的数据库，在上传云函数前按下表逐一创建或确认集合已经存在。以下是本次认证和角色链路必须创建或确认存在的集合：核心集合 `accounts`、`wechat_bindings`、`users`、`admins`、`admin_account_bindings`、`sms_codes`，角色业务集合 `shop_applications`、`shops`、`stores`、`shop_coach_links`、`coach_shop_applications`、`coaches`，以及登录链路使用的 `account_deletion_requests`。
 
 | 集合 | 当前用途与关键字段 |
 | --- | --- |
@@ -36,7 +36,7 @@ Import this directory in WeChat DevTools, then compile and run.
 | `coaches` | 教练资料及审核后的门店绑定状态。 |
 | `account_deletion_requests` | 登录时处理待注销账号恢复/锁定状态。 |
 
-`accounts`、`wechat_bindings`、`users`、`admins`、`admin_account_bindings`、`sms_codes` 以及角色申请/关联集合都承载认证或授权依据。建议在云数据库安全规则中禁止小程序客户端直接读写，由云函数通过可信 `OPENID` 完成访问；尤其不要允许客户端直接修改 `users.roles`。业务展示集合若需开放读取，应按页面的最小字段和最小权限单独配置，不要复用认证集合权限。
+确认所有集合存在后，再配置云数据库安全规则，然后才按第 3 节上传云函数。`accounts`、`wechat_bindings`、`users`、`admins`、`admin_account_bindings`、`sms_codes` 以及角色申请/关联集合都承载认证或授权依据。建议在安全规则中禁止小程序客户端直接读写，由云函数通过可信 `OPENID` 完成访问；尤其不要允许客户端直接修改 `users.roles`。业务展示集合若需开放读取，应按页面的最小字段和最小权限单独配置，不要复用认证集合权限。
 
 ### 3. 上传云函数
 
