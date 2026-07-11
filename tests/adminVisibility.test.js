@@ -142,7 +142,7 @@ async function testCloudLoginDoesNotSeedAdminByAccount() {
   const openid = 'admin_openid';
   const bindingId = crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
   const state = {
-    users: [{ _id: 'user_doc', _openid: openid, role: 'member', roles: ['member'] }],
+    users: [{ _id: bindingId, _openid: openid, role: 'member', roles: ['member'] }],
     wechat_bindings: [{
       _id: bindingId,
       _openid: openid,

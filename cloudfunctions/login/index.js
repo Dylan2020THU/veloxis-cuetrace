@@ -23,8 +23,6 @@ function normalizeServerRoles(user) {
   const source = Array.isArray(user && user.roles) ? user.roles : [];
   const roles = source.filter((role) => VALID_ROLES.indexOf(role) !== -1);
   if (roles.length) return Array.from(new Set(roles));
-  if (user && user.role === 'coach') return ['member', 'coach'];
-  if (user && user.role === 'shop') return ['shop'];
   return ['member'];
 }
 
@@ -51,7 +49,7 @@ exports.main = async (event = {}) => {
   const users = db.collection('users');
   const requestedRole = VALID_ROLES.indexOf(event.role) !== -1 ? event.role : 'member';
   const binding = await getBindingByOpenid(OPENID);
-  if (!binding || binding._openid !== OPENID || !binding.accountId) {
+  if (!binding || binding._id !== bindingId(OPENID) || binding._openid !== OPENID || !binding.accountId) {
     return fail('ACCOUNT_NOT_BOUND', '请先登录或注册账号');
   }
   const accountResult = await db.collection('accounts').doc(binding.accountId).get();
@@ -66,10 +64,11 @@ exports.main = async (event = {}) => {
     return fail('ACCOUNT_NOT_BOUND', '账号绑定信息不完整');
   }
 
-  const userRes = await users.where({ _openid: OPENID }).limit(1).get();
-  if (!userRes.data.length) return fail('ACCOUNT_NOT_BOUND', '账号资料不存在');
-
-  const user = userRes.data[0];
+  const userResult = await users.doc(binding._id).get();
+  const user = userResult && userResult.data ? userResult.data : null;
+  if (!user || user._id !== binding._id || user._openid !== OPENID) {
+    return fail('ACCOUNT_NOT_BOUND', '账号资料不存在');
+  }
   let deletionCanceled = false;
   if (user.deletionStatus === 'pending') {
     const scheduledAt = user.deletionScheduledAt || 0;

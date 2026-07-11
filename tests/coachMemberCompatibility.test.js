@@ -15,6 +15,10 @@ function bindingFor(openid, account) {
   };
 }
 
+function userIdFor(openid) {
+  return bindingFor(openid, '')._id;
+}
+
 function accountFor(openid, account, overrides) {
   const doc = {
     _id: crypto.createHash('sha256').update(`account:${String(account).toLowerCase()}`).digest('hex'),
@@ -247,23 +251,44 @@ function loadLoginPage(accounts) {
   return page;
 }
 
-async function testLoginReturnsRolesAndCurrentRoleForLegacyCoach() {
+async function testLoginUsesDeterministicUserInsteadOfLegacyCoach() {
+  const deterministicUserId = userIdFor('coach_openid');
   const state = {
     wechat_bindings: [bindingFor('coach_openid', 'coach1')],
     accounts: [accountFor('coach_openid', 'coach1')],
     users: [
-      { _id: 'u1', _openid: 'coach_openid', role: 'coach', nickname: 'Coach', avatar: 'cloud://a' }
+      {
+        _id: 'legacy-coach',
+        _openid: 'coach_openid',
+        role: 'coach',
+        roles: ['member', 'coach'],
+        nickname: 'Legacy Coach',
+        avatar: 'cloud://legacy'
+      },
+      {
+        _id: deterministicUserId,
+        _openid: 'coach_openid',
+        role: 'member',
+        roles: ['member'],
+        nickname: 'Deterministic Member',
+        avatar: 'cloud://member'
+      }
     ]
   };
-  const { fn } = loadCloudFunction('cloudfunctions/login/index.js', 'coach_openid', state);
-  const res = await fn.main({ role: 'member' });
-  assert.deepStrictEqual(res.roles, ['member', 'coach']);
-  assert.strictEqual(res.currentRole, 'member');
-  assert.strictEqual(res.role, 'member');
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/login/index.js', 'coach_openid', state);
 
-  const coachAgain = await fn.main({ role: 'coach' });
-  assert.strictEqual(coachAgain.role, 'coach');
-  assert.deepStrictEqual(coachAgain.roles, ['member', 'coach']);
+  const denied = await fn.main({ role: 'coach' });
+  assert.strictEqual(denied.ok, false);
+  assert.strictEqual(denied.code, 'ROLE_NOT_ALLOWED');
+  assert.strictEqual(fakeDb.__updates.length, 0);
+
+  const member = await fn.main({ role: 'member' });
+  assert.strictEqual(member.role, 'member');
+  assert.deepStrictEqual(member.roles, ['member']);
+  assert.strictEqual(member.nickname, 'Deterministic Member');
+  const userUpdate = fakeDb.__updates.find((item) => item.collection === 'users');
+  assert(userUpdate, 'Member login should update the deterministic user document.');
+  assert.strictEqual(userUpdate.id, deterministicUserId);
 }
 
 async function testLoginReturnsShopOnlyRoles() {
@@ -271,7 +296,7 @@ async function testLoginReturnsShopOnlyRoles() {
     wechat_bindings: [bindingFor('shop_openid', 'shop1')],
     accounts: [accountFor('shop_openid', 'shop1')],
     users: [
-      { _id: 'u1', _openid: 'shop_openid', role: 'shop', nickname: 'Shop', avatar: '' }
+      { _id: userIdFor('shop_openid'), _openid: 'shop_openid', roles: ['shop'], nickname: 'Shop', avatar: '' }
     ]
   });
   const res = await fn.main({ role: 'shop' });
@@ -284,7 +309,14 @@ async function testLoginRejectsClientRoleEscalationAndAllowsServerRole() {
     wechat_bindings: [bindingFor('coach_openid', 'coach1')],
     accounts: [accountFor('coach_openid', 'coach1')],
     users: [
-      { _id: 'u1', _openid: 'coach_openid', role: 'member', roles: ['member'], nickname: 'Coach', avatar: '' }
+      {
+        _id: userIdFor('coach_openid'),
+        _openid: 'coach_openid',
+        role: 'member',
+        roles: ['member'],
+        nickname: 'Coach',
+        avatar: ''
+      }
     ],
     admins: []
   };
@@ -309,7 +341,7 @@ async function testLoginRejectsMissingAccountWithoutWrites() {
   const state = {
     wechat_bindings: [bindingFor('member_openid', 'member1')],
     accounts: [],
-    users: [{ _id: 'u1', _openid: 'member_openid', role: 'member', roles: ['member'] }],
+    users: [{ _id: userIdFor('member_openid'), _openid: 'member_openid', role: 'member', roles: ['member'] }],
     admins: []
   };
   const { fn, fakeDb } = loadCloudFunction('cloudfunctions/login/index.js', 'member_openid', state);
@@ -327,7 +359,7 @@ async function testLoginRejectsContradictoryAccountBindingWithoutWrites() {
   const state = {
     wechat_bindings: [bindingFor('member_openid', 'member1')],
     accounts: [accountFor('member_openid', 'member1', { account: 'different_account' })],
-    users: [{ _id: 'u1', _openid: 'member_openid', role: 'member', roles: ['member'] }],
+    users: [{ _id: userIdFor('member_openid'), _openid: 'member_openid', role: 'member', roles: ['member'] }],
     admins: []
   };
   const { fn, fakeDb } = loadCloudFunction('cloudfunctions/login/index.js', 'member_openid', state);
@@ -345,7 +377,7 @@ async function testLoginPropagatesBindingReadFailureWithoutWrites() {
   const state = {
     wechat_bindings: [bindingFor('member_openid', 'member1')],
     accounts: [accountFor('member_openid', 'member1')],
-    users: [{ _id: 'u1', _openid: 'member_openid', role: 'member', roles: ['member'] }],
+    users: [{ _id: userIdFor('member_openid'), _openid: 'member_openid', role: 'member', roles: ['member'] }],
     admins: []
   };
   const { fn, fakeDb } = loadCloudFunction('cloudfunctions/login/index.js', 'member_openid', state);
@@ -355,6 +387,70 @@ async function testLoginPropagatesBindingReadFailureWithoutWrites() {
   assert.strictEqual(fakeDb.__updates.length, 0);
   assert.strictEqual(fakeDb.__adds.length, 0);
   assert.deepStrictEqual(state.admins, []);
+}
+
+async function testMarkFirstLoginRejectsUnboundOpenidWithoutWrites() {
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/markFirstLogin/index.js', 'unbound_openid', {
+    wechat_bindings: [],
+    accounts: [],
+    users: []
+  });
+
+  const result = await fn.main({ role: 'coach', firstLoginAt: 123456 });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'ACCOUNT_NOT_BOUND');
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
+}
+
+async function testMarkFirstLoginRejectsUnauthorizedRoleWithoutWrites() {
+  const openid = 'member_openid';
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/markFirstLogin/index.js', openid, {
+    wechat_bindings: [bindingFor(openid, 'member1')],
+    accounts: [accountFor(openid, 'member1')],
+    users: [{
+      _id: userIdFor(openid),
+      _openid: openid,
+      roles: ['member'],
+      role: 'member',
+      currentRole: 'member'
+    }]
+  });
+
+  const result = await fn.main({ role: 'coach', firstLoginAt: 123456 });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'ROLE_NOT_ALLOWED');
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
+}
+
+async function testMarkFirstLoginUsesServerTimeWithoutGrantingRoles() {
+  const openid = 'member_openid';
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/markFirstLogin/index.js', openid, {
+    wechat_bindings: [bindingFor(openid, 'member1')],
+    accounts: [accountFor(openid, 'member1')],
+    users: [{
+      _id: userIdFor(openid),
+      _openid: openid,
+      roles: ['member'],
+      role: 'member',
+      currentRole: 'member'
+    }]
+  });
+
+  const result = await fn.main({ role: 'member', firstLoginAt: 123456 });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.firstLoginAt, 'SERVER_DATE');
+  assert.strictEqual(fakeDb.__adds.length, 0);
+  assert.strictEqual(fakeDb.__updates.length, 1);
+  assert.strictEqual(fakeDb.__updates[0].id, userIdFor(openid));
+  assert.deepStrictEqual(fakeDb.__updates[0].data, {
+    firstLoginAt: 'SERVER_DATE',
+    'per_role.member.firstLoginAt': 'SERVER_DATE'
+  });
 }
 
 function testLoginPageHasNoLocalEntitlementSource() {
@@ -594,10 +690,13 @@ function testCheckinPageExposesDetailFilters() {
 }
 
 (async () => {
+  await testMarkFirstLoginUsesServerTimeWithoutGrantingRoles();
+  await testMarkFirstLoginRejectsUnauthorizedRoleWithoutWrites();
+  await testMarkFirstLoginRejectsUnboundOpenidWithoutWrites();
   await testLoginPropagatesBindingReadFailureWithoutWrites();
   await testLoginRejectsContradictoryAccountBindingWithoutWrites();
   await testLoginRejectsMissingAccountWithoutWrites();
-  await testLoginReturnsRolesAndCurrentRoleForLegacyCoach();
+  await testLoginUsesDeterministicUserInsteadOfLegacyCoach();
   await testLoginReturnsShopOnlyRoles();
   await testLoginRejectsClientRoleEscalationAndAllowsServerRole();
   testLoginPageHasNoLocalEntitlementSource();

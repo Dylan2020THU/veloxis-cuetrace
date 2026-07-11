@@ -1,9 +1,28 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');
 
 const root = path.resolve(__dirname, '..');
+
+function bindingFor(openid, account) {
+  return {
+    _id: crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex'),
+    _openid: openid,
+    accountId: crypto.createHash('sha256').update(`account:${String(account).toLowerCase()}`).digest('hex'),
+    account
+  };
+}
+
+function accountFor(openid, account) {
+  return {
+    _id: crypto.createHash('sha256').update(`account:${String(account).toLowerCase()}`).digest('hex'),
+    _openid: openid,
+    account,
+    status: 'active'
+  };
+}
 
 function read(file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
@@ -21,6 +40,7 @@ function matches(record, query) {
 function createFakeDb(seed) {
   const updates = [];
   const adds = [];
+  const sets = [];
 
   class Query {
     constructor(name) {
@@ -53,12 +73,15 @@ function createFakeDb(seed) {
           return {
             async get() {
               const hit = (seed[name] || []).find((item) => item._id === id);
-              if (!hit) throw new Error('not found');
-              return { data: hit };
+              return { data: hit || null };
             },
             async update({ data }) {
               updates.push({ collection: name, id, data });
               return { updated: 1 };
+            },
+            async set({ data }) {
+              sets.push({ collection: name, id, data });
+              return { _id: id };
             }
           };
         },
@@ -72,7 +95,8 @@ function createFakeDb(seed) {
       return 'SERVER_DATE';
     },
     __updates: updates,
-    __adds: adds
+    __adds: adds,
+    __sets: sets
   };
   return db;
 }
@@ -172,6 +196,68 @@ async function testApprovalAddsCoachRoleWithoutDroppingMember() {
   assert.strictEqual(userUpdate.data.currentRole, 'member');
 }
 
+async function testSaveCoachProfileRejectsUnboundOpenidWithoutWrites() {
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/saveCoachProfile/index.js', 'unbound_openid', {
+    wechat_bindings: [],
+    accounts: [],
+    users: [],
+    coaches: []
+  });
+
+  const result = await fn.main({ nickname: 'Unbound Coach', avatar: 'cloud://unbound' });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'ACCOUNT_NOT_BOUND');
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
+  assert.strictEqual(fakeDb.__sets.length, 0);
+}
+
+async function testBoundMemberCanSaveDeterministicCoachProfileWithoutRoleGrant() {
+  const openid = 'member_openid';
+  const binding = bindingFor(openid, 'member1');
+  const state = {
+    wechat_bindings: [binding],
+    accounts: [accountFor(openid, 'member1')],
+    users: [{
+      _id: binding._id,
+      _openid: openid,
+      roles: ['member'],
+      role: 'member',
+      currentRole: 'member',
+      nickname: '',
+      avatar: ''
+    }],
+    coaches: []
+  };
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/saveCoachProfile/index.js', openid, state);
+
+  const result = await fn.main({
+    nickname: 'Applicant A',
+    avatar: 'cloud://applicant',
+    intro: '申请成为教练'
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(fakeDb.__adds.length, 0, 'Saving an application profile must not create random user or coach documents.');
+  assert.strictEqual(fakeDb.__sets.length, 1);
+  assert.strictEqual(fakeDb.__sets[0].collection, 'coaches');
+  assert.strictEqual(fakeDb.__sets[0].id, binding._id);
+  assert.strictEqual(fakeDb.__sets[0].data._openid, openid);
+
+  const userUpdate = fakeDb.__updates.find((item) => item.collection === 'users');
+  assert(userUpdate, 'The existing deterministic user should receive nickname/avatar updates.');
+  assert.strictEqual(userUpdate.id, binding._id);
+  assert.deepStrictEqual(userUpdate.data, {
+    nickname: 'Applicant A',
+    avatar: 'cloud://applicant',
+    updatedAt: 'SERVER_DATE'
+  });
+  assert.deepStrictEqual(state.users[0].roles, ['member']);
+  assert.strictEqual(state.users[0].role, 'member');
+  assert.strictEqual(state.users[0].currentRole, 'member');
+}
+
 async function testAuthorizedCoachCanBeAddedToShop() {
   const { fn, fakeDb } = loadCloudFunction('cloudfunctions/addShopCoach/index.js', 'shop_openid', {
     users: [
@@ -256,6 +342,8 @@ async function testReactivatedCoachLinkUsesCanonicalStoreName() {
 (async () => {
   testStaticWiring();
   testApplyPageExists();
+  await testBoundMemberCanSaveDeterministicCoachProfileWithoutRoleGrant();
+  await testSaveCoachProfileRejectsUnboundOpenidWithoutWrites();
   await testApprovalAddsCoachRoleWithoutDroppingMember();
   await testAuthorizedCoachCanBeAddedToShop();
   await testReactivatedCoachLinkUsesCanonicalStoreName();
