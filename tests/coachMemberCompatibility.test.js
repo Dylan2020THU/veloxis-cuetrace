@@ -1,9 +1,19 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');
 
 const root = path.resolve(__dirname, '..');
+
+function bindingFor(openid, account) {
+  return {
+    _id: crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex'),
+    _openid: openid,
+    accountId: crypto.createHash('sha256').update(`account:${String(account).toLowerCase()}`).digest('hex'),
+    account
+  };
+}
 
 function read(file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
@@ -132,14 +142,21 @@ function createFakeDb(seed) {
         },
         doc(id) {
           return {
+            async get() {
+              const item = (seed[name] || []).find((record) => record._id === id);
+              return { data: item || null };
+            },
             async update({ data }) {
               updates.push({ collection: name, id, data });
+              const item = (seed[name] || []).find((record) => record._id === id);
+              if (item) Object.assign(item, data);
               return { updated: 1 };
             }
           };
         },
         async add({ data }) {
           adds.push({ collection: name, data });
+          (seed[name] || (seed[name] = [])).push(Object.assign({ _id: `${name}_new` }, data));
           return { _id: `${name}_new` };
         },
         async get() {
@@ -217,6 +234,7 @@ function loadLoginPage(accounts) {
 
 async function testLoginReturnsRolesAndCurrentRoleForLegacyCoach() {
   const { fn } = loadCloudFunction('cloudfunctions/login/index.js', 'coach_openid', {
+    wechat_bindings: [bindingFor('coach_openid', 'coach1')],
     users: [
       { _id: 'u1', _openid: 'coach_openid', role: 'coach', nickname: 'Coach', avatar: 'cloud://a' }
     ]
@@ -229,6 +247,7 @@ async function testLoginReturnsRolesAndCurrentRoleForLegacyCoach() {
 
 async function testLoginReturnsShopOnlyRoles() {
   const { fn } = loadCloudFunction('cloudfunctions/login/index.js', 'shop_openid', {
+    wechat_bindings: [bindingFor('shop_openid', 'shop1')],
     users: [
       { _id: 'u1', _openid: 'shop_openid', role: 'shop', nickname: 'Shop', avatar: '' }
     ]
@@ -238,16 +257,29 @@ async function testLoginReturnsShopOnlyRoles() {
   assert.strictEqual(res.currentRole, 'shop');
 }
 
-async function testLoginAcceptsValidatedAccountRolesForExistingUser() {
-  const { fn } = loadCloudFunction('cloudfunctions/login/index.js', 'coach_openid', {
+async function testLoginRejectsClientRoleEscalationAndAllowsServerRole() {
+  const state = {
+    wechat_bindings: [bindingFor('coach_openid', 'coach1')],
     users: [
       { _id: 'u1', _openid: 'coach_openid', role: 'member', roles: ['member'], nickname: 'Coach', avatar: '' }
-    ]
+    ],
+    admins: []
+  };
+  const { fn } = loadCloudFunction('cloudfunctions/login/index.js', 'coach_openid', state);
+  const denied = await fn.main({
+    role: 'coach',
+    roles: ['member', 'coach', 'shop'],
+    loginName: 'admin_zhx'
   });
-  const res = await fn.main({ role: 'coach', roles: ['member', 'coach'] });
-  assert.deepStrictEqual(res.roles, ['member', 'coach']);
-  assert.strictEqual(res.currentRole, 'coach');
-  assert.strictEqual(res.role, 'coach');
+  assert.strictEqual(denied.ok, false);
+  assert.strictEqual(denied.code, 'ROLE_NOT_ALLOWED');
+  assert.deepStrictEqual(state.users[0].roles, ['member']);
+  assert.deepStrictEqual(state.admins, []);
+
+  state.users[0].roles = ['member', 'coach'];
+  const allowed = await fn.main({ role: 'coach' });
+  assert.strictEqual(allowed.role, 'coach');
+  assert.deepStrictEqual(allowed.roles, ['member', 'coach']);
 }
 
 function testLocalRegisteredAccountsUseEntitlements() {
@@ -385,7 +417,7 @@ function testCheckinPageExposesDetailFilters() {
 (async () => {
   await testLoginReturnsRolesAndCurrentRoleForLegacyCoach();
   await testLoginReturnsShopOnlyRoles();
-  await testLoginAcceptsValidatedAccountRolesForExistingUser();
+  await testLoginRejectsClientRoleEscalationAndAllowsServerRole();
   testLocalRegisteredAccountsUseEntitlements();
   await testDataLoginForwardsValidatedRoles();
   testLoginFailuresSurfaceCloudMessage();

@@ -1,4 +1,5 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const Module = require('module');
@@ -135,9 +136,21 @@ async function testLocalAdminOpenidDoesNotMakeOtherAccountsAdmin() {
   assert.strictEqual(res.isAdmin, false, 'A normal account must not inherit admin status from the same local openid.');
 }
 
-async function testCloudLoginSeedsAdminByAccount() {
+async function testCloudLoginDoesNotSeedAdminByAccount() {
   const adds = [];
   const updates = [];
+  const openid = 'admin_openid';
+  const bindingId = crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
+  const state = {
+    users: [{ _id: 'user_doc', _openid: openid, role: 'member', roles: ['member'] }],
+    wechat_bindings: [{
+      _id: bindingId,
+      _openid: openid,
+      accountId: crypto.createHash('sha256').update('account:member1').digest('hex'),
+      account: 'member1'
+    }],
+    admins: []
+  };
   const fakeDb = {
     command: {
       remove() {
@@ -150,26 +163,39 @@ async function testCloudLoginSeedsAdminByAccount() {
     collection(name) {
       return {
         where(query) {
-          return {
+          const api = {
+            limit() {
+              return api;
+            },
             async get() {
-              if (name === 'users') return { data: [{ _id: 'user_doc', _openid: query._openid, role: 'member' }] };
-              if (name === 'admins') return { data: [] };
-              return { data: [] };
+              return {
+                data: (state[name] || []).filter((item) => (
+                  Object.keys(query || {}).every((key) => item[key] === query[key])
+                ))
+              };
             },
             async update({ data }) {
               updates.push({ name, query, data });
             }
           };
+          return api;
         },
         doc(id) {
           return {
+            async get() {
+              const item = (state[name] || []).find((record) => record._id === id);
+              return { data: item || null };
+            },
             async update({ data }) {
               updates.push({ name, id, data });
+              const item = (state[name] || []).find((record) => record._id === id);
+              if (item) Object.assign(item, data);
             }
           };
         },
         async add({ data }) {
           adds.push({ name, data });
+          (state[name] || (state[name] = [])).push(Object.assign({ _id: `${name}_new` }, data));
           return { _id: `${name}_new` };
         }
       };
@@ -182,19 +208,18 @@ async function testCloudLoginSeedsAdminByAccount() {
       return fakeDb;
     },
     getWXContext() {
-      return { OPENID: 'admin_openid' };
+      return { OPENID: openid };
     }
   };
 
   const fnPath = path.join(root, 'cloudfunctions/login/index.js');
   delete require.cache[require.resolve(fnPath)];
   const login = withWxServerSdk(fakeCloud, () => require(fnPath));
-  await login.main({ role: 'member', roles: ['member'], loginName: 'admin_zhx' });
+  const result = await login.main({ role: 'member', roles: ['member', 'coach'], loginName: 'admin_zhx' });
 
-  assert(
-    adds.some((item) => item.name === 'admins' && item.data._openid === 'admin_openid' && item.data.account === 'admin_zhx' && item.data.status === 'active'),
-    'Cloud login should seed the configured admin account into admins collection.'
-  );
+  assert.strictEqual(result.role, 'member');
+  assert.strictEqual(adds.some((item) => item.name === 'admins'), false, 'Normal login must not create admin records.');
+  assert.deepStrictEqual(state.admins, []);
 }
 
 async function testCloudAdminStatusRequiresCurrentAdminAccount() {
@@ -420,7 +445,7 @@ async function testAdminShopLoginSkipsQualificationGate() {
   await testLocalDefaultUserIsNotAdmin();
   await testLocalAdminAccountIsAdmin();
   await testLocalAdminOpenidDoesNotMakeOtherAccountsAdmin();
-  await testCloudLoginSeedsAdminByAccount();
+  await testCloudLoginDoesNotSeedAdminByAccount();
   await testCloudAdminStatusRequiresCurrentAdminAccount();
   await testCloudReviewListRequiresCurrentAdminAccount();
   await testCloudReviewApprovalAddsShopRoleToUserRoles();

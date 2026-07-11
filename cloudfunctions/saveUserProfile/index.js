@@ -19,7 +19,10 @@ exports.main = async (event = {}) => {
   const existing = await users.where({ _openid: OPENID }).get();
   const current = (existing.data && existing.data[0]) || {};
   const roles = normalizeRoles(current.role, current.roles);
-  const currentRole = event.role || current.currentRole || current.role || roles[0] || 'member';
+  const requestedRole = event.role || current.currentRole || current.role || roles[0];
+  if (roles.indexOf(requestedRole) === -1) {
+    return { ok: false, code: 'ROLE_NOT_ALLOWED', msg: '该账号未开通此身份' };
+  }
   const profile = {
     nickname: event.nickname !== undefined ? event.nickname : (current.nickname || ''),
     avatar: event.avatar !== undefined ? event.avatar : (current.avatar || ''),
@@ -37,8 +40,8 @@ exports.main = async (event = {}) => {
     canSeeHometown: event.canSeeHometown !== undefined ? !!event.canSeeHometown : (current.canSeeHometown !== undefined ? !!current.canSeeHometown : true),
     canSeePhone: event.canSeePhone !== undefined ? !!event.canSeePhone : (current.canSeePhone !== undefined ? !!current.canSeePhone : false),
     roles,
-    currentRole,
-    role: currentRole,
+    currentRole: requestedRole,
+    role: requestedRole,
     updatedAt: db.serverDate()
   };
 

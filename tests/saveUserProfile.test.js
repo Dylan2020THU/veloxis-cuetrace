@@ -185,6 +185,66 @@ async function testCloudFunctionPreservesExistingFieldsOnPartialUpdate() {
   });
 }
 
+async function testCloudFunctionRejectsUnapprovedProfileRole() {
+  const updates = [];
+  const adds = [];
+  const fakeDb = {
+    serverDate: () => 'SERVER_DATE',
+    collection(name) {
+      assert.strictEqual(name, 'users');
+      return {
+        where(query) {
+          assert.deepStrictEqual(query, { _openid: 'user_openid' });
+          return {
+            async get() {
+              return {
+                data: [{
+                  _id: 'user_doc_id',
+                  _openid: 'user_openid',
+                  role: 'member',
+                  roles: ['member'],
+                  currentRole: 'member',
+                  nickname: 'Member'
+                }]
+              };
+            }
+          };
+        },
+        doc() {
+          return {
+            async update({ data }) {
+              updates.push(data);
+            }
+          };
+        },
+        async add({ data }) {
+          adds.push(data);
+        }
+      };
+    }
+  };
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'DYNAMIC_CURRENT_ENV',
+    init() {},
+    database() {
+      return fakeDb;
+    },
+    getWXContext() {
+      return { OPENID: 'user_openid' };
+    }
+  };
+
+  const fnPath = path.join(root, 'cloudfunctions/saveUserProfile/index.js');
+  delete require.cache[require.resolve(fnPath)];
+  const saveUserProfile = withWxServerSdk(fakeCloud, () => require(fnPath));
+  const result = await saveUserProfile.main({ role: 'shop', nickname: 'Member' });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'ROLE_NOT_ALLOWED');
+  assert.strictEqual(updates.length, 0);
+  assert.strictEqual(adds.length, 0);
+}
+
 async function testDataServiceForwardsVisibilityFields() {
   const captured = [];
   global.getApp = () => ({ globalData: { cloudReady: true } });
@@ -296,6 +356,7 @@ async function testGetUserProfileReturnsSavedProfileFields() {
 (async () => {
   await testCloudFunctionUpdatesUserProfile();
   await testCloudFunctionPreservesExistingFieldsOnPartialUpdate();
+  await testCloudFunctionRejectsUnapprovedProfileRole();
   await testDataServiceForwardsVisibilityFields();
   await testGetUserProfileReturnsSavedProfileFields();
 })();

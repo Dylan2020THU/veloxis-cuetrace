@@ -185,6 +185,90 @@ function withWxServerSdk(fakeCloud, fn) {
   }
 }
 
+function loadAdminLogin(openid, adminSeed) {
+  const admins = (adminSeed || []).map((item) => Object.assign({}, item));
+  const fakeDb = {
+    serverDate() {
+      return 'SERVER_DATE';
+    },
+    collection(name) {
+      assert.strictEqual(name, 'admins');
+      return {
+        where(query) {
+          return {
+            async get() {
+              return {
+                data: admins.filter((item) => (
+                  Object.keys(query || {}).every((key) => item[key] === query[key])
+                ))
+              };
+            }
+          };
+        },
+        doc(id) {
+          return {
+            async update({ data }) {
+              const item = admins.find((record) => record._id === id);
+              if (item) Object.assign(item, data);
+            }
+          };
+        },
+        async add({ data }) {
+          admins.push(Object.assign({ _id: `admin_${admins.length + 1}` }, data));
+        }
+      };
+    }
+  };
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'DYNAMIC_CURRENT_ENV',
+    init() {},
+    database() {
+      return fakeDb;
+    },
+    getWXContext() {
+      return { OPENID: openid };
+    }
+  };
+  const fnPath = path.join(root, 'cloudfunctions/adminLogin/index.js');
+  delete require.cache[require.resolve(fnPath)];
+  return {
+    adminLogin: withWxServerSdk(fakeCloud, () => require(fnPath)),
+    admins
+  };
+}
+
+async function testAdminLoginRejectsAccountBoundToOtherWechat() {
+  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const { adminLogin, admins } = loadAdminLogin('other_wechat', [{
+    _id: 'admin_existing',
+    _openid: 'bound_wechat',
+    account: 'admin_zhx',
+    status: 'active'
+  }]);
+
+  const result = await adminLogin.main({ account: 'admin_zhx', password });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'ACCOUNT_ALREADY_BOUND');
+  assert.strictEqual(admins.length, 1);
+}
+
+async function testAdminLoginRejectsWechatBoundToOtherAccount() {
+  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const { adminLogin, admins } = loadAdminLogin('bound_wechat', [{
+    _id: 'admin_existing',
+    _openid: 'bound_wechat',
+    account: 'legacy_admin',
+    status: 'active'
+  }]);
+
+  const result = await adminLogin.main({ account: 'admin_zhx', password });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'WECHAT_ALREADY_BOUND');
+  assert.strictEqual(admins.length, 1);
+}
+
 async function testAdminStoresCloudRequiresAdminLoginName() {
   const fakeDb = {
     serverDate() {
@@ -371,6 +455,8 @@ function testAdminPagesExistAndRenderRequiredSections() {
 (async () => {
   await testAdminPasswordLoginBypassesRolePicker();
   await testAdminMissingCloudFunctionShowsDeployMessage();
+  await testAdminLoginRejectsAccountBoundToOtherWechat();
+  await testAdminLoginRejectsWechatBoundToOtherAccount();
   testStaticAdminWiring();
   testAdminDataServiceExports();
   await testAdminStoresCloudRequiresAdminLoginName();
