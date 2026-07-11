@@ -59,6 +59,9 @@
   margin-top: 20rpx;
   line-height: 1.5;
 }
+.qr-ph-error {
+  color: #e5484d;
+}
 .qr-ph-payload {
   font-size: 26rpx;
   color: #1f2329;

@@ -191,43 +191,45 @@
   <view class="use-sheet theme-{{theme}}" catchtap="noop">
     <view class="use-title">开台 · {{openSheet.tableName}}</view>
 
-    <view class="use-section-label">到店球员</view>
-    <view class="use-opt {{openSheet.selectedMember === '' ? 'sel' : ''}}" data-openid="" bindtap="selectMember">
-      <view class="use-avatar ph">匿</view>
-      <view class="use-opt-main">
-        <text class="use-opt-name">匿名开台（不绑定球员）</text>
-        <text class="use-opt-sub">无球员到店或散客自助</text>
-      </view>
-      <view class="use-radio"></view>
-    </view>
-    <view class="use-opt {{openSheet.selectedMember === item.memberOpenid ? 'sel' : ''}}"
-      wx:for="{{openSheet.requests}}" wx:key="_id"
-      data-openid="{{item.memberOpenid}}" bindtap="selectMember">
-      <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
-      <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '球'}}</view>
-      <view class="use-opt-main">
-        <text class="use-opt-name">{{item.nickname || '球员'}}</text>
-        <text wx:if="{{item.dist != null}}" class="use-opt-sub">距门店 {{item.dist}}km</text>
-      </view>
-      <view class="use-radio"></view>
-    </view>
-    <view wx:if="{{!openSheet.requests.length}}" class="use-empty">暂无到店待确认球员，可匿名开台</view>
-
-    <view class="use-row">
-      <text class="use-section-label nomargin">教学局（绑定教练课时）</text>
-      <switch checked="{{openSheet.isCoaching}}" bindchange="toggleCoaching" color="#067ef9" />
-    </view>
-    <block wx:if="{{openSheet.isCoaching}}">
-      <view class="use-opt {{openSheet.coachOpenid === item._cid ? 'sel' : ''}}"
-        wx:for="{{coaches}}" wx:key="_cid"
-        data-openid="{{item._cid}}" bindtap="selectCoach">
-        <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
-        <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '教'}}</view>
-        <view class="use-opt-main"><text class="use-opt-name">{{item.nickname}}</text></view>
+    <view class="use-scroll">
+      <view class="use-section-label">到店球员</view>
+      <view class="use-opt {{openSheet.selectedMember === '' ? 'sel' : ''}}" data-openid="" bindtap="selectMember">
+        <view class="use-avatar ph">匿</view>
+        <view class="use-opt-main">
+          <text class="use-opt-name">匿名开台（不绑定球员）</text>
+          <text class="use-opt-sub">无球员到店或散客自助</text>
+        </view>
         <view class="use-radio"></view>
       </view>
-      <view wx:if="{{!coaches.length}}" class="use-empty">本店暂无教练，请先在「教练」中添加</view>
-    </block>
+      <view class="use-opt {{openSheet.selectedMember === item.memberOpenid ? 'sel' : ''}}"
+        wx:for="{{openSheet.requests}}" wx:key="_id"
+        data-openid="{{item.memberOpenid}}" bindtap="selectMember">
+        <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
+        <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '球'}}</view>
+        <view class="use-opt-main">
+          <text class="use-opt-name">{{item.nickname || '球员'}}</text>
+          <text wx:if="{{item.dist != null}}" class="use-opt-sub">距门店 {{item.dist}}km</text>
+        </view>
+        <view class="use-radio"></view>
+      </view>
+      <view wx:if="{{!openSheet.requests.length}}" class="use-empty">暂无到店待确认球员，可匿名开台</view>
+
+      <view class="use-row">
+        <text class="use-section-label nomargin">教学局（绑定教练课时）</text>
+        <switch checked="{{openSheet.isCoaching}}" bindchange="toggleCoaching" color="#067ef9" />
+      </view>
+      <block wx:if="{{openSheet.isCoaching}}">
+        <view class="use-opt {{openSheet.coachOpenid === item._cid ? 'sel' : ''}}"
+          wx:for="{{coaches}}" wx:key="_cid"
+          data-openid="{{item._cid}}" bindtap="selectCoach">
+          <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
+          <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '教'}}</view>
+          <view class="use-opt-main"><text class="use-opt-name">{{item.nickname}}</text></view>
+          <view class="use-radio"></view>
+        </view>
+        <view wx:if="{{!coaches.length}}" class="use-empty">本店暂无教练，请先在「教练」中添加</view>
+      </block>
+    </view>
 
     <view class="use-actions">
       <view class="use-btn ghost" bindtap="closeUseSheet">取消</view>

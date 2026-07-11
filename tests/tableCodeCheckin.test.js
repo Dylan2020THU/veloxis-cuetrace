@@ -35,7 +35,8 @@ assert(
 );
 
 assert(
-  genCheckinCode.includes("sceneParts.push('t=' + tableId)") &&
+  genCheckinCode.includes("require('./scene')") &&
+    genCheckinCode.includes('buildScene(storeId, tableId)') &&
     genCheckinCode.includes("page: page || (tableId ? 'pages/table/checkin/index' : 'pages/match/index')"),
   'genCheckinCode should generate stable table-code scenes and route table codes to the table checkin page.'
 );

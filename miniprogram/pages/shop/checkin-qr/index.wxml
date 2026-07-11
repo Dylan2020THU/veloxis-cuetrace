@@ -10,7 +10,8 @@
       <image wx:if="{{qr}}" class="qr-img" src="{{qr}}" mode="aspectFit" />
       <view wx:else class="qr-ph">
         <view class="qr-ph-mark">{{tableId ? '球桌码' : '到店码'}}</view>
-        <view class="qr-ph-tip">演示/未部署：可扫码图需部署 genCheckinCode 云函数后生成</view>
+        <view wx:if="{{qrLoading}}" class="qr-ph-tip">桌码生成中...</view>
+        <view wx:else class="qr-ph-tip {{qrError ? 'qr-ph-error' : ''}}">{{qrError || '可扫码图需部署 genCheckinCode 云函数后生成'}}</view>
         <view class="qr-ph-payload">{{payload}}</view>
       </view>
 

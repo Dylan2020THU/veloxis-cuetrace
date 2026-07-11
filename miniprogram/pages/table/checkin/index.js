@@ -1,25 +1,5 @@
 const data = require('../../../services/data');
-
-function parsePayload(options) {
-  const raw = (options && (options.scene || options.q || options.payload)) || '';
-  let str = raw ? decodeURIComponent(raw) : '';
-  if (!str && options) {
-    const tableName = options.tableName || options.tn || '';
-    return { storeId: options.storeId || options.s || '', tableId: options.tableId || options.t || '', tableName };
-  }
-  const qi = str.indexOf('?');
-  if (qi >= 0) str = str.slice(qi + 1);
-  const map = {};
-  str.split('&').forEach((pair) => {
-    const parts = pair.split('=');
-    if (parts[0]) map[parts[0]] = decodeURIComponent(parts[1] || '');
-  });
-  return {
-    storeId: map.s || map.storeId || '',
-    tableId: map.t || map.tableId || '',
-    tableName: map.tn || map.tableName || ''
-  };
-}
+const { parseTableCode } = require('../../../utils/tableCode');
 
 function tableIdFor(item, index) {
   return item.tableId || `T${index + 1}`;
@@ -42,7 +22,7 @@ Page({
   },
 
   onLoad(options) {
-    const payload = parsePayload(options || {});
+    const payload = parseTableCode(options || {});
     this.setData({
       storeId: payload.storeId,
       tableId: payload.tableId,
