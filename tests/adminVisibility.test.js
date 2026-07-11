@@ -409,7 +409,7 @@ function testAdminLoginUsesDedicatedPortalPath() {
   assert.strictEqual(typeof page.doAdminLogin, 'function', 'Admin login should use a dedicated admin entry path.');
 }
 
-async function testAdminShopLoginSkipsQualificationGate() {
+async function testAdminAccountStringCannotBypassShopQualificationGate() {
   const calls = {
     login: [],
     getShopApplicationStatus: 0,
@@ -441,10 +441,10 @@ async function testAdminShopLoginSkipsQualificationGate() {
   await flushPromises();
   await flushPromises();
 
-  assert.deepStrictEqual(calls.login[0], ['shop', ['member', 'coach', 'shop'], 'admin_zhx']);
-  assert.strictEqual(calls.getShopApplicationStatus, 0, 'Admin shop login should not check shop qualification status.');
-  assert.deepStrictEqual(calls.switchTab[0], { url: '/pages/shop/hall-status/index' });
-  assert.strictEqual(calls.reLaunch.length, 0, 'Admin shop login should not redirect to shop apply page.');
+  assert.deepStrictEqual(calls.login[0], ['shop'], 'Shop login should send only the requested role to server authorization.');
+  assert.strictEqual(calls.getShopApplicationStatus, 1, 'A client-provided admin account must not skip shop qualification status.');
+  assert.strictEqual(calls.switchTab.length, 0, 'An unapproved shop must not enter the shop home page.');
+  assert.deepStrictEqual(calls.reLaunch[0], { url: '/pages/shop/apply/index' });
 }
 
 (async () => {
@@ -458,5 +458,5 @@ async function testAdminShopLoginSkipsQualificationGate() {
   testAdminCloudCallsIncludeCurrentLoginName();
   testSettingsEntryIsAdminOnly();
   testAdminLoginUsesDedicatedPortalPath();
-  await testAdminShopLoginSkipsQualificationGate();
+  await testAdminAccountStringCannotBypassShopQualificationGate();
 })();

@@ -77,6 +77,16 @@ function loadLoginPage(accounts, fakeData, appData) {
   delete require.cache[require.resolve(mockPath)];
 
   let page;
+  const calls = {
+    storageReads: [],
+    storageWrites: [],
+    storageRemovals: [],
+    toasts: [],
+    switchTab: [],
+    reLaunch: [],
+    navigateTo: []
+  };
+  const app = { globalData: Object.assign({ cloudReady: false, account: '', roles: [] }, appData || {}) };
   const originalLoad = Module._load;
   Module._load = function patchedLoad(request, parent, isMain) {
     if (fakeData && request === '../../services/data') return fakeData;
@@ -86,20 +96,34 @@ function loadLoginPage(accounts, fakeData, appData) {
     page = def;
   };
   global.Behavior = (def) => def;
-  global.getApp = () => ({ globalData: Object.assign({ cloudReady: false }, appData || {}) });
+  global.getApp = () => app;
   global.wx = {
     getStorageSync(key) {
+      calls.storageReads.push(key);
       if (key === 'dc_accounts') return accounts;
       return null;
     },
-    setStorageSync() {},
-    showToast() {},
+    setStorageSync(key, value) {
+      calls.storageWrites.push([key, value]);
+    },
+    removeStorageSync(key) {
+      calls.storageRemovals.push(key);
+    },
+    showToast(options) {
+      calls.toasts.push(options);
+    },
     showLoading() {},
     hideLoading() {},
     showModal() {},
-    switchTab() {},
-    reLaunch() {},
-    navigateTo() {}
+    switchTab(options) {
+      calls.switchTab.push(options);
+    },
+    reLaunch(options) {
+      calls.reLaunch.push(options);
+    },
+    navigateTo(options) {
+      calls.navigateTo.push(options);
+    }
   };
 
   try {
@@ -111,6 +135,8 @@ function loadLoginPage(accounts, fakeData, appData) {
   page.setData = function setData(next) {
     this.data = Object.assign({}, this.data, next);
   };
+  page._testCalls = calls;
+  page._testApp = app;
   return page;
 }
 
@@ -165,6 +191,14 @@ assert(
 );
 
 assert(
+  loginWxml.includes('当前微信尚未绑定账号') &&
+    loginWxml.includes('每个账号和微信只能绑定一次') &&
+    !loginWxml.includes('bindtap="bindWechat"') &&
+    !loginWxml.includes('绑定账号或手机号'),
+  'An unbound WeChat should show binding guidance instead of the old local binding form.'
+);
+
+assert(
   !loginWxml.includes('wechat-logo-bubble') && !loginWxss.includes('wechat-logo-bubble') && !loginWxss.includes('wechat-dot'),
   'The WeChat login button should not use the old hand-drawn logo.'
 );
@@ -214,9 +248,14 @@ assert(
   'Role picker should render every role, lock unopened roles, and enter only after confirmation.'
 );
 
-async function testPasswordLoginShowsRolePickerBeforeLogin() {
+async function testPasswordLoginUsesServerAuthResult() {
+  const authCalls = [];
   const loginCalls = [];
   const fakeData = {
+    loginWithPassword(input) {
+      authCalls.push(input);
+      return Promise.resolve({ account: 'serverCoach', roles: ['member', 'coach'], currentRole: 'coach' });
+    },
     login(...args) {
       loginCalls.push(args);
       return Promise.resolve('openid');
@@ -230,10 +269,10 @@ async function testPasswordLoginShowsRolePickerBeforeLogin() {
     }
   };
   const page = loadLoginPage([
-    { account: 'coach1', password: '123456', role: 'coach', roles: ['member', 'coach'] }
+    { account: 'localAdmin', password: '123456', role: 'shop', roles: ['member', 'coach', 'shop'] }
   ], fakeData);
   page.setData({
-    account: 'coach1',
+    account: 'submittedCoach',
     password: '123456',
     agreementChecked: true,
     loginType: 'password'
@@ -243,9 +282,10 @@ async function testPasswordLoginShowsRolePickerBeforeLogin() {
   await flushPromises();
   await flushPromises();
 
+  assert.deepStrictEqual(authCalls, [{ account: 'submittedCoach', password: '123456' }]);
   assert.strictEqual(loginCalls.length, 0, 'Account verification should not call data.login before role selection.');
   assert.strictEqual(page.data.step, 'role');
-  assert.strictEqual(page.data.pendingAccount, 'coach1');
+  assert.strictEqual(page.data.pendingAccount, 'serverCoach');
   assert.deepStrictEqual(page.data.pendingRoles, ['member', 'coach']);
   assert.deepStrictEqual(page.data.availableRoles.map((item) => [item.key, item.enabled]), [
     ['member', true],
@@ -260,7 +300,93 @@ async function testPasswordLoginShowsRolePickerBeforeLogin() {
   await flushPromises();
   await flushPromises();
 
-  assert.deepStrictEqual(loginCalls[0], ['coach', ['member', 'coach'], 'coach1']);
+  assert.deepStrictEqual(loginCalls[0], ['coach']);
+  assert(!page._testCalls.storageReads.includes('dc_accounts'), 'Password auth must not read local accounts.');
+  assert(!page._testCalls.storageWrites.some(([key]) => key === 'dc_accounts' || key === 'dc_wechat_bindings'), 'Password auth must not write local auth records.');
+  assert.deepStrictEqual(page._testCalls.storageRemovals.sort(), ['dc_accounts', 'dc_wechat_bindings']);
+}
+
+async function testWechatLoginUsesServerAuthResult() {
+  const fakeData = {
+    loginWithWechat() {
+      return Promise.resolve({ account: 'serverMember', roles: ['member'], currentRole: 'member' });
+    }
+  };
+  const page = loadLoginPage([
+    { account: 'forgedShop', password: '123456', role: 'shop', roles: ['shop'] }
+  ], fakeData);
+  page.setData({ agreementChecked: true });
+
+  page.wechatLogin();
+  await flushPromises();
+
+  assert.strictEqual(page.data.step, 'role');
+  assert.strictEqual(page.data.pendingAccount, 'serverMember');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member']);
+  assert(!page._testCalls.storageReads.includes('dc_accounts'), 'WeChat auth must ignore forged local accounts.');
+}
+
+async function testWechatNotBoundShowsGuidance() {
+  const error = Object.assign(new Error('当前微信尚未绑定账号'), { code: 'WECHAT_NOT_BOUND' });
+  const page = loadLoginPage([], {
+    loginWithWechat() {
+      return Promise.reject(error);
+    }
+  });
+  page.setData({ agreementChecked: true });
+
+  page.wechatLogin();
+  await flushPromises();
+
+  assert.strictEqual(page.data.mode, 'wechatBind');
+  assert.strictEqual(page.data.step, 'auth');
+  assert.strictEqual(page._testCalls.switchTab.length + page._testCalls.reLaunch.length, 0);
+}
+
+async function testCloudFailureStaysOnAuthStep() {
+  const error = Object.assign(new Error('云服务未连接，无法登录'), { code: 'CLOUD_NOT_READY' });
+  const page = loadLoginPage([], {
+    loginWithPassword() {
+      return Promise.reject(error);
+    }
+  });
+  page.setData({
+    account: 'memberA',
+    password: '123456',
+    agreementChecked: true,
+    loginType: 'password'
+  });
+
+  page.submit();
+  await flushPromises();
+
+  assert.strictEqual(page.data.step, 'auth');
+  assert.strictEqual(page._testCalls.switchTab.length + page._testCalls.reLaunch.length, 0);
+  assert(page._testCalls.toasts.some((item) => item.title.includes('云服务')));
+}
+
+async function testBindWechatReusesPasswordAuthentication() {
+  const authCalls = [];
+  const page = loadLoginPage([], {
+    loginWithPassword(input) {
+      authCalls.push(input);
+      return Promise.resolve({ account: 'memberA', roles: ['member'], currentRole: 'member' });
+    }
+  });
+  page.setData({
+    mode: 'wechatBind',
+    account: 'memberA',
+    password: '123456',
+    agreementChecked: true,
+    loginType: 'password'
+  });
+
+  page.bindWechat();
+  await flushPromises();
+
+  assert.deepStrictEqual(authCalls, [{ account: 'memberA', password: '123456' }]);
+  assert.strictEqual(page.data.step, 'role');
+  assert.strictEqual(page.data.pendingAccount, 'memberA');
 }
 
 async function testLockedShopRoleOpensApplicationWithoutShopLogin() {
@@ -277,9 +403,6 @@ async function testLockedShopRoleOpensApplicationWithoutShopLogin() {
     rememberLoginNickname() {},
     getUserProfile() {
       return Promise.resolve({});
-    },
-    getShopApplicationStatus() {
-      return Promise.resolve({ status: 'approved' });
     },
     markFirstLogin() {
       return Promise.resolve();
@@ -314,14 +437,19 @@ async function testLockedShopRoleOpensApplicationWithoutShopLogin() {
   assert.strictEqual(calls.reLaunch.length, 0, 'Opening shop identity should not reLaunch away from the role picker.');
 }
 
-async function testApprovedShopApplicationEnablesShopRolePickerOption() {
+async function testServerRolesAloneDriveRolePicker() {
+  let localStatusCalls = 0;
   const fakeData = {
+    loginWithPassword() {
+      return Promise.resolve({ account: 'serverMember', roles: ['member'], currentRole: 'member' });
+    },
     getShopApplicationStatus() {
+      localStatusCalls += 1;
       return Promise.resolve({ status: 'approved' });
     }
   };
   const page = loadLoginPage([
-    { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
+    { account: 'member1', password: '123456', role: 'shop', roles: ['member', 'shop'] }
   ], fakeData);
   page.setData({
     account: 'member1',
@@ -335,23 +463,24 @@ async function testApprovedShopApplicationEnablesShopRolePickerOption() {
   await flushPromises();
 
   const shop = page.data.availableRoles.find((item) => item.key === 'shop');
-  assert(shop && shop.enabled, 'Approved shop qualification should enable the shop role on the role picker.');
-  assert.deepStrictEqual(page.data.pendingRoles, ['member', 'shop']);
+  assert(shop && !shop.enabled, 'Only roles returned by accountAuth should enable role options.');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member']);
+  assert.strictEqual(localStatusCalls, 0, 'Password authentication must not augment server roles from another source.');
 }
 
 async function testSwitchRoleParamOpensRolePickerFromCurrentSession() {
+  let legacyNameReads = 0;
   const fakeData = {
     getCurrentLoginName() {
-      return 'zhx1';
-    },
-    getShopApplicationStatus() {
-      return Promise.resolve({ status: 'none' });
+      legacyNameReads += 1;
+      return 'forgedLocalName';
     }
   };
   const page = loadLoginPage([], fakeData, {
+    account: 'serverAccount',
     currentRole: 'member',
     roles: ['member', 'coach'],
-    userProfile: { nickname: 'zhx1', roles: ['member', 'coach'] }
+    userProfile: { nickname: 'profileName', roles: ['member', 'shop'] }
   });
 
   page.onLoad({ switchRole: '1' });
@@ -359,52 +488,51 @@ async function testSwitchRoleParamOpensRolePickerFromCurrentSession() {
   await flushPromises();
 
   assert.strictEqual(page.data.step, 'role');
-  assert.strictEqual(page.data.pendingAccount, 'zhx1');
+  assert.strictEqual(page.data.pendingAccount, 'serverAccount');
   assert.deepStrictEqual(page.data.pendingRoles, ['member', 'coach']);
   assert.deepStrictEqual(page.data.availableRoles.map((item) => [item.key, item.enabled]), [
     ['member', true],
     ['coach', true],
     ['shop', false]
   ]);
+  assert.strictEqual(legacyNameReads, 0, 'Switch-role recovery must not use a locally remembered login name.');
 }
 
-async function testSwitchRoleUsesRegisteredAccountRolesBeforeSessionRoles() {
+async function testSwitchRoleRefreshesMissingRuntimeSessionFromCloud() {
+  const statusCalls = [];
   const fakeData = {
-    getCurrentLoginName() {
-      return 'zhx1';
-    },
-    getShopApplicationStatus() {
-      return Promise.resolve({ status: 'approved' });
+    getAccountSecurity() {
+      statusCalls.push(true);
+      return Promise.resolve({ account: 'cloudAccount', roles: ['member', 'shop'], currentRole: 'shop' });
     }
   };
-  const page = loadLoginPage([
-    { account: 'zhx1', password: '123456', role: 'member', roles: ['member', 'shop'] }
-  ], fakeData, {
-    currentRole: 'member',
-    roles: ['member', 'coach', 'shop'],
-    userProfile: { nickname: 'zhx1', roles: ['member', 'coach', 'shop'] }
-  });
+  const page = loadLoginPage([], fakeData, { account: '', currentRole: '', roles: [] });
 
   page.onLoad({ switchRole: '1' });
   await flushPromises();
   await flushPromises();
 
   assert.strictEqual(page.data.step, 'role');
-  assert.strictEqual(page.data.pendingAccount, 'zhx1');
+  assert.strictEqual(page.data.pendingAccount, 'cloudAccount');
   assert.deepStrictEqual(page.data.pendingRoles, ['member', 'shop']);
   assert.deepStrictEqual(page.data.availableRoles.map((item) => [item.key, item.enabled]), [
     ['member', true],
     ['coach', false],
     ['shop', true]
   ]);
+  assert.strictEqual(statusCalls.length, 1);
 }
 
 (async () => {
-  await testPasswordLoginShowsRolePickerBeforeLogin();
+  await testPasswordLoginUsesServerAuthResult();
+  await testWechatLoginUsesServerAuthResult();
+  await testWechatNotBoundShowsGuidance();
+  await testCloudFailureStaysOnAuthStep();
+  await testBindWechatReusesPasswordAuthentication();
   await testLockedShopRoleOpensApplicationWithoutShopLogin();
-  await testApprovedShopApplicationEnablesShopRolePickerOption();
+  await testServerRolesAloneDriveRolePicker();
   await testSwitchRoleParamOpensRolePickerFromCurrentSession();
-  await testSwitchRoleUsesRegisteredAccountRolesBeforeSessionRoles();
+  await testSwitchRoleRefreshesMissingRuntimeSessionFromCloud();
   await testDataLoginUsesOnlyServerAuthorizedRole();
   const page = loadLoginPage([
     { account: 'member1', password: '123456', role: 'member', roles: ['member'] }

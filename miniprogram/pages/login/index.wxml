@@ -4,7 +4,7 @@
       <image class="hero-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
       <view class="hero-name">强化杆迹</view>
       <view class="hero-slogan">没有任何一杆是白打的</view>
-      <view class="hero-sub">{{ step === 'role' ? '请选择本次进入的身份' : (mode === 'register' ? '注册账号' : (mode === 'wechatBind' ? '绑定后选择身份' : '使用账号或手机号登录')) }}</view>
+      <view class="hero-sub">{{ step === 'role' ? '请选择本次进入的身份' : (mode === 'register' ? '注册账号' : (mode === 'wechatBind' ? '绑定当前微信' : '使用账号或手机号登录')) }}</view>
     </view>
 
     <!-- 账号验证通过后选择本次进入身份 -->
@@ -142,101 +142,18 @@
       </view>
       </block>
 
-      <!-- 微信绑定态 -->
+      <!-- 微信未绑定引导态 -->
       <block wx:elif="{{mode==='wechatBind'}}">
         <view class="bind-head">
-          <view class="bind-title">绑定账号或手机号</view>
-          <view class="bind-sub">绑定成功后选择进入身份</view>
+          <view class="bind-title">当前微信尚未绑定账号</view>
+          <view class="bind-sub">请使用账号密码验证后绑定当前微信；每个账号和微信只能绑定一次</view>
         </view>
 
-        <view class="seg">
-          <view
-            class="seg-item {{loginType==='password'?'active':''}}"
-            data-type="password"
-            bindtap="switchType"
-          >绑定账号</view>
-          <view
-            class="seg-item {{loginType==='sms'?'active':''}}"
-            data-type="sms"
-            bindtap="switchType"
-          >绑定手机号</view>
-        </view>
-
-        <block wx:if="{{loginType==='password'}}">
-          <view class="field">
-            <input
-              class="input"
-              placeholder="请输入已注册账号"
-              placeholder-class="placeholder"
-              data-field="account"
-              value="{{account}}"
-              bindinput="onInput"
-            />
-          </view>
-          <view class="field">
-            <input
-              class="input"
-              password
-              placeholder="请输入密码"
-              placeholder-class="placeholder"
-              data-field="password"
-              value="{{password}}"
-              bindinput="onInput"
-            />
-          </view>
-        </block>
-
-        <block wx:else>
-          <view class="field">
-            <input
-              class="input"
-              type="number"
-              maxlength="11"
-              placeholder="请输入已注册手机号"
-              placeholder-class="placeholder"
-              data-field="phone"
-              value="{{phone}}"
-              bindinput="onInput"
-            />
-          </view>
-          <view class="field field-code">
-            <input
-              class="input"
-              type="number"
-              maxlength="6"
-              placeholder="请输入验证码"
-              placeholder-class="placeholder"
-              data-field="code"
-              value="{{code}}"
-              bindinput="onInput"
-            />
-            <view class="code-btn {{counting?'disabled':''}}" bindtap="sendCode">
-              {{counting ? countdown + 's' : '获取验证码'}}
-            </view>
-          </view>
-        </block>
-
-        <view class="agreement-row">
-          <view class="agree-circle {{agreementChecked ? 'checked' : ''}}" bindtap="toggleAgreement">
-            <text wx:if="{{agreementChecked}}" class="agree-check">✓</text>
-          </view>
-          <view class="agree-text">
-            <text>我已阅读并同意</text>
-            <text class="agree-link" catchtap="openAgreement">《强化杆迹用户协议》</text>
-            <text>和</text>
-            <text class="agree-link" catchtap="openPrivacyPolicy">《强化杆迹隐私权政策》</text>
-          </view>
-        </view>
-
-        <button class="btn-primary login-btn {{agreementChecked ? '' : 'login-btn--disabled'}}" bindtap="bindWechat">绑定并微信登录</button>
+        <button class="btn-primary login-btn" bindtap="backToLogin">使用账号密码登录</button>
 
         <view class="alt-line">
           <text class="alt-text">还没有账号？</text>
           <text class="alt-link" bindtap="goRegister">注册账号</text>
-        </view>
-
-        <view class="alt-line">
-          <text class="alt-link" bindtap="backToLogin">返回账号登录</text>
         </view>
       </block>
 
