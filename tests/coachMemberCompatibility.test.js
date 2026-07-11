@@ -357,17 +357,11 @@ async function testLoginPropagatesBindingReadFailureWithoutWrites() {
   assert.deepStrictEqual(state.admins, []);
 }
 
-function testLocalRegisteredAccountsUseEntitlements() {
-  const page = loadLoginPage([
-    { account: 'coach1', role: 'coach', password: '123456' },
-    { account: 'member1', role: 'member', password: '123456' },
-    { account: 'shop1', role: 'shop', password: '123456' }
-  ]);
-
-  assert(page.findRegisteredAccount('coach1', 'member'), 'Coach account should be allowed to enter member port.');
-  assert(page.findRegisteredAccount('coach1', 'coach'), 'Coach account should still be allowed to enter coach port.');
-  assert.strictEqual(page.findRegisteredAccount('member1', 'coach'), null, 'Member-only account should not enter coach port.');
-  assert.strictEqual(page.findRegisteredAccount('shop1', 'member'), null, 'Shop account should not enter member port.');
+function testLoginPageHasNoLocalEntitlementSource() {
+  const loginJs = read('miniprogram/pages/login/index.js');
+  assert(!loginJs.includes('readRegisteredAccounts'), 'Login must not expose locally persisted account entitlements.');
+  assert(!loginJs.includes('findRegisteredAccount'), 'Login must not authenticate through local account records.');
+  assert(!loginJs.includes("getStorageSync('dc_accounts')"), 'Login must not read the legacy local account store.');
 }
 
 async function testDataLoginForwardsOnlySelectedRole() {
@@ -496,7 +490,7 @@ function testCheckinPageExposesDetailFilters() {
   await testLoginReturnsRolesAndCurrentRoleForLegacyCoach();
   await testLoginReturnsShopOnlyRoles();
   await testLoginRejectsClientRoleEscalationAndAllowsServerRole();
-  testLocalRegisteredAccountsUseEntitlements();
+  testLoginPageHasNoLocalEntitlementSource();
   await testDataLoginForwardsOnlySelectedRole();
   testLoginFailuresSurfaceCloudMessage();
   await testOwnHeatmapMergesCoachLessons();

@@ -1,27 +1,6 @@
 const data = require('../../../services/data');
-const mock = require('../../../utils/mock');
 
-const ACCOUNTS_KEY = 'dc_accounts';
-const WECHAT_BINDINGS_KEY = 'dc_wechat_bindings';
-const LOGIN_DEFAULT_NICKNAME_KEY = 'dc_login_default_nickname';
 const PHONE_RE = /^1\d{10}$/;
-
-function readArray(key) {
-  try {
-    const value = wx.getStorageSync(key) || [];
-    return Array.isArray(value) ? value : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function readLoginName(role) {
-  try {
-    return wx.getStorageSync(`${LOGIN_DEFAULT_NICKNAME_KEY}_${role || 'member'}`) || '';
-  } catch (e) {
-    return '';
-  }
-}
 
 function maskPhone(phone) {
   const raw = String(phone || '').trim();
@@ -45,35 +24,19 @@ Page({
   },
 
   refresh() {
-    const role = mock.getRole();
-    const app = getApp();
-    const profile = (app.globalData && app.globalData.userProfile) || {};
-    const loginName = readLoginName(role);
-    const accounts = readArray(ACCOUNTS_KEY);
-    const matched = accounts.find((item) => item && item.role === role && item.account === loginName)
-      || accounts.find((item) => item && item.role === role);
-    const accountName = loginName || (matched && matched.account) || profile.nickname || '';
-    const phone = profile.phone || (PHONE_RE.test(accountName) ? accountName : '');
-    const bindings = readArray(WECHAT_BINDINGS_KEY);
-    const hasWechatBinding = !!(
-      (matched && matched.wechatBound)
-      || bindings.some((item) => item && item.role === role && item.account === accountName)
-    );
-
-    this.setData({
-      accountText: accountName || '未设置',
-      passwordText: matched && matched.password ? '已设置' : '未设置',
-      phoneText: maskPhone(phone) || '未绑定',
-      wechatText: hasWechatBinding ? '已绑定' : '未绑定'
-    });
-
-    data.getUserProfile().then((user) => {
-      if (!user) return;
-      const nextPhone = user.phone || phone;
-      this.setData({
-        phoneText: maskPhone(nextPhone) || '未绑定'
-      });
-    }).catch(() => {});
+    data.getAccountSecurity()
+      .then((status) => this.setData({
+        accountText: status.account || '未设置',
+        passwordText: status.passwordSet ? '已设置' : '未设置',
+        phoneText: maskPhone(status.phone) || '未绑定',
+        wechatText: status.wechatBound ? '已绑定' : '未绑定'
+      }))
+      .catch(() => this.setData({
+        accountText: '未登录',
+        passwordText: '未设置',
+        phoneText: '未绑定',
+        wechatText: '未绑定'
+      }));
   },
 
   copyAccount() {

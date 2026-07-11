@@ -1,5 +1,7 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
+const Module = require('module');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
@@ -10,6 +12,135 @@ function read(file) {
 
 function exists(file) {
   return fs.existsSync(path.join(root, file));
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function hashCode(phone, code, secret) {
+  return sha256(`${phone}:${code}:${secret}`);
+}
+
+function matches(document, query) {
+  return Object.keys(query || {}).every((key) => document[key] === query[key]);
+}
+
+function loadVerifySms(openid, seed) {
+  const state = seed;
+  const writes = [];
+  const verifyPath = path.join(root, 'cloudfunctions/verifySmsCode/index.js');
+
+  function collection(name) {
+    const documents = state[name] || (state[name] = []);
+    return {
+      doc(id) {
+        return {
+          async get() {
+            const found = documents.find((item) => item._id === id);
+            return { data: found ? clone(found) : null };
+          },
+          async update({ data }) {
+            const index = documents.findIndex((item) => item._id === id);
+            if (index === -1) throw new Error(`document ${id} does not exist`);
+            documents[index] = Object.assign({}, documents[index], clone(data));
+            writes.push({ type: 'update', collection: name, id, data: clone(data) });
+            return { stats: { updated: 1 } };
+          }
+        };
+      },
+      where(query) {
+        const get = async (limit) => ({
+          data: clone(documents.filter((item) => matches(item, query)).slice(0, limit))
+        });
+        return {
+          limit(limit) {
+            return { get: () => get(limit) };
+          },
+          get: () => get(documents.length)
+        };
+      },
+      async add({ data }) {
+        const id = data._id || `${name}_${documents.length + 1}`;
+        documents.push(Object.assign({}, clone(data), { _id: id }));
+        writes.push({ type: 'add', collection: name, id, data: clone(data) });
+        return { _id: id };
+      }
+    };
+  }
+
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'test-env',
+    init() {},
+    database() {
+      return {
+        collection,
+        serverDate() {
+          return 'server-date';
+        }
+      };
+    },
+    getWXContext() {
+      return { OPENID: openid };
+    }
+  };
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === 'wx-server-sdk') return fakeCloud;
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    delete require.cache[require.resolve(verifyPath)];
+    return { fn: require(verifyPath), state, writes };
+  } finally {
+    Module._load = originalLoad;
+  }
+}
+
+function validCode(openid, phone, secret) {
+  const now = Date.now();
+  return {
+    _id: `code_${openid}`,
+    _openid: openid,
+    phone,
+    codeHash: hashCode(phone, '123456', secret),
+    used: false,
+    createdAt: now,
+    expiresAt: now + 60000
+  };
+}
+
+function boundSeed(openid, phone, secret) {
+  const bindingId = sha256(`wechat:${openid}`);
+  const accountId = sha256('account:membera');
+  return {
+    sms_codes: [validCode(openid, phone, secret)],
+    wechat_bindings: [{
+      _id: bindingId,
+      _openid: openid,
+      accountId,
+      account: 'memberA'
+    }],
+    accounts: [{
+      _id: accountId,
+      _openid: openid,
+      account: 'memberA',
+      accountNormalized: 'membera',
+      status: 'active'
+    }],
+    users: [{
+      _id: bindingId,
+      _openid: openid,
+      phone,
+      role: 'member',
+      roles: ['member'],
+      currentRole: 'member'
+    }]
+  };
 }
 
 assert(exists('cloudfunctions/sendSmsCode/index.js'), 'sendSmsCode cloud function should exist.');
@@ -55,7 +186,85 @@ assert(
 );
 assert(/data\s*\.\s*verifySmsCode/.test(loginJs), 'SMS login should call data.verifySmsCode().');
 assert(
-  /data\s*\.\s*verifySmsCode\([\s\S]*?\.then\(\(\)\s*=>\s*this\.resolveApprovedRoles\(normalizeAccountRoles\(registered\)\)\)[\s\S]*?\.then\(\(roles\)\s*=>\s*\{[\s\S]*?this\.showRolePicker\(phone,\s*roles\)/.test(loginJs),
-  'SMS login should sync approved roles and show the role picker only after verifySmsCode() succeeds.'
+  /data\s*\.\s*verifySmsCode\([\s\S]*?\.then\(\(result\)\s*=>\s*\{[\s\S]*?this\.handleAuthenticated\(result\)/.test(loginJs),
+  'SMS login should use the account and roles returned by verifySmsCode().'
 );
 assert(!/验证码已发送[\s\S]{0,120}setInterval/.test(loginJs), 'Login page should not show success and start countdown before cloud send succeeds.');
+
+async function testUnboundWechatCannotConsumeCodeOrCreateUser() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_unbound';
+  const phone = '13800138000';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, {
+      sms_codes: [validCode(openid, phone, secret)],
+      wechat_bindings: [],
+      accounts: [],
+      users: []
+    });
+    const result = await fixture.fn.main({ phone, code: '123456' });
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'WECHAT_NOT_BOUND');
+    assert.strictEqual(fixture.state.users.length, 0);
+    assert.strictEqual(fixture.state.sms_codes[0].used, false);
+    assert.strictEqual(fixture.writes.length, 0, 'Unbound SMS verification must not write any collection.');
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+async function testSmsPhoneMustMatchBoundUser() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_bound_mismatch';
+  const requestedPhone = '13800138000';
+  const seed = boundSeed(openid, '13900139000', secret);
+  seed.sms_codes = [validCode(openid, requestedPhone, secret)];
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, seed);
+    const result = await fixture.fn.main({ phone: requestedPhone, code: '123456' });
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'PHONE_NOT_MATCH');
+    assert.strictEqual(fixture.state.sms_codes[0].used, false);
+    assert.strictEqual(fixture.writes.length, 0, 'Mismatched phone verification must not consume the code.');
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+async function testBoundSmsReturnsServerIdentity() {
+  const secret = 'sms-test-secret';
+  const openid = 'wechat_bound';
+  const phone = '13800138000';
+  const previousSecret = process.env.SMS_CODE_HASH_SECRET;
+  process.env.SMS_CODE_HASH_SECRET = secret;
+  try {
+    const fixture = loadVerifySms(openid, boundSeed(openid, phone, secret));
+    const result = await fixture.fn.main({ phone, code: '123456' });
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.phone, phone);
+    assert.strictEqual(result.account, 'memberA');
+    assert.deepStrictEqual(result.roles, ['member']);
+    assert.strictEqual(fixture.state.users.length, 1);
+    assert.strictEqual(fixture.state.users[0].phone, phone);
+    assert(fixture.state.users[0].phoneVerifiedAt, 'Successful verification should record phoneVerifiedAt.');
+    assert.strictEqual(fixture.writes.some((item) => item.type === 'add'), false, 'SMS verification must never create a user.');
+  } finally {
+    if (previousSecret === undefined) delete process.env.SMS_CODE_HASH_SECRET;
+    else process.env.SMS_CODE_HASH_SECRET = previousSecret;
+  }
+}
+
+(async () => {
+  await testUnboundWechatCannotConsumeCodeOrCreateUser();
+  await testSmsPhoneMustMatchBoundUser();
+  await testBoundSmsReturnsServerIdentity();
+  assert(!loginJs.includes('findRegisteredAccount'), 'SMS login must not consult local account records.');
+  assert(!loginJs.includes('readRegisteredAccounts'), 'Login page must not expose a local authentication source.');
+  assert(!loginJs.includes('normalizeAccountRoles'), 'Login page must not derive roles from local account records.');
+})();

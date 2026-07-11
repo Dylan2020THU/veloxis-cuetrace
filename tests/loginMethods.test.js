@@ -365,28 +365,75 @@ async function testCloudFailureStaysOnAuthStep() {
   assert(page._testCalls.toasts.some((item) => item.title.includes('云服务')));
 }
 
-async function testBindWechatReusesPasswordAuthentication() {
-  const authCalls = [];
-  const page = loadLoginPage([], {
-    loginWithPassword(input) {
-      authCalls.push(input);
-      return Promise.resolve({ account: 'memberA', roles: ['member'], currentRole: 'member' });
+async function testSmsCodeSendDoesNotUseLocalAccounts() {
+  const sendCalls = [];
+  let localLookupCalls = 0;
+  let countdownCalls = 0;
+  const page = loadLoginPage([{ account: 'forgedLocal', phone: '13800138000', roles: ['shop'] }], {
+    sendSmsCode(phone) {
+      sendCalls.push(phone);
+      return Promise.resolve({ ok: true });
     }
   });
-  page.setData({
-    mode: 'wechatBind',
-    account: 'memberA',
-    password: '123456',
-    agreementChecked: true,
-    loginType: 'password'
-  });
+  page.findRegisteredAccount = () => {
+    localLookupCalls += 1;
+    return null;
+  };
+  page.startCodeCountdown = () => {
+    countdownCalls += 1;
+  };
+  page.setData({ phone: '13800138000' });
 
-  page.bindWechat();
+  page.sendCode();
   await flushPromises();
 
-  assert.deepStrictEqual(authCalls, [{ account: 'memberA', password: '123456' }]);
-  assert.strictEqual(page.data.step, 'role');
-  assert.strictEqual(page.data.pendingAccount, 'memberA');
+  assert.strictEqual(localLookupCalls, 0, 'Sending an SMS code must not consult local accounts.');
+  assert.deepStrictEqual(sendCalls, ['13800138000']);
+  assert.strictEqual(countdownCalls, 1);
+  assert(!page._testCalls.storageReads.includes('dc_accounts'));
+}
+
+async function testSmsLoginUsesServerAuthResult() {
+  const verifyCalls = [];
+  let localLookupCalls = 0;
+  let localRoleCalls = 0;
+  const page = loadLoginPage([{ account: 'forgedShop', phone: '13800138000', roles: ['shop'] }], {
+    verifySmsCode(phone, code) {
+      verifyCalls.push([phone, code]);
+      return Promise.resolve({
+        ok: true,
+        phone,
+        account: 'serverMember',
+        roles: ['member'],
+        currentRole: 'member'
+      });
+    }
+  });
+  page.findRegisteredAccount = () => {
+    localLookupCalls += 1;
+    return { account: 'forgedShop', roles: ['shop'] };
+  };
+  page.resolveApprovedRoles = () => {
+    localRoleCalls += 1;
+    return Promise.resolve(['shop']);
+  };
+  page.setData({
+    loginType: 'sms',
+    phone: '13800138000',
+    code: '123456',
+    agreementChecked: true
+  });
+
+  page.submit();
+  await flushPromises();
+  await flushPromises();
+
+  assert.deepStrictEqual(verifyCalls, [['13800138000', '123456']]);
+  assert.strictEqual(localLookupCalls, 0, 'SMS authentication must not read a local account.');
+  assert.strictEqual(localRoleCalls, 0, 'SMS authentication must not derive roles from local state.');
+  assert.strictEqual(page.data.pendingAccount, 'serverMember');
+  assert.deepStrictEqual(page.data.pendingRoles, ['member']);
+  assert(!page._testCalls.storageReads.includes('dc_accounts'));
 }
 
 async function testLockedShopRoleOpensApplicationWithoutShopLogin() {
@@ -528,7 +575,8 @@ async function testSwitchRoleRefreshesMissingRuntimeSessionFromCloud() {
   await testWechatLoginUsesServerAuthResult();
   await testWechatNotBoundShowsGuidance();
   await testCloudFailureStaysOnAuthStep();
-  await testBindWechatReusesPasswordAuthentication();
+  await testSmsCodeSendDoesNotUseLocalAccounts();
+  await testSmsLoginUsesServerAuthResult();
   await testLockedShopRoleOpensApplicationWithoutShopLogin();
   await testServerRolesAloneDriveRolePicker();
   await testSwitchRoleParamOpensRolePickerFromCurrentSession();

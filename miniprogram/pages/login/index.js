@@ -12,33 +12,12 @@ const PHONE_RE = /^1\d{10}$/;
 const ACCOUNT_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;
 const ACCOUNT_RULE_TEXT = '账号需 4-20 位，字母开头，仅支持字母、数字、下划线';
 
-// 手机号登录将在独立迁移任务中移除该本地兼容读取。
-const ACCOUNTS_KEY = 'dc_accounts';
 const VALID_ROLES = ['member', 'coach', 'shop'];
-const ADMIN_ROLES = ['member', 'coach', 'shop'];
-
-function normalizeAccountRoles(account) {
-  const roles = account && Array.isArray(account.roles) ? account.roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
-  if (roles.length) return Array.from(new Set(roles));
-  if (account && account.role === 'coach') return ['member', 'coach'];
-  if (account && account.role === 'shop') return ['shop'];
-  return ['member'];
-}
-
-function accountSupportsRole(account, role) {
-  return normalizeAccountRoles(account).indexOf(role) !== -1;
-}
 
 function roleOptions(roles) {
   const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : ['member'];
   const unique = Array.from(new Set(list.length ? list : ['member']));
   return ROLES.map((item) => Object.assign({}, item, { enabled: unique.indexOf(item.key) !== -1 }));
-}
-
-function mergeRole(roles, role) {
-  const list = Array.isArray(roles) ? roles.slice() : [];
-  if (VALID_ROLES.indexOf(role) !== -1 && list.indexOf(role) === -1) list.push(role);
-  return Array.from(new Set(list.filter((r) => VALID_ROLES.indexOf(r) !== -1)));
 }
 
 // 各身份登录后的落地首页
@@ -179,17 +158,6 @@ Page({
         this.handleAuthenticated(result);
       })
       .catch((error) => this.handleAuthError(error, '登录状态已失效，请重新登录'));
-  },
-
-  resolveApprovedRoles(roles) {
-    const baseRoles = Array.isArray(roles) && roles.length ? roles.slice() : ['member'];
-    if (typeof data.getShopApplicationStatus !== 'function') {
-      return Promise.resolve(baseRoles);
-    }
-    return data
-      .getShopApplicationStatus()
-      .then((res) => ((res && res.status) === 'approved' ? mergeRole(baseRoles, 'shop') : baseRoles))
-      .catch(() => baseRoles);
   },
 
   chooseRole(e) {
@@ -358,41 +326,6 @@ Page({
     return false;
   },
 
-  readRegisteredAccounts() {
-    try {
-      const accounts = wx.getStorageSync(ACCOUNTS_KEY) || [];
-      const list = Array.isArray(accounts) ? accounts.slice() : [];
-      adminAuth.ADMIN_ACCOUNTS.forEach((admin) => {
-        const idx = list.findIndex((item) => item && item.account === admin.account);
-        const adminAccount = Object.assign({}, idx >= 0 ? list[idx] : {}, {
-            role: 'member',
-            roles: ADMIN_ROLES.slice(),
-            account: admin.account,
-            password: admin.password,
-            builtInAdmin: true
-        });
-        if (idx >= 0) list[idx] = adminAccount;
-        else list.push(adminAccount);
-      });
-      return list;
-    } catch (e) {
-      return adminAuth.ADMIN_ACCOUNTS.map((admin) => ({
-        role: 'member',
-        roles: ADMIN_ROLES.slice(),
-        account: admin.account,
-        password: admin.password,
-        builtInAdmin: true
-      }));
-    }
-  },
-
-  findRegisteredAccount(account, role) {
-    const key = (account || '').trim();
-    if (!key) return null;
-    if (!role) return this.readRegisteredAccounts().find((a) => a && a.account === key) || null;
-    return this.readRegisteredAccounts().find((a) => a && a.account === key && accountSupportsRole(a, role)) || null;
-  },
-
   isValidRegisterAccount(account) {
     return ACCOUNT_RE.test(account);
   },
@@ -453,10 +386,6 @@ Page({
       wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
       return;
     }
-    if (!this.findRegisteredAccount(phone)) {
-      wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
-      return;
-    }
     this.setData({ sendingCode: true });
     wx.showLoading({ title: '发送中', mask: true });
     data
@@ -506,17 +435,12 @@ Page({
       if (!(this.data.code || '').trim()) {
         return wx.showToast({ title: '请输入验证码', icon: 'none' });
       }
-      const registered = this.findRegisteredAccount(phone);
-      if (!registered) {
-        return wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
-      }
       wx.showLoading({ title: '校验中', mask: true });
       data
         .verifySmsCode(phone, (this.data.code || '').trim())
-        .then(() => this.resolveApprovedRoles(normalizeAccountRoles(registered)))
-        .then((roles) => {
+        .then((result) => {
           wx.hideLoading();
-          this.showRolePicker(phone, roles);
+          this.handleAuthenticated(result);
         })
         .catch((e) => {
           wx.hideLoading();
@@ -524,25 +448,6 @@ Page({
         });
       return;
     }
-  },
-
-  bindWechat() {
-    if (!this.ensureAgreementChecked()) return;
-    const account = (this.data.account || '').trim();
-    if (!account) {
-      return wx.showToast({ title: '请输入账号', icon: 'none' });
-    }
-    if (!this.data.password) {
-      return wx.showToast({ title: '请输入密码', icon: 'none' });
-    }
-    wx.showLoading({ title: '登录中', mask: true });
-    data
-      .loginWithPassword({ account, password: this.data.password })
-      .then((result) => {
-        wx.hideLoading();
-        this.handleAuthenticated(result);
-      })
-      .catch((error) => this.handleAuthError(error, '账号或密码错误'));
   },
 
   onUnload() {
