@@ -240,7 +240,7 @@ if ($LASTEXITCODE -ne 0) { throw 'status script failed' }
 if ($output.Count -ne 10) { throw "expected 10 lines, got $($output.Count)" }
 $summary = @{}
 $output | ForEach-Object { $key, $value = $_ -split '=', 2; $summary[$key] = $value }
-$raw = @(git -c core.quotePath=false status --short)
+$raw = @(git -c core.quotePath=false -c core.excludesFile= status --short)
 $agents = @($raw | Where-Object { $_ -match '(^|[" ])\.agents/' })
 $business = @($raw | Where-Object { $_ -notmatch '(^|[" ])\.agents/' })
 function DirectCounts([string[]]$lines) {
