@@ -10,6 +10,12 @@ exports.main = async (event) => {
 
   if (!coachOpenid) return { ok: false, msg: '缺少 coachOpenid' };
 
+  const coachRes = await db.collection('users').where({ _openid: coachOpenid }).get();
+  const coach = coachRes.data && coachRes.data[0];
+  if (!coach || !Array.isArray(coach.roles) || coach.roles.indexOf('coach') === -1) {
+    return { ok: false, code: 'COACH_ROLE_REQUIRED', msg: '该用户尚未通过教练审核' };
+  }
+
   const links = db.collection('shop_coach_links');
   const existing = await links.where({ shopOpenid: OPENID, coachOpenid }).get();
   if (existing.data.length) {

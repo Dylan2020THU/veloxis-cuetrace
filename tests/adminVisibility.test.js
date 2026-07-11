@@ -373,7 +373,11 @@ async function testCloudReviewApprovalAddsShopRoleToUserRoles() {
   const userUpdate = updates.find((item) => item.name === 'users' && item.id === 'user_doc');
   assert(userUpdate, 'Approving a shop application should update the applicant user document.');
   assert.deepStrictEqual(userUpdate.data.roles, ['member', 'shop']);
-  assert.strictEqual(userUpdate.data.role, 'shop');
+  assert.strictEqual(
+    Object.prototype.hasOwnProperty.call(userUpdate.data, 'role'),
+    false,
+    'Approving shop access should not force-switch the user\'s current role.'
+  );
 }
 
 function testAdminCloudCallsIncludeCurrentLoginName() {

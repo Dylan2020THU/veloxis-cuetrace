@@ -17,6 +17,21 @@ function mergeShopRole(user) {
   return Array.from(new Set(roles));
 }
 
+async function hasActiveAccountBinding(openid) {
+  const bindingRes = await db.collection('wechat_bindings').where({ _openid: openid }).limit(1).get();
+  const binding = bindingRes.data && bindingRes.data[0];
+  if (!binding || !binding.accountId || !binding.account) return false;
+  const accountRes = await db.collection('accounts').doc(binding.accountId).get();
+  const account = accountRes && accountRes.data;
+  return !!(
+    account &&
+    account._id === binding.accountId &&
+    account._openid === openid &&
+    account.account === binding.account &&
+    account.status === 'active'
+  );
+}
+
 async function getActiveAdmins() {
   try {
     const res = await db.collection('admins').where({ status: 'active' }).get();
@@ -36,7 +51,7 @@ async function isAdminOpenid(openid, loginName) {
 }
 
 // 管理员审核店主资质申请：approve=true 通过 / false 驳回（驳回写 reason，店主可见）。
-// 通过后把申请人 users.role 置为 shop，便于其登录直接进入店主端。仅管理员可调用。
+// 通过后把 shop 授权合并到申请人的 users.roles，不改变其当前身份。仅管理员可调用。
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const loginName = (event.loginName || '').trim();
@@ -53,6 +68,16 @@ exports.main = async (event = {}) => {
     const application = res.data;
     if (!application) return { ok: false, msg: '申请不存在' };
 
+    const users = db.collection('users');
+    let user = null;
+    if (approve) {
+      const userRes = await users.where({ _openid: application._openid }).get();
+      user = userRes.data && userRes.data[0];
+      if (!user && !(await hasActiveAccountBinding(application._openid))) {
+        return { ok: false, code: 'ACCOUNT_NOT_BOUND', msg: '账号绑定信息不完整' };
+      }
+    }
+
     const status = approve ? 'approved' : 'rejected';
     await apps.doc(applicationId).update({
       data: {
@@ -64,20 +89,26 @@ exports.main = async (event = {}) => {
     });
 
     if (approve) {
-      try {
-        const users = db.collection('users');
-        const u = await users.where({ _openid: application._openid }).get();
-        if (u.data.length) {
-          await users.doc(u.data[0]._id).update({
-            data: {
-              role: 'shop',
-              roles: mergeShopRole(u.data[0]),
-              updatedAt: db.serverDate()
-            }
-          });
-        }
-      } catch (e) {
-        console.error('set role after approve failed', e);
+      if (user) {
+        await users.doc(user._id).update({
+          data: {
+            roles: mergeShopRole(user),
+            updatedAt: db.serverDate()
+          }
+        });
+      } else {
+        await users.add({
+          data: {
+            _openid: application._openid,
+            roles: ['member', 'shop'],
+            currentRole: 'member',
+            role: 'member',
+            nickname: '',
+            avatar: '',
+            createdAt: db.serverDate(),
+            updatedAt: db.serverDate()
+          }
+        });
       }
     }
 

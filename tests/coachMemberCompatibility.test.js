@@ -471,6 +471,32 @@ async function testTargetDayDetailDoesNotMergeCoachLessons() {
   assert.strictEqual(res.sessions[0].kind, 'personal');
 }
 
+async function testAddShopCoachRejectsMemberWithoutLinkWrites() {
+  const state = {
+    users: [{
+      _id: 'member-user',
+      _openid: 'member_openid',
+      roles: ['member'],
+      role: 'member',
+      currentRole: 'member'
+    }],
+    shop_coach_links: []
+  };
+  const { fn, fakeDb } = loadCloudFunction(
+    'cloudfunctions/addShopCoach/index.js',
+    'shop_openid',
+    state
+  );
+
+  const result = await fn.main({ coachOpenid: 'member_openid', storeId: 'store1' });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'COACH_ROLE_REQUIRED');
+  assert.strictEqual(state.shop_coach_links.length, 0);
+  assert.strictEqual(fakeDb.__updates.length, 0);
+  assert.strictEqual(fakeDb.__adds.length, 0);
+}
+
 function testCheckinPageExposesDetailFilters() {
   const js = read('miniprogram/pages/checkin/index.js');
   const wxml = read('miniprogram/pages/checkin/index.wxml');
@@ -497,5 +523,6 @@ function testCheckinPageExposesDetailFilters() {
   await testTargetHeatmapDoesNotMergeCoachLessons();
   await testOwnDayDetailMergesCoachLessons();
   await testTargetDayDetailDoesNotMergeCoachLessons();
+  await testAddShopCoachRejectsMemberWithoutLinkWrites();
   testCheckinPageExposesDetailFilters();
 })();

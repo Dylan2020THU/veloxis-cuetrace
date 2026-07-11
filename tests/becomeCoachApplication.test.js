@@ -172,8 +172,37 @@ async function testApprovalAddsCoachRoleWithoutDroppingMember() {
   assert.strictEqual(userUpdate.data.currentRole, 'member');
 }
 
+async function testAuthorizedCoachCanBeAddedToShop() {
+  const { fn, fakeDb } = loadCloudFunction('cloudfunctions/addShopCoach/index.js', 'shop_openid', {
+    users: [
+      {
+        _id: 'coach-user',
+        _openid: 'coach_openid',
+        roles: ['member', 'coach'],
+        role: 'member',
+        currentRole: 'member'
+      }
+    ],
+    shop_coach_links: []
+  });
+
+  const result = await fn.main({
+    coachOpenid: 'coach_openid',
+    storeId: 'store1',
+    storeName: 'Store One'
+  });
+
+  assert.strictEqual(result.ok, true);
+  const linkAdd = fakeDb.__adds.find((item) => item.collection === 'shop_coach_links');
+  assert(linkAdd, 'An approved coach should be linked to the shop.');
+  assert.strictEqual(linkAdd.data.coachOpenid, 'coach_openid');
+  assert.strictEqual(linkAdd.data.shopOpenid, 'shop_openid');
+  assert.strictEqual(linkAdd.data.status, 'active');
+}
+
 (async () => {
   testStaticWiring();
   testApplyPageExists();
   await testApprovalAddsCoachRoleWithoutDroppingMember();
+  await testAuthorizedCoachCanBeAddedToShop();
 })();
