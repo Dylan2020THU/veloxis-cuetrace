@@ -55,7 +55,10 @@ App({
   // 认证探测只调用 accountAuth.probe，不创建用户、不写数据库；明确返回 ok 才认定云端可用。
   // 探测成功后主动刷新订阅态，确保"云端发的货"能被端上读回。
   probeCloud() {
-    if (!wx.cloud || !this.globalData.cloudEnv) return;
+    if (!wx.cloud || !this.globalData.cloudEnv) {
+      this.globalData.cloudReady = false;
+      return;
+    }
     wx.cloud
       .callFunction({ name: 'accountAuth', data: { action: 'probe' } })
       .then((res) => {

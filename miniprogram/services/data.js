@@ -60,7 +60,7 @@ function applyAuthResult(result) {
 
 function cloudAuth(action, payload) {
   if (!cloudReady()) return Promise.reject(cloudNotReadyError());
-  return callCloud('accountAuth', Object.assign({ action }, payload || {})).then((result) => {
+  return callCloud('accountAuth', Object.assign({}, payload || {}, { action })).then((result) => {
     if (result && result.ok === false) {
       const error = new Error(result.msg || '认证失败');
       error.code = result.code || 'AUTH_FAILED';

@@ -264,6 +264,36 @@ async function testClientAuthDelegatesAndSynchronizesState() {
   assert.deepStrictEqual(fixture.app.globalData, stateBeforeProbe);
 }
 
+async function testClientAuthPinsPublicMethodActions() {
+  const fixture = loadDataService({
+    resultForAction() {
+      return { ok: true, account: 'MemberA', roles: ['member'], currentRole: 'member' };
+    }
+  });
+
+  await fixture.data.registerAccount({
+    action: 'wechatLogin',
+    account: 'MemberA',
+    password: '123456'
+  });
+  await fixture.data.loginWithPassword({
+    action: 'register',
+    account: 'MemberA',
+    password: '123456'
+  });
+
+  assert.deepStrictEqual(fixture.calls, [
+    {
+      name: 'accountAuth',
+      data: { action: 'register', account: 'MemberA', password: '123456' }
+    },
+    {
+      name: 'accountAuth',
+      data: { action: 'passwordLogin', account: 'MemberA', password: '123456' }
+    }
+  ]);
+}
+
 async function testClientAuthFailsClosed() {
   const unavailable = loadDataService({ cloudReady: false });
   await assert.rejects(
@@ -315,6 +345,34 @@ async function testAppUsesSideEffectFreeAuthProbe() {
   assert.strictEqual(appDefinition.globalData.cloudReady, true);
   assert.strictEqual(appDefinition.globalData.account, '');
   assert.strictEqual(refreshCount, 1);
+
+  appDefinition.globalData.cloudReady = true;
+  delete global.wx.cloud;
+  appDefinition.probeCloud();
+  assert.strictEqual(appDefinition.globalData.cloudReady, false);
+
+  appDefinition.globalData.cloudReady = true;
+  appDefinition.globalData.cloudEnv = '';
+  global.wx.cloud = {
+    callFunction() {
+      throw new Error('should not call without cloud env');
+    }
+  };
+  appDefinition.probeCloud();
+  assert.strictEqual(appDefinition.globalData.cloudReady, false);
+
+  appDefinition.globalData.cloudReady = true;
+  appDefinition.globalData.cloudEnv = 'test-env';
+  global.wx.cloud.callFunction = () => Promise.reject(new Error('probe rejected'));
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    appDefinition.probeCloud();
+    await new Promise((resolve) => setImmediate(resolve));
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.strictEqual(appDefinition.globalData.cloudReady, false);
 }
 
 async function run() {
@@ -471,6 +529,7 @@ async function run() {
   assert.strictEqual(findBinding(state, 'wechat_D'), undefined);
 
   await testClientAuthDelegatesAndSynchronizesState();
+  await testClientAuthPinsPublicMethodActions();
   await testClientAuthFailsClosed();
   await testAppUsesSideEffectFreeAuthProbe();
 
