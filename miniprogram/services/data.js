@@ -185,23 +185,16 @@ function getAdminProfile() {
 
 function loginAdmin({ account, password }) {
   const loginName = (account || '').trim();
-  if (cloudReady()) {
-    return callCloud('adminLogin', { account: loginName, password }).then((r) => {
-      if (r && r.ok === false) {
-        const err = new Error(r.msg || '管理员登录失败');
-        err.code = r.code || '';
-        throw err;
-      }
-      setAdminSession(loginName);
-      return r || { ok: true };
-    });
-  }
-  const admin = adminAuth.ADMIN_ACCOUNTS.find((item) => item.account === loginName);
-  if (!admin || admin.password !== password) {
-    return Promise.reject(new Error('管理员账号或密码错误'));
-  }
-  setAdminSession(loginName);
-  return Promise.resolve({ ok: true, isAdmin: true });
+  if (!cloudReady()) return Promise.reject(cloudNotReadyError());
+  return callCloud('adminLogin', { account: loginName, password }).then((r) => {
+    if (r && r.ok === false) {
+      const err = new Error(r.msg || '管理员登录失败');
+      err.code = r.code || '';
+      throw err;
+    }
+    setAdminSession(loginName);
+    return r || { ok: true };
+  });
 }
 
 function applyDefaultNickname(user) {
@@ -753,7 +746,7 @@ function getAdminStatus() {
   }
   return Promise.resolve({
     ok: true,
-    isAdmin: accountAdmin,
+    isAdmin: false,
     bootstrap: false,
     accountAdmin
   });
@@ -773,9 +766,7 @@ function getPendingShopApplications(status = 'pending') {
       return (r && r.applications) || [];
     });
   }
-  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS).slice();
-  const filtered = status === 'all' ? list : list.filter((a) => (a.status || 'pending') === status);
-  return Promise.resolve(filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+  return Promise.reject(cloudNotReadyError());
 }
 
 // 管理员：审核（approve=true 通过 / false 驳回；驳回写 reason）
@@ -784,16 +775,7 @@ function reviewShopApplication({ applicationId, approve, reason }) {
     const loginName = currentLoginName();
     return callCloud('reviewShopApplication', { applicationId, approve, reason, loginName });
   }
-  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS);
-  const idx = list.findIndex((a) => a._id === applicationId);
-  if (idx === -1) return Promise.resolve({ ok: false, msg: '申请不存在' });
-  list[idx] = Object.assign({}, list[idx], {
-    status: approve ? 'approved' : 'rejected',
-    reason: approve ? '' : (reason || '资料未通过核验'),
-    reviewedAt: Date.now()
-  });
-  mock.writeArray(mock.KEY_SHOP_APPLICATIONS, list);
-  return Promise.resolve({ ok: true, status: approve ? 'approved' : 'rejected' });
+  return Promise.reject(cloudNotReadyError());
 }
 
 function latestLocalApplication(applications, openid) {
@@ -897,7 +879,7 @@ function getAdminStores() {
       return r || { summary: {}, stores: [] };
     });
   }
-  return Promise.resolve(buildLocalAdminStores(mock.readArray(mock.KEY_STORES), mock.readArray(mock.KEY_SHOP_APPLICATIONS)));
+  return Promise.reject(cloudNotReadyError());
 }
 
 function getAdminCoaches() {
@@ -908,11 +890,7 @@ function getAdminCoaches() {
       return r || { summary: {}, coaches: [] };
     });
   }
-  return Promise.resolve(buildLocalAdminCoaches(
-    mock.readArray(mock.KEY_ALL_COACHES),
-    mock.readArray(mock.KEY_SHOP_COACHES),
-    mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS)
-  ));
+  return Promise.reject(cloudNotReadyError());
 }
 
 function getAdminMembers() {
@@ -923,7 +901,7 @@ function getAdminMembers() {
       return r || { summary: {}, members: [] };
     });
   }
-  return Promise.resolve(buildLocalAdminMembers(mock.readArray(mock.KEY_MEMBERS), mock.readArray(mock.KEY_SESSIONS)));
+  return Promise.reject(cloudNotReadyError());
 }
 
 // ============ 品牌管理 ============

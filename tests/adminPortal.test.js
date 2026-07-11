@@ -5,13 +5,62 @@ const path = require('path');
 const Module = require('module');
 
 const root = path.resolve(__dirname, '..');
+const TEST_ADMIN_ACCOUNT = 'admin_zhx';
+const TEST_ADMIN_PASSWORD = 'unit-test-admin-password';
+const TEST_ADMIN_SALT = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
+const ADMIN_ENV_KEYS = [
+  'CUETRACE_ADMIN_ACCOUNT',
+  'CUETRACE_ADMIN_PASSWORD_SALT',
+  'CUETRACE_ADMIN_PASSWORD_HASH',
+  'CUETRACE_ADMIN_BOOTSTRAP_OPENIDS'
+];
 
 function read(file) {
   return fs.readFileSync(path.join(root, file), 'utf8');
 }
 
+function readJavaScriptTree(relativeDir) {
+  const absoluteDir = path.join(root, relativeDir);
+  return fs.readdirSync(absoluteDir, { withFileTypes: true }).flatMap((entry) => {
+    const relativePath = path.join(relativeDir, entry.name);
+    if (entry.isDirectory()) return readJavaScriptTree(relativePath);
+    return entry.name.endsWith('.js') ? [read(relativePath)] : [];
+  });
+}
+
 function flushPromises() {
   return new Promise((resolve) => setImmediate(resolve));
+}
+
+function testAdminEnvironment(overrides) {
+  return Object.assign({
+    CUETRACE_ADMIN_ACCOUNT: TEST_ADMIN_ACCOUNT,
+    CUETRACE_ADMIN_PASSWORD_SALT: TEST_ADMIN_SALT,
+    CUETRACE_ADMIN_PASSWORD_HASH: crypto
+      .scryptSync(TEST_ADMIN_PASSWORD, Buffer.from(TEST_ADMIN_SALT, 'hex'), 64)
+      .toString('hex'),
+    CUETRACE_ADMIN_BOOTSTRAP_OPENIDS: 'admin_wechat,wechat_first,wechat_second'
+  }, overrides || {});
+}
+
+async function withAdminEnvironment(values, fn) {
+  const previous = {};
+  ADMIN_ENV_KEYS.forEach((key) => {
+    previous[key] = Object.prototype.hasOwnProperty.call(process.env, key)
+      ? process.env[key]
+      : undefined;
+    const next = values[key];
+    if (next === undefined || next === null) delete process.env[key];
+    else process.env[key] = String(next);
+  });
+  try {
+    return await fn();
+  } finally {
+    ADMIN_ENV_KEYS.forEach((key) => {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    });
+  }
 }
 
 function loadLoginPage(accounts, fakeData) {
@@ -89,6 +138,30 @@ function loadAdminStoresPage(fakeData) {
   return page;
 }
 
+async function testOfflineAdminLoginFailsClosedWithoutSession() {
+  const dataPath = path.join(root, 'miniprogram/services/data.js');
+  const mockPath = path.join(root, 'miniprogram/utils/mock.js');
+  delete require.cache[require.resolve(dataPath)];
+  delete require.cache[require.resolve(mockPath)];
+
+  const writes = [];
+  const app = { globalData: { cloudReady: false, role: 'member', currentRole: 'member' } };
+  global.getApp = () => app;
+  global.wx = {
+    getStorageSync() { return ''; },
+    setStorageSync(key, value) { writes.push({ key, value }); },
+    removeStorageSync() {}
+  };
+
+  const data = require(dataPath);
+  await assert.rejects(
+    () => data.loginAdmin({ account: 'admin_zhx', password: 'unit-test-admin-password' }),
+    (error) => error && error.code === 'CLOUD_NOT_READY'
+  );
+  assert.deepStrictEqual(writes, [], 'Offline administrator login must not write a session.');
+  assert.strictEqual(app.globalData.adminMode, undefined, 'Offline administrator login must not enable admin mode.');
+}
+
 async function testAdminPasswordLoginBypassesRolePicker() {
   const calls = { loginAdmin: [], reLaunch: [] };
   const fakeData = {
@@ -102,7 +175,7 @@ async function testAdminPasswordLoginBypassesRolePicker() {
 
   page.setData({
     account: 'admin_zhx',
-    password: '2612694',
+    password: TEST_ADMIN_PASSWORD,
     agreementChecked: true,
     loginType: 'password'
   });
@@ -110,7 +183,7 @@ async function testAdminPasswordLoginBypassesRolePicker() {
   await flushPromises();
   await flushPromises();
 
-  assert.deepStrictEqual(calls.loginAdmin[0], { account: 'admin_zhx', password: '2612694' });
+  assert.deepStrictEqual(calls.loginAdmin[0], { account: 'admin_zhx', password: TEST_ADMIN_PASSWORD });
   assert.strictEqual(page.data.step, 'auth', 'Admin login must not enter the normal role picker.');
   assert.deepStrictEqual(calls.reLaunch[0], { url: '/pages/admin/stores/index' });
 }
@@ -129,7 +202,7 @@ async function testAdminMissingCloudFunctionShowsDeployMessage() {
     toast = args;
   };
 
-  page.doAdminLogin('admin_zhx', '2612694');
+  page.doAdminLogin('admin_zhx', TEST_ADMIN_PASSWORD);
   await flushPromises();
   await flushPromises();
 
@@ -171,6 +244,19 @@ function testAdminDataServiceExports() {
   assert(dataJs.includes("callCloud('getAdminStores', { loginName })"), 'getAdminStores should pass admin loginName.');
   assert(dataJs.includes("callCloud('getAdminCoaches', { loginName })"), 'getAdminCoaches should pass admin loginName.');
   assert(dataJs.includes("callCloud('getAdminMembers', { loginName })"), 'getAdminMembers should pass admin loginName.');
+}
+
+function testAdminDeploymentDocumentationCoversFailClosedSetup() {
+  const readme = read('README.md');
+  assert(readme.includes('CUETRACE_ADMIN_ACCOUNT'));
+  assert(readme.includes('CUETRACE_ADMIN_PASSWORD_SALT'));
+  assert(readme.includes('CUETRACE_ADMIN_PASSWORD_HASH'));
+  assert(readme.includes('CUETRACE_ADMIN_BOOTSTRAP_OPENIDS'));
+  assert(
+    readme.includes('admins') && readme.includes('admin_account_bindings') && readme.includes('清空'),
+    'Clean test deployment must document clearing both administrator lock collections.'
+  );
+  assert(readme.includes('scrypt') && readme.includes('64 字节'));
 }
 
 function withWxServerSdk(fakeCloud, fn) {
@@ -298,8 +384,116 @@ function loadAdminLogin(openid, fakeDb) {
   return withWxServerSdk(fakeCloud, () => require(fnPath));
 }
 
+function testProductionAdminSourceHasNoEmbeddedCredential() {
+  const adminAuthJs = read('miniprogram/utils/adminAuth.js');
+  const adminLoginJs = read('cloudfunctions/adminLogin/index.js');
+  const productionJs = [
+    ...readJavaScriptTree('miniprogram'),
+    ...readJavaScriptTree('cloudfunctions')
+  ].join('\n');
+
+  assert(!productionJs.includes('2612694'), 'Production JavaScript must not contain the existing administrator password.');
+  assert(!adminAuthJs.includes('password'), 'Client administrator routing metadata must not contain a password field.');
+  assert(adminLoginJs.includes('CUETRACE_ADMIN_PASSWORD_SALT'));
+  assert(adminLoginJs.includes('CUETRACE_ADMIN_PASSWORD_HASH'));
+  assert(adminLoginJs.includes('crypto.scryptSync'));
+  assert(adminLoginJs.includes('crypto.timingSafeEqual'));
+}
+
+async function testAdminLoginRejectsMissingConfiguration() {
+  for (const missingKey of [
+    'CUETRACE_ADMIN_PASSWORD_SALT',
+    'CUETRACE_ADMIN_PASSWORD_HASH',
+    'CUETRACE_ADMIN_BOOTSTRAP_OPENIDS'
+  ]) {
+    const fakeDb = createAdminDatabase();
+    await withAdminEnvironment(testAdminEnvironment({ [missingKey]: null }), async () => {
+      const adminLogin = loadAdminLogin('admin_wechat', fakeDb);
+      const result = await adminLogin.main({ account: TEST_ADMIN_ACCOUNT, password: TEST_ADMIN_PASSWORD });
+      assert.strictEqual(result.ok, false, missingKey);
+      assert.strictEqual(result.code, 'CONFIG_MISSING', missingKey);
+    });
+    assert.deepStrictEqual(fakeDb.__state.admins, [], missingKey);
+    assert.deepStrictEqual(fakeDb.__state.admin_account_bindings, [], missingKey);
+  }
+}
+
+async function testAdminLoginUsesConfiguredScryptCredential() {
+  const fakeDb = createAdminDatabase();
+  await withAdminEnvironment(testAdminEnvironment(), async () => {
+    const adminLogin = loadAdminLogin('admin_wechat', fakeDb);
+    const wrong = await adminLogin.main({ account: TEST_ADMIN_ACCOUNT, password: 'wrong-unit-test-password' });
+    assert.strictEqual(wrong.ok, false);
+    assert.strictEqual(wrong.code, 'INVALID_ADMIN');
+
+    const result = await adminLogin.main({ account: TEST_ADMIN_ACCOUNT, password: TEST_ADMIN_PASSWORD });
+    assert.strictEqual(result.ok, true);
+  });
+}
+
+async function testAdminLoginRejectsUnlistedFirstWechat() {
+  const fakeDb = createAdminDatabase();
+  await withAdminEnvironment(testAdminEnvironment({
+    CUETRACE_ADMIN_BOOTSTRAP_OPENIDS: 'allowed_wechat'
+  }), async () => {
+    const adminLogin = loadAdminLogin('unlisted_wechat', fakeDb);
+    const result = await adminLogin.main({ account: TEST_ADMIN_ACCOUNT, password: TEST_ADMIN_PASSWORD });
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.code, 'OPENID_NOT_ALLOWED');
+  });
+  assert.deepStrictEqual(fakeDb.__state.admins, []);
+  assert.deepStrictEqual(fakeDb.__state.admin_account_bindings, []);
+}
+
+async function testAdminLoginAllowsRepeatedBoundIdentityOutsideBootstrapList() {
+  const openid = 'bound_wechat';
+  const fakeDb = createAdminDatabase({
+    admins: [{
+      _id: adminRecordId(openid),
+      _openid: openid,
+      account: TEST_ADMIN_ACCOUNT,
+      accountNormalized: TEST_ADMIN_ACCOUNT,
+      status: 'active'
+    }],
+    admin_account_bindings: [{
+      _id: adminAccountBindingId(TEST_ADMIN_ACCOUNT),
+      _openid: openid,
+      account: TEST_ADMIN_ACCOUNT,
+      accountNormalized: TEST_ADMIN_ACCOUNT
+    }]
+  });
+  await withAdminEnvironment(testAdminEnvironment({
+    CUETRACE_ADMIN_BOOTSTRAP_OPENIDS: 'different_wechat'
+  }), async () => {
+    const adminLogin = loadAdminLogin(openid, fakeDb);
+    const result = await adminLogin.main({ account: TEST_ADMIN_ACCOUNT, password: TEST_ADMIN_PASSWORD });
+    assert.strictEqual(result.ok, true);
+  });
+  assert.strictEqual(fakeDb.__state.admins.length, 1);
+  assert.strictEqual(fakeDb.__state.admin_account_bindings.length, 1);
+}
+
+async function testAdministratorEnvironmentContract() {
+  const cases = [
+    ['production source', testProductionAdminSourceHasNoEmbeddedCredential],
+    ['missing configuration', testAdminLoginRejectsMissingConfiguration],
+    ['configured credential', testAdminLoginUsesConfiguredScryptCredential],
+    ['first binding whitelist', testAdminLoginRejectsUnlistedFirstWechat],
+    ['bound identity repeat login', testAdminLoginAllowsRepeatedBoundIdentityOutsideBootstrapList]
+  ];
+  const failures = [];
+  for (const [name, test] of cases) {
+    try {
+      await test();
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+  }
+  assert.deepStrictEqual(failures, [], failures.join('\n'));
+}
+
 async function testAdminLoginRejectsAccountBoundToOtherWechat() {
-  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const password = TEST_ADMIN_PASSWORD;
   const fakeDb = createAdminDatabase({
     admins: [{
       _id: adminRecordId('bound_wechat'),
@@ -326,7 +520,7 @@ async function testAdminLoginRejectsAccountBoundToOtherWechat() {
 }
 
 async function testAdminLoginRejectsWechatBoundToOtherAccount() {
-  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const password = TEST_ADMIN_PASSWORD;
   const fakeDb = createAdminDatabase({
     admins: [{
       _id: adminRecordId('bound_wechat'),
@@ -353,7 +547,7 @@ async function testAdminLoginRejectsWechatBoundToOtherAccount() {
 }
 
 async function testAdminLoginWritesDeterministicTransactionLocks() {
-  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const password = TEST_ADMIN_PASSWORD;
   const fakeDb = createAdminDatabase();
   const adminLogin = loadAdminLogin('admin_wechat', fakeDb);
 
@@ -369,7 +563,7 @@ async function testAdminLoginWritesDeterministicTransactionLocks() {
 }
 
 async function testConcurrentAdminLoginAllowsOnlyOneWechatOwner() {
-  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const password = TEST_ADMIN_PASSWORD;
   const fakeDb = createAdminDatabase();
   const firstLogin = loadAdminLogin('wechat_first', fakeDb);
   const secondLogin = loadAdminLogin('wechat_second', fakeDb);
@@ -390,7 +584,7 @@ async function testConcurrentAdminLoginAllowsOnlyOneWechatOwner() {
 }
 
 async function testAdminLoginPropagatesUnknownTransactionFailure() {
-  const password = require('../miniprogram/utils/adminAuth').ADMIN_ACCOUNTS[0].password;
+  const password = TEST_ADMIN_PASSWORD;
   const fakeDb = createAdminDatabase();
   fakeDb.__failNextTransaction = true;
   const adminLogin = loadAdminLogin('admin_wechat', fakeDb);
@@ -404,12 +598,23 @@ async function testAdminLoginPropagatesUnknownTransactionFailure() {
 }
 
 async function testAdminStoresCloudRequiresAdminLoginName() {
+  const id = adminRecordId('admin_openid');
   const fakeDb = {
     serverDate() {
       return 'SERVER_DATE';
     },
     collection(name) {
       const api = {
+        doc(docId) {
+          return {
+            async get() {
+              if (name === 'admins' && docId === id) {
+                return { data: { _id: id, _openid: 'admin_openid', account: 'admin_zhx', status: 'active' } };
+              }
+              return { data: null };
+            }
+          };
+        },
         where() {
           return api;
         },
@@ -420,7 +625,6 @@ async function testAdminStoresCloudRequiresAdminLoginName() {
           return api;
         },
         async get() {
-          if (name === 'admins') return { data: [{ _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }] };
           if (name === 'stores') return { data: [{ _id: 'store1', _openid: 'shop_openid', name: 'A厅', checkinEnabled: true }] };
           if (name === 'shop_applications') return { data: [] };
           if (name === 'shops') return { data: [] };
@@ -458,9 +662,20 @@ async function testAdminStoresCloudRequiresAdminLoginName() {
 }
 
 async function testAdminStoresCloudIncludesOfficialSeedStore() {
+  const id = adminRecordId('admin_openid');
   const fakeDb = {
     collection(name) {
       const api = {
+        doc(docId) {
+          return {
+            async get() {
+              if (name === 'admins' && docId === id) {
+                return { data: { _id: id, _openid: 'admin_openid', account: 'admin_zhx', status: 'active' } };
+              }
+              return { data: null };
+            }
+          };
+        },
         where() {
           return api;
         },
@@ -468,7 +683,6 @@ async function testAdminStoresCloudIncludesOfficialSeedStore() {
           return api;
         },
         async get() {
-          if (name === 'admins') return { data: [{ _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }] };
           return { data: [] };
         }
       };
@@ -587,15 +801,20 @@ function testAdminPagesExistAndRenderRequiredSections() {
 }
 
 (async () => {
-  await testAdminLoginPropagatesUnknownTransactionFailure();
-  await testConcurrentAdminLoginAllowsOnlyOneWechatOwner();
-  await testAdminLoginWritesDeterministicTransactionLocks();
+  await testOfflineAdminLoginFailsClosedWithoutSession();
+  await testAdministratorEnvironmentContract();
+  await withAdminEnvironment(testAdminEnvironment(), async () => {
+    await testAdminLoginPropagatesUnknownTransactionFailure();
+    await testConcurrentAdminLoginAllowsOnlyOneWechatOwner();
+    await testAdminLoginWritesDeterministicTransactionLocks();
+    await testAdminLoginRejectsAccountBoundToOtherWechat();
+    await testAdminLoginRejectsWechatBoundToOtherAccount();
+  });
   await testAdminPasswordLoginBypassesRolePicker();
   await testAdminMissingCloudFunctionShowsDeployMessage();
-  await testAdminLoginRejectsAccountBoundToOtherWechat();
-  await testAdminLoginRejectsWechatBoundToOtherAccount();
   testStaticAdminWiring();
   testAdminDataServiceExports();
+  testAdminDeploymentDocumentationCoversFailClosedSetup();
   await testAdminStoresCloudRequiresAdminLoginName();
   await testAdminStoresCloudIncludesOfficialSeedStore();
   await testAdminStoresPageKeepsBackendPendingApplicationCount();

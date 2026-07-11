@@ -23,6 +23,143 @@ function withWxServerSdk(fakeCloud, fn) {
   }
 }
 
+function adminRecordId(openid) {
+  return crypto.createHash('sha256').update(`admin-openid:${openid}`).digest('hex');
+}
+
+function loadAdminCloudFunction(relPath, openid, fakeDb) {
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'DYNAMIC_CURRENT_ENV',
+    init() {},
+    database() {
+      return fakeDb;
+    },
+    getWXContext() {
+      return { OPENID: openid };
+    }
+  };
+  const fnPath = path.join(root, relPath);
+  delete require.cache[require.resolve(fnPath)];
+  return withWxServerSdk(fakeCloud, () => require(fnPath));
+}
+
+function createAdminAuthorizationDb(adminRecord, adminReadError) {
+  const state = {
+    adminDocIds: [],
+    adminScans: 0,
+    businessReads: 0
+  };
+  function query(name) {
+    const api = {
+      where() { return api; },
+      orderBy() { return api; },
+      limit() { return api; },
+      async get() {
+        if (name === 'admins') {
+          state.adminScans += 1;
+          if (adminReadError) throw adminReadError;
+          return { data: adminRecord ? [adminRecord] : [] };
+        }
+        state.businessReads += 1;
+        return { data: [] };
+      }
+    };
+    return api;
+  }
+  return {
+    __state: state,
+    collection(name) {
+      const api = query(name);
+      api.doc = (id) => ({
+        async get() {
+          if (name === 'admins') {
+            state.adminDocIds.push(id);
+            if (adminReadError) throw adminReadError;
+            return { data: adminRecord || null };
+          }
+          state.businessReads += 1;
+          return { data: null };
+        }
+      });
+      return api;
+    }
+  };
+}
+
+const ADMIN_AUTH_FUNCTIONS = [
+  ['status', 'cloudfunctions/getAdminStatus/index.js'],
+  ['stores', 'cloudfunctions/getAdminStores/index.js'],
+  ['coaches', 'cloudfunctions/getAdminCoaches/index.js'],
+  ['members', 'cloudfunctions/getAdminMembers/index.js'],
+  ['pending', 'cloudfunctions/getPendingShopApplications/index.js'],
+  ['review', 'cloudfunctions/reviewShopApplication/index.js']
+];
+
+async function testAdminFunctionsReadOnlyDeterministicAdminDocument() {
+  const openid = 'deterministic_admin';
+  const expectedId = adminRecordId(openid);
+  const failures = [];
+  for (const [name, relPath] of ADMIN_AUTH_FUNCTIONS) {
+    const db = createAdminAuthorizationDb({
+      _id: expectedId,
+      _openid: openid,
+      account: 'admin_zhx',
+      status: 'active'
+    });
+    const fn = loadAdminCloudFunction(relPath, openid, db);
+    try {
+      const result = await fn.main({ loginName: 'admin_zhx' });
+      if (name === 'status') assert.strictEqual(result.isAdmin, true);
+      else if (name === 'review') assert.notStrictEqual(result.code, 'FORBIDDEN');
+      else assert.strictEqual(result.ok, true);
+      assert.deepStrictEqual(db.__state.adminDocIds, [expectedId]);
+      assert.strictEqual(db.__state.adminScans, 0, `${name} must not scan admins.`);
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+  }
+  assert.deepStrictEqual(failures, [], failures.join('\n'));
+}
+
+async function testMissingAdminDocumentNeverBootstrapsAuthorization() {
+  const openid = 'ovvdY3VKYCo7_jTzdpgGbuf26-tA';
+  const failures = [];
+  for (const [name, relPath] of ADMIN_AUTH_FUNCTIONS) {
+    const db = createAdminAuthorizationDb(null);
+    const fn = loadAdminCloudFunction(relPath, openid, db);
+    try {
+      const result = await fn.main({ loginName: 'admin_zhx' });
+      if (name === 'status') assert.strictEqual(result.isAdmin, false);
+      else {
+        assert.strictEqual(result.ok, false);
+        assert.strictEqual(result.code, 'FORBIDDEN');
+      }
+      assert.strictEqual(db.__state.businessReads, 0, `${name} must not read business data when unauthorized.`);
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+  }
+  assert.deepStrictEqual(failures, [], failures.join('\n'));
+}
+
+async function testAdminDocumentReadErrorsAreNeverAuthorized() {
+  const failures = [];
+  for (const [name, relPath] of ADMIN_AUTH_FUNCTIONS) {
+    const db = createAdminAuthorizationDb(null, new Error(`admin read failed: ${name}`));
+    const fn = loadAdminCloudFunction(relPath, 'admin_read_error', db);
+    try {
+      await assert.rejects(
+        () => fn.main({ loginName: 'admin_zhx' }),
+        new RegExp(`admin read failed: ${name}`)
+      );
+      assert.strictEqual(db.__state.businessReads, 0, `${name} must stop before business access.`);
+    } catch (error) {
+      failures.push(`${name}: ${error.message}`);
+    }
+  }
+  assert.deepStrictEqual(failures, [], failures.join('\n'));
+}
+
 function loadLoginPage(accounts, fakeData) {
   const loginPath = path.join(root, 'miniprogram/pages/login/index.js');
   const dataPath = path.join(root, 'miniprogram/services/data.js');
@@ -92,7 +229,7 @@ async function testLocalDefaultUserIsNotAdmin() {
   assert.strictEqual(res.isAdmin, false, 'Newly registered/default local users must not see 店主资质审核.');
 }
 
-async function testLocalAdminAccountIsAdmin() {
+async function testLocalAdminAccountStillFailsClosed() {
   const dataPath = path.join(root, 'miniprogram/services/data.js');
   const mockPath = path.join(root, 'miniprogram/utils/mock.js');
   delete require.cache[require.resolve(dataPath)];
@@ -111,7 +248,41 @@ async function testLocalAdminAccountIsAdmin() {
 
   const data = require(dataPath);
   const res = await data.getAdminStatus();
-  assert.strictEqual(res.isAdmin, true, 'The built-in admin account should see 店主资质审核.');
+  assert.strictEqual(res.isAdmin, false, 'A public administrator account name must not authorize offline access.');
+}
+
+async function testOfflineAdminOperationsNeverUseMockData() {
+  const dataPath = path.join(root, 'miniprogram/services/data.js');
+  const mockPath = path.join(root, 'miniprogram/utils/mock.js');
+  delete require.cache[require.resolve(dataPath)];
+  delete require.cache[require.resolve(mockPath)];
+
+  global.getApp = () => ({ globalData: { cloudReady: false, role: 'member' } });
+  global.wx = {
+    getStorageSync(key) {
+      if (key === 'dc_admin_login_name') return 'admin_zhx';
+      return null;
+    },
+    setStorageSync() {},
+    removeStorageSync() {}
+  };
+  const data = require(dataPath);
+  const operations = [
+    () => data.getPendingShopApplications(),
+    () => data.reviewShopApplication({ applicationId: 'app1', approve: true }),
+    () => data.getAdminStores(),
+    () => data.getAdminCoaches(),
+    () => data.getAdminMembers()
+  ];
+  const failures = [];
+  for (const operation of operations) {
+    try {
+      await assert.rejects(operation, (error) => error && error.code === 'CLOUD_NOT_READY');
+    } catch (error) {
+      failures.push(error.message);
+    }
+  }
+  assert.deepStrictEqual(failures, [], failures.join('\n'));
 }
 
 async function testLocalAdminOpenidDoesNotMakeOtherAccountsAdmin() {
@@ -229,16 +400,17 @@ async function testCloudLoginDoesNotSeedAdminByAccount() {
 }
 
 async function testCloudAdminStatusRequiresCurrentAdminAccount() {
+  const id = adminRecordId('shared_openid');
   const fakeDb = {
     collection(name) {
       return {
-        where() {
+        doc(docId) {
           return {
             async get() {
-              if (name === 'admins') {
-                return { data: [{ _openid: 'shared_openid', account: 'admin_zhx', status: 'active' }] };
+              if (name === 'admins' && docId === id) {
+                return { data: { _id: id, _openid: 'shared_openid', account: 'admin_zhx', status: 'active' } };
               }
-              return { data: [] };
+              return { data: null };
             }
           };
         }
@@ -268,9 +440,20 @@ async function testCloudAdminStatusRequiresCurrentAdminAccount() {
 }
 
 async function testCloudReviewListRequiresCurrentAdminAccount() {
+  const id = adminRecordId('shared_openid');
   const fakeDb = {
     collection(name) {
-      return {
+      const api = {
+        doc(docId) {
+          return {
+            async get() {
+              if (name === 'admins' && docId === id) {
+                return { data: { _id: id, _openid: 'shared_openid', account: 'admin_zhx', status: 'active' } };
+              }
+              return { data: null };
+            }
+          };
+        },
         where() {
           return {
             orderBy() {
@@ -280,9 +463,6 @@ async function testCloudReviewListRequiresCurrentAdminAccount() {
               return this;
             },
             async get() {
-              if (name === 'admins') {
-                return { data: [{ _openid: 'shared_openid', account: 'admin_zhx', status: 'active' }] };
-              }
               if (name === 'shop_applications') {
                 return { data: [{ _id: 'app1', status: 'pending' }] };
               }
@@ -291,6 +471,7 @@ async function testCloudReviewListRequiresCurrentAdminAccount() {
           };
         }
       };
+      return api;
     }
   };
   const fakeCloud = {
@@ -319,9 +500,10 @@ async function testCloudReviewListRequiresCurrentAdminAccount() {
 async function testCloudReviewApprovalAddsShopRoleToUserRoles() {
   const updates = [];
   const userDocId = crypto.createHash('sha256').update('wechat:shop_openid').digest('hex');
+  const adminDocId = adminRecordId('admin_openid');
   const documents = {
     admins: {
-      admin1: { _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }
+      [adminDocId]: { _id: adminDocId, _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }
     },
     shop_applications: {
       app1: { _id: 'app1', _openid: 'shop_openid', status: 'pending' }
@@ -449,7 +631,7 @@ function testAdminLoginUsesDedicatedPortalPath() {
     }
   };
   const page = loadLoginPage([
-    { role: 'member', roles: ['member'], account: 'admin_zhx', password: '2612694' }
+    { role: 'member', roles: ['member'], account: 'admin_zhx', password: 'unit-test-admin-password' }
   ], fakeData);
 
   assert.strictEqual(typeof page.doAdminLogin, 'function', 'Admin login should use a dedicated admin entry path.');
@@ -495,9 +677,13 @@ async function testAdminAccountStringCannotBypassShopQualificationGate() {
 
 (async () => {
   await testLocalDefaultUserIsNotAdmin();
-  await testLocalAdminAccountIsAdmin();
+  await testLocalAdminAccountStillFailsClosed();
+  await testOfflineAdminOperationsNeverUseMockData();
   await testLocalAdminOpenidDoesNotMakeOtherAccountsAdmin();
   await testCloudLoginDoesNotSeedAdminByAccount();
+  await testAdminFunctionsReadOnlyDeterministicAdminDocument();
+  await testMissingAdminDocumentNeverBootstrapsAuthorization();
+  await testAdminDocumentReadErrorsAreNeverAuthorized();
   await testCloudAdminStatusRequiresCurrentAdminAccount();
   await testCloudReviewListRequiresCurrentAdminAccount();
   await testCloudReviewApprovalAddsShopRoleToUserRoles();

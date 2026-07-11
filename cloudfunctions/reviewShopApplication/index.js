@@ -4,11 +4,11 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
-const BOOTSTRAP_ADMIN_OPENIDS = [
-  'ovvdY3VKYCo7_jTzdpgGbuf26-tA'
-];
-const ADMIN_ACCOUNTS = ['admin_zhx'];
 const VALID_ROLES = ['member', 'coach', 'shop'];
+
+function adminId(openid) {
+  return crypto.createHash('sha256').update(`admin-openid:${openid}`).digest('hex');
+}
 
 function bindingId(openid) {
   return crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
@@ -44,22 +44,17 @@ async function getBoundIdentity(transaction, openid) {
   return { binding, account, userDocId: bindingDocId };
 }
 
-async function getActiveAdmins() {
-  try {
-    const res = await db.collection('admins').where({ status: 'active' }).get();
-    return res.data || [];
-  } catch (e) {
-    return [];
-  }
-}
-
 async function isAdminOpenid(openid, loginName) {
-  if (ADMIN_ACCOUNTS.indexOf(loginName) === -1) return false;
-  const admins = await getActiveAdmins();
-  if (admins.length) {
-    return admins.some((item) => item._openid === openid && item.account === loginName);
-  }
-  return BOOTSTRAP_ADMIN_OPENIDS.indexOf(openid) !== -1;
+  const id = adminId(openid);
+  const res = await db.collection('admins').doc(id).get();
+  const admin = res && res.data;
+  return !!(
+    admin &&
+    admin._id === id &&
+    admin._openid === openid &&
+    admin.account === loginName &&
+    admin.status === 'active'
+  );
 }
 
 // 管理员审核店主资质申请：approve=true 通过 / false 驳回（驳回写 reason，店主可见）。

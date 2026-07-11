@@ -17,6 +17,10 @@ function bindingId(openid) {
   return crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
 }
 
+function adminId(openid) {
+  return crypto.createHash('sha256').update(`admin-openid:${openid}`).digest('hex');
+}
+
 function accountId(account) {
   return crypto.createHash('sha256').update(`account:${String(account).toLowerCase()}`).digest('hex');
 }
@@ -299,7 +303,7 @@ async function testRolePickerApplyNeverShowsAdminReviewEntry() {
 async function testShopApprovalUpsertsRoleLedgerForBoundAccount() {
   const shopUserId = bindingId('shop_openid');
   const state = {
-    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    admins: [{ _id: adminId('admin_openid'), _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: 'shop_openid', status: 'pending' }],
     wechat_bindings: [{
       _id: shopUserId,
@@ -335,7 +339,7 @@ async function testShopApprovalUpsertsRoleLedgerForBoundAccount() {
 async function testShopApprovalPreservesExistingRolesAndCurrentRole() {
   const coachUserId = bindingId('coach_openid');
   const state = {
-    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    admins: [{ _id: adminId('admin_openid'), _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: 'coach_openid', status: 'pending' }],
     wechat_bindings: [{
       _id: coachUserId,
@@ -431,7 +435,7 @@ async function testShopApprovalRejectsInvalidIdentityRelationsWithoutWrites() {
 
   for (const variant of variants) {
     const state = {
-      admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+      admins: [{ _id: adminId('admin_openid'), _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
       shop_applications: [{ _id: 'shop-app', _openid: applicantOpenid, status: 'pending' }],
       wechat_bindings: variant.wechat_bindings,
       accounts: variant.accounts,
@@ -477,7 +481,7 @@ async function testShopApprovalDoesNotPromoteLegacyRoleField() {
   const applicantOpenid = 'legacy_openid';
   const applicantId = bindingId(applicantOpenid);
   const state = {
-    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    admins: [{ _id: adminId('admin_openid'), _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: applicantOpenid, status: 'pending' }],
     wechat_bindings: [{
       _id: applicantId,
@@ -517,7 +521,7 @@ async function testShopApprovalRollsBackApplicationWhenUserWriteFails() {
   const applicantOpenid = 'shop_openid';
   const applicantId = bindingId(applicantOpenid);
   const state = {
-    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    admins: [{ _id: adminId('admin_openid'), _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: applicantOpenid, status: 'pending' }],
     wechat_bindings: [{
       _id: applicantId,
@@ -563,7 +567,7 @@ async function testShopApprovalRollsBackApplicationWhenUserWriteFails() {
 
 async function testShopApprovalRejectsMissingUserWithoutAccountBinding() {
   const state = {
-    admins: [{ _id: 'admin1', _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
+    admins: [{ _id: adminId('admin_openid'), _openid: 'admin_openid', account: 'admin_zhx', status: 'active' }],
     shop_applications: [{ _id: 'shop-app', _openid: 'bare_openid', status: 'pending' }],
     wechat_bindings: [],
     accounts: [],

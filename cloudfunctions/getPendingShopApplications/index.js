@@ -1,33 +1,28 @@
 const cloud = require('wx-server-sdk');
+const crypto = require('crypto');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
-const BOOTSTRAP_ADMIN_OPENIDS = [
-  'ovvdY3VKYCo7_jTzdpgGbuf26-tA'
-];
-const ADMIN_ACCOUNTS = ['admin_zhx'];
-
-async function getActiveAdmins() {
-  try {
-    const res = await db.collection('admins').where({ status: 'active' }).get();
-    return res.data || [];
-  } catch (e) {
-    return [];
-  }
+function adminId(openid) {
+  return crypto.createHash('sha256').update(`admin-openid:${openid}`).digest('hex');
 }
 
 async function isAdminOpenid(openid, loginName) {
-  if (ADMIN_ACCOUNTS.indexOf(loginName) === -1) return false;
-  const admins = await getActiveAdmins();
-  if (admins.length) {
-    return admins.some((item) => item._openid === openid && item.account === loginName);
-  }
-  return BOOTSTRAP_ADMIN_OPENIDS.indexOf(openid) !== -1;
+  const id = adminId(openid);
+  const res = await db.collection('admins').doc(id).get();
+  const admin = res && res.data;
+  return !!(
+    admin &&
+    admin._id === id &&
+    admin._openid === openid &&
+    admin.account === loginName &&
+    admin.status === 'active'
+  );
 }
 
 // 管理员拉取店主资质申请列表。event.status: 'pending'(默认) | 'approved' | 'rejected' | 'all'
-// 仅 admins 集合 active 管理员可调用；集合未初始化时允许兜底管理员调用。
+// 仅 admins 集合中当前微信的 active 管理员记录可调用。
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
   const loginName = (event.loginName || '').trim();

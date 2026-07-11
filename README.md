@@ -49,20 +49,33 @@ Import this directory in WeChat DevTools, then compile and run.
 
 部署后检查每个函数均已安装其目录内 `package.json` 声明的依赖。不要仅上传客户端代码，否则账号登录会因认证探测失败而保持关闭。
 
-### 4. 短信配置
+### 4. 管理员认证配置
+
+本项目的管理员登录只在云端校验。客户端只保留公开账号名用于路由，不保存密码、散列或首次绑定白名单。在 `adminLogin` 云函数配置下列四个环境变量，任意一项缺失或格式错误都会以 `CONFIG_MISSING` 拒绝登录：
+
+- `CUETRACE_ADMIN_ACCOUNT`：公开的管理员账号名。
+- `CUETRACE_ADMIN_PASSWORD_SALT`：为本次新密码单独生成的随机盐，使用偶数长度十六进制字符串。
+- `CUETRACE_ADMIN_PASSWORD_HASH`：使用上述盐对新密码执行 scrypt，输出 64 字节后转为 128 位十六进制字符串。
+- `CUETRACE_ADMIN_BOOTSTRAP_OPENIDS`：允许首次建立管理员双向绑定的真实 OPENID，多个值用英文逗号分隔。
+
+按 B 方案部署到纯测试环境前，先在云控制台清空 `admins` 与 `admin_account_bindings` 的旧测试记录，再生成一个全新管理员密码及其盐和派生值；不要沿用仓库历史密码，也不要把新密码或它的真实配置值写入代码、README 或测试日志。此清空操作仅适用于可重建的纯测试环境。
+
+首次登录只在 `admins` 和 `admin_account_bindings` 两把确定性锁都不存在时使用白名单；双锁已绑定同一账号和微信后可重复登录。不完整的单边锁、第二个微信或第二个账号都会被拒绝，不会通过空集合或读取异常回退到硬编码管理员。
+
+### 5. 短信配置
 
 在 `sendSmsCode` 云函数环境变量中配置 `CUETRACE_SMS_SECRET_ID`、`CUETRACE_SMS_SECRET_KEY`、`CUETRACE_SMS_SDK_APP_ID`、`CUETRACE_SMS_SIGN_NAME`、`CUETRACE_SMS_TEMPLATE_ID`；可按实际地域和模板参数配置 `CUETRACE_SMS_REGION`、`CUETRACE_SMS_TEMPLATE_PARAMS`。在 `sendSmsCode` 与 `verifySmsCode` 中设置相同的 `SMS_CODE_HASH_SECRET`，用于验证码散列校验。
 
 所有值都必须来自实际腾讯云短信配置；仓库不提供示例密钥，也不要把 SecretId、SecretKey 或散列密钥提交到代码中。
 
-### 5. 身份约束
+### 6. 身份约束
 
 - 注册会把当前可信 `OPENID` 与新业务账号绑定；已存在但尚未绑定的账号只能在密码校验成功后绑定。
 - 微信图标只对已绑定微信执行免密恢复。未绑定微信不会被静默创建为用户。
 - 一个业务账号只能绑定一个微信，一个微信也只能绑定一个业务账号。当前版本不提供解绑、换绑或覆盖绑定入口；不要通过控制台手工改一侧映射来规避限制。
 - 角色只认云端 `users.roles`。会员注册不会自动获得教练或店主角色，必须走对应审核流程。
 
-### 6. 发布前真机验收
+### 7. 发布前真机验收
 
 本地 Node 测试只验证代码逻辑，不能代替真实微信身份、云环境和集合权限验收。发布前在已部署环境逐项完成并保留记录：
 

@@ -4,10 +4,6 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
-const ADMIN_CREDENTIALS = [
-  { account: 'admin_zhx', password: '2612694' }
-];
-
 function fail(code, msg) {
   return { ok: false, code, msg };
 }
@@ -18,6 +14,29 @@ function sha256(value) {
 
 function normalizeAccount(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function readConfig() {
+  const account = String(process.env.CUETRACE_ADMIN_ACCOUNT || '').trim();
+  const saltHex = String(process.env.CUETRACE_ADMIN_PASSWORD_SALT || '').trim();
+  const hashHex = String(process.env.CUETRACE_ADMIN_PASSWORD_HASH || '').trim().toLowerCase();
+  const bootstrapValue = String(process.env.CUETRACE_ADMIN_BOOTSTRAP_OPENIDS || '').trim();
+  const validSalt = /^(?:[0-9a-fA-F]{2})+$/.test(saltHex);
+  const validHash = /^[0-9a-f]{128}$/.test(hashHex);
+  const bootstrapOpenids = bootstrapValue.split(',').map((item) => item.trim()).filter(Boolean);
+  if (!account || !validSalt || !validHash || !bootstrapOpenids.length) return null;
+  return {
+    account,
+    accountNormalized: normalizeAccount(account),
+    salt: Buffer.from(saltHex, 'hex'),
+    hash: Buffer.from(hashHex, 'hex'),
+    bootstrapOpenids
+  };
+}
+
+function matchesPassword(password, config) {
+  const actual = crypto.scryptSync(String(password || ''), config.salt, 64);
+  return actual.length === config.hash.length && crypto.timingSafeEqual(actual, config.hash);
 }
 
 function adminId(openid) {
@@ -41,12 +60,15 @@ async function getOptional(ref) {
 
 exports.main = async (event = {}) => {
   const { OPENID } = cloud.getWXContext();
-  const account = (event.account || '').trim();
-  const password = event.password || '';
-  const hit = ADMIN_CREDENTIALS.find((item) => item.account === account && item.password === password);
-  if (!hit) return fail('INVALID_ADMIN', '管理员账号或密码错误');
+  const config = readConfig();
+  if (!config) return fail('CONFIG_MISSING', '管理员认证配置缺失');
+  const normalized = normalizeAccount(event.account);
+  if (
+    !OPENID ||
+    normalized !== config.accountNormalized ||
+    !matchesPassword(event.password, config)
+  ) return fail('INVALID_ADMIN', '管理员账号或密码错误');
 
-  const normalized = normalizeAccount(account);
   try {
     await db.runTransaction(async (transaction) => {
       const adminDocId = adminId(OPENID);
@@ -58,7 +80,11 @@ exports.main = async (event = {}) => {
 
       if (
         existingAdmin &&
-        (existingAdmin._openid !== OPENID || normalizeAccount(existingAdmin.account) !== normalized)
+        (
+          existingAdmin._id !== adminDocId ||
+          existingAdmin._openid !== OPENID ||
+          normalizeAccount(existingAdmin.account) !== normalized
+        )
       ) {
         throw authError('WECHAT_ALREADY_BOUND');
       }
@@ -69,15 +95,26 @@ exports.main = async (event = {}) => {
         throw authError('ACCOUNT_ALREADY_BOUND');
       }
 
+      if (!!existingAdmin !== !!existingAccountLock) {
+        throw authError('BINDING_INCONSISTENT');
+      }
+      if (existingAdmin && existingAdmin.status !== 'active') {
+        throw authError('ADMIN_INACTIVE');
+      }
+      if (existingAdmin) return;
+      if (config.bootstrapOpenids.indexOf(OPENID) === -1) {
+        throw authError('OPENID_NOT_ALLOWED');
+      }
+
       const now = db.serverDate();
       await adminRef.set({
         data: {
           _id: adminDocId,
           _openid: OPENID,
-          account,
+          account: config.account,
           accountNormalized: normalized,
           status: 'active',
-          createdAt: existingAdmin && existingAdmin.createdAt ? existingAdmin.createdAt : now,
+          createdAt: now,
           updatedAt: now
         }
       });
@@ -85,21 +122,20 @@ exports.main = async (event = {}) => {
         data: {
           _id: accountLockId,
           _openid: OPENID,
-          account,
+          account: config.account,
           accountNormalized: normalized,
-          createdAt: existingAccountLock && existingAccountLock.createdAt ? existingAccountLock.createdAt : now,
+          createdAt: now,
           updatedAt: now
         }
       });
     });
   } catch (error) {
-    if (error && error.authCode === 'ACCOUNT_ALREADY_BOUND') {
-      return fail('ACCOUNT_ALREADY_BOUND', '管理员账号已绑定其他微信');
-    }
-    if (error && error.authCode === 'WECHAT_ALREADY_BOUND') {
-      return fail('WECHAT_ALREADY_BOUND', '当前微信已绑定其他管理员账号');
-    }
+    if (error && error.authCode === 'ACCOUNT_ALREADY_BOUND') return fail(error.authCode, '管理员账号已绑定其他微信');
+    if (error && error.authCode === 'WECHAT_ALREADY_BOUND') return fail(error.authCode, '当前微信已绑定其他管理员账号');
+    if (error && error.authCode === 'OPENID_NOT_ALLOWED') return fail(error.authCode, '当前微信不在首次绑定白名单');
+    if (error && error.authCode === 'BINDING_INCONSISTENT') return fail(error.authCode, '管理员绑定数据不完整');
+    if (error && error.authCode === 'ADMIN_INACTIVE') return fail(error.authCode, '管理员账号已停用');
     throw error;
   }
-  return { ok: true, isAdmin: true, account };
+  return { ok: true, isAdmin: true, account: config.account };
 };
