@@ -120,7 +120,7 @@ try {
 Run:
 
 ```powershell
-$output = @(& powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-context.ps1)
+$output = @(& powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-context.ps1 -InputThreshold 1)
 if ($LASTEXITCODE -ne 0) { throw 'context script failed' }
 if ($output.Count -gt 8) { throw "too many lines: $($output.Count)" }
 if ($output -notcontains 'STATUS=NEW_TASK_RECOMMENDED') { throw ($output -join "`n") }
@@ -179,7 +179,7 @@ param()
 $ErrorActionPreference = 'Stop'
 
 function Invoke-Git([string[]]$Arguments) {
-  $output = @(& git -c core.quotePath=false -c core.excludesFile=NUL @Arguments 2>&1)
+  $output = @(& git -c core.quotePath=false -c core.excludesFile= @Arguments 2>&1)
   if ($LASTEXITCODE -ne 0) {
     throw (($output | Where-Object { $_ -notmatch '^warning:' }) -join "`n")
   }
@@ -297,7 +297,7 @@ param([string]$Baseline = 'main')
 $ErrorActionPreference = 'Stop'
 
 function Invoke-Git([string[]]$Arguments, [switch]$AllowFailure) {
-  $output = @(& git -c core.quotePath=false -c core.excludesFile=NUL @Arguments 2>&1)
+  $output = @(& git -c core.quotePath=false -c core.excludesFile= @Arguments 2>&1)
   $exitCode = $LASTEXITCODE
   $clean = @($output | Where-Object { $_ -notmatch '^warning:' })
   if ($exitCode -ne 0 -and -not $AllowFailure) {
