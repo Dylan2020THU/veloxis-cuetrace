@@ -1,8 +1,10 @@
 const assert = require('assert');
 const crypto = require('crypto');
+const fs = require('fs');
 const Module = require('module');
 const path = require('path');
 
+const root = path.resolve(__dirname, '..');
 const accountAuthPath = path.resolve(__dirname, '..', 'cloudfunctions', 'accountAuth', 'index.js');
 const dataServicePath = path.resolve(__dirname, '..', 'miniprogram', 'services', 'data.js');
 const appPath = path.resolve(__dirname, '..', 'miniprogram', 'app.js');
@@ -376,6 +378,9 @@ async function testAppUsesSideEffectFreeAuthProbe() {
 }
 
 async function run() {
+  const projectConfig = JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'));
+  assert.strictEqual(projectConfig.appid, 'wxa7c9920cda26d7ca');
+
   const seed = makeState();
   const state = seed;
 
