@@ -40,6 +40,60 @@ function callCloud(name, data) {
   return wx.cloud.callFunction({ name, data }).then((res) => res.result);
 }
 
+function cloudNotReadyError() {
+  return Object.assign(new Error('云服务未连接，无法登录'), {
+    code: 'CLOUD_NOT_READY'
+  });
+}
+
+function applyAuthResult(result) {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  if (!app || !app.globalData || !result) return result;
+  app.globalData.account = result.account || '';
+  app.globalData.roles = Array.isArray(result.roles) ? result.roles.slice() : ['member'];
+  app.globalData.currentRole = result.currentRole || app.globalData.roles[0] || 'member';
+  try {
+    wx.setStorageSync('dc_account_name', app.globalData.account);
+  } catch (e) {}
+  return result;
+}
+
+function cloudAuth(action, payload) {
+  if (!cloudReady()) return Promise.reject(cloudNotReadyError());
+  return callCloud('accountAuth', Object.assign({ action }, payload || {})).then((result) => {
+    if (result && result.ok === false) {
+      const error = new Error(result.msg || '认证失败');
+      error.code = result.code || 'AUTH_FAILED';
+      error.result = result;
+      throw error;
+    }
+    return applyAuthResult(result);
+  });
+}
+
+function registerAccount(input) {
+  return cloudAuth('register', input);
+}
+
+function loginWithPassword(input) {
+  return cloudAuth('passwordLogin', input);
+}
+
+function loginWithWechat() {
+  return cloudAuth('wechatLogin');
+}
+
+function getAccountSecurity() {
+  return cloudAuth('status');
+}
+
+function probeAuthCloud() {
+  if (typeof wx === 'undefined' || !wx.cloud) {
+    return Promise.reject(cloudNotReadyError());
+  }
+  return callCloud('accountAuth', { action: 'probe' });
+}
+
 // 初始化（播种演示数据；cloudReady 时云端数据优先，本地数据作为兜底）
 function initData() {
   mock.ensureSeeded();
@@ -187,10 +241,10 @@ function applyUserResult(r) {
   }
 }
 
-// 登录，返回 openid。role 可选：登录页选定身份，传入时写入云端 users 集合。
-function login(role, roles, loginName) {
+// 进入选定角色，服务端依据已绑定账号的角色权限决定是否放行；断云时拒绝登录。
+function login(role) {
   if (cloudReady()) {
-    return callCloud('login', role ? { role, roles: normalizeRoles(role, roles), loginName: loginName || '' } : {}).then((r) => {
+    return callCloud('login', { role }).then((r) => {
       if (r && r.ok === false) {
         const err = new Error(r.msg || '登录失败');
         err.code = r.code || '';
@@ -204,21 +258,7 @@ function login(role, roles, loginName) {
       return (r && r.openid) || '';
     });
   }
-  const pendingDeletion = mock.readObject(ACCOUNT_DELETION_KEY, null);
-  if (pendingDeletion && pendingDeletion.deletionStatus === 'pending') {
-    if ((pendingDeletion.deletionScheduledAt || 0) > Date.now()) {
-      try { wx.removeStorageSync(ACCOUNT_DELETION_KEY); } catch (e) {}
-      wx.showToast({ title: '已中止注销流程', icon: 'none' });
-    } else {
-      return Promise.reject(Object.assign(new Error('账号注销已进入删除流程'), { code: 'ACCOUNT_DELETION_LOCKED' }));
-    }
-  }
-  getApp().globalData.openid = mock.MOCK_OPENID;
-  getApp().globalData.roles = normalizeRoles(role, roles);
-  getApp().globalData.currentRole = role;
-  getApp().globalData.role = role;
-  mock.setRole(role);
-  return Promise.resolve(mock.MOCK_OPENID);
+  return Promise.reject(cloudNotReadyError());
 }
 
 function sendSmsCode(phone) {
@@ -2471,6 +2511,11 @@ function deleteAccount(opts) {
 
 module.exports = {
   initData,
+  registerAccount,
+  loginWithPassword,
+  loginWithWechat,
+  getAccountSecurity,
+  probeAuthCloud,
   login,
   loginAdmin,
   logoutAdmin,

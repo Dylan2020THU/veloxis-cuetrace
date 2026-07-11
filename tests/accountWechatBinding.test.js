@@ -4,6 +4,8 @@ const Module = require('module');
 const path = require('path');
 
 const accountAuthPath = path.resolve(__dirname, '..', 'cloudfunctions', 'accountAuth', 'index.js');
+const dataServicePath = path.resolve(__dirname, '..', 'miniprogram', 'services', 'data.js');
+const appPath = path.resolve(__dirname, '..', 'miniprogram', 'app.js');
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -186,6 +188,135 @@ function loadAccountAuth(openid, seed, unionid) {
   }
 }
 
+function loadDataService(options) {
+  const config = options || {};
+  const calls = [];
+  const storage = {};
+  const app = {
+    globalData: Object.assign({
+      cloudReady: config.cloudReady !== false,
+      account: '',
+      roles: [],
+      currentRole: '',
+      openid: ''
+    }, config.globalData || {})
+  };
+  global.getApp = () => app;
+  global.wx = {
+    cloud: config.withCloud === false ? null : {
+      callFunction({ name, data }) {
+        calls.push({ name, data });
+        const result = config.resultForAction
+          ? config.resultForAction(data && data.action, name, data)
+          : { ok: true };
+        return Promise.resolve({ result });
+      }
+    },
+    getStorageSync(key) {
+      return storage[key];
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    removeStorageSync(key) {
+      delete storage[key];
+    },
+    showToast() {}
+  };
+  delete require.cache[require.resolve(dataServicePath)];
+  return { data: require(dataServicePath), app, calls, storage };
+}
+
+async function testClientAuthDelegatesAndSynchronizesState() {
+  const fixture = loadDataService({
+    resultForAction(action) {
+      if (action === 'probe') return { ok: true, cloudReady: true };
+      return {
+        ok: true,
+        account: 'MemberA',
+        roles: ['member', 'coach'],
+        currentRole: 'coach'
+      };
+    }
+  });
+
+  await fixture.data.registerAccount({ account: 'MemberA', password: '123456' });
+  await fixture.data.loginWithPassword({ account: 'MemberA', password: '123456' });
+  await fixture.data.loginWithWechat();
+  await fixture.data.getAccountSecurity();
+  const stateBeforeProbe = clone(fixture.app.globalData);
+  await fixture.data.probeAuthCloud();
+
+  assert.deepStrictEqual(fixture.calls, [
+    { name: 'accountAuth', data: { action: 'register', account: 'MemberA', password: '123456' } },
+    { name: 'accountAuth', data: { action: 'passwordLogin', account: 'MemberA', password: '123456' } },
+    { name: 'accountAuth', data: { action: 'wechatLogin' } },
+    { name: 'accountAuth', data: { action: 'status' } },
+    { name: 'accountAuth', data: { action: 'probe' } }
+  ]);
+  assert.strictEqual(fixture.app.globalData.account, 'MemberA');
+  assert.deepStrictEqual(fixture.app.globalData.roles, ['member', 'coach']);
+  assert.strictEqual(fixture.app.globalData.currentRole, 'coach');
+  assert.strictEqual(fixture.app.globalData.openid, '');
+  assert.strictEqual(fixture.storage.dc_account_name, 'MemberA');
+  assert.strictEqual(fixture.storage.dc_accounts, undefined);
+  assert.strictEqual(fixture.storage.dc_wechat_bindings, undefined);
+  assert.deepStrictEqual(fixture.app.globalData, stateBeforeProbe);
+}
+
+async function testClientAuthFailsClosed() {
+  const unavailable = loadDataService({ cloudReady: false });
+  await assert.rejects(
+    () => unavailable.data.loginWithWechat(),
+    (error) => error.code === 'CLOUD_NOT_READY'
+  );
+  assert.strictEqual(unavailable.calls.length, 0);
+  assert.strictEqual(unavailable.app.globalData.openid, '');
+
+  const rejected = loadDataService({
+    resultForAction() {
+      return { ok: false, code: 'WECHAT_NOT_BOUND', msg: 'not bound' };
+    }
+  });
+  await assert.rejects(
+    () => rejected.data.loginWithWechat(),
+    (error) => error.code === 'WECHAT_NOT_BOUND' && error.result.code === 'WECHAT_NOT_BOUND'
+  );
+  assert.strictEqual(rejected.app.globalData.account, '');
+}
+
+async function testAppUsesSideEffectFreeAuthProbe() {
+  const calls = [];
+  let appDefinition;
+  global.App = (definition) => {
+    appDefinition = definition;
+  };
+  global.wx = {
+    cloud: {
+      callFunction(input) {
+        calls.push(input);
+        return Promise.resolve({ result: { ok: true, cloudReady: true } });
+      }
+    }
+  };
+  delete require.cache[require.resolve(appPath)];
+  require(appPath);
+  let refreshCount = 0;
+  appDefinition.refreshBilling = () => {
+    refreshCount += 1;
+  };
+
+  appDefinition.probeCloud();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepStrictEqual(calls, [
+    { name: 'accountAuth', data: { action: 'probe' } }
+  ]);
+  assert.strictEqual(appDefinition.globalData.cloudReady, true);
+  assert.strictEqual(appDefinition.globalData.account, '');
+  assert.strictEqual(refreshCount, 1);
+}
+
 async function run() {
   const seed = makeState();
   const state = seed;
@@ -338,6 +469,10 @@ async function run() {
   assert.strictEqual(rolledBack.code, 'AUTH_INTERNAL_ERROR');
   assert.strictEqual(findAccount(state, 'MemberD'), undefined);
   assert.strictEqual(findBinding(state, 'wechat_D'), undefined);
+
+  await testClientAuthDelegatesAndSynchronizesState();
+  await testClientAuthFailsClosed();
+  await testAppUsesSideEffectFreeAuthProbe();
 
   console.log('accountWechatBinding tests passed');
 }

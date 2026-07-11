@@ -370,7 +370,7 @@ function testLocalRegisteredAccountsUseEntitlements() {
   assert.strictEqual(page.findRegisteredAccount('shop1', 'member'), null, 'Shop account should not enter member port.');
 }
 
-async function testDataLoginForwardsValidatedRoles() {
+async function testDataLoginForwardsOnlySelectedRole() {
   const dataPath = path.join(root, 'miniprogram/services/data.js');
   const mockPath = path.join(root, 'miniprogram/utils/mock.js');
   delete require.cache[require.resolve(dataPath)];
@@ -396,7 +396,7 @@ async function testDataLoginForwardsValidatedRoles() {
 
   const data = require(dataPath);
   await data.login('coach', ['member', 'coach']);
-  assert.deepStrictEqual(calls[0].data, { role: 'coach', roles: ['member', 'coach'], loginName: '' });
+  assert.deepStrictEqual(calls[0].data, { role: 'coach' });
 }
 
 function testLoginFailuresSurfaceCloudMessage() {
@@ -497,7 +497,7 @@ function testCheckinPageExposesDetailFilters() {
   await testLoginReturnsShopOnlyRoles();
   await testLoginRejectsClientRoleEscalationAndAllowsServerRole();
   testLocalRegisteredAccountsUseEntitlements();
-  await testDataLoginForwardsValidatedRoles();
+  await testDataLoginForwardsOnlySelectedRole();
   testLoginFailuresSurfaceCloudMessage();
   await testOwnHeatmapMergesCoachLessons();
   await testTargetHeatmapDoesNotMergeCoachLessons();

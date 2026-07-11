@@ -7,6 +7,7 @@ const CLOUD_ENV = 'cloud1-d4g2abcud02b40531';
 App({
   globalData: {
     role: '',
+    account: '',
     openid: '',
     firstLoginAt: 0,
     plan: 'free',
@@ -16,7 +17,7 @@ App({
     themeMode: 'light',
     theme: 'light',
     // 云端是否真正可用：由 probeCloud() 实测云函数后置位。
-    // 探测成功前一律按 false 处理 → data.js 走本地 mock，保证未部署时 demo 不挂。
+    // 探测成功前一律按 false 处理；认证调用失败关闭，普通演示数据仍可使用本地 mock。
     cloudReady: false
   },
 
@@ -51,20 +52,20 @@ App({
     }
   },
 
-  // 探测式接通：实际调起一次云函数（login），成功才认定云端可用。
-  // 这样部署前探测失败→走 mock（不影响现有演示）；部署后探测成功→自动切云，
-  // 并主动刷新订阅态，确保"云端发的货"能被端上读回。
+  // 认证探测只调用 accountAuth.probe，不创建用户、不写数据库；明确返回 ok 才认定云端可用。
+  // 探测成功后主动刷新订阅态，确保"云端发的货"能被端上读回。
   probeCloud() {
     if (!wx.cloud || !this.globalData.cloudEnv) return;
     wx.cloud
-      .callFunction({ name: 'login', data: {} })
-      .then(() => {
+      .callFunction({ name: 'accountAuth', data: { action: 'probe' } })
+      .then((res) => {
+        if (!res.result || res.result.ok !== true) throw new Error('AUTH_PROBE_FAILED');
         this.globalData.cloudReady = true;
         this.refreshBilling();
       })
       .catch((e) => {
         this.globalData.cloudReady = false;
-        console.warn('[CueTrace] 云函数探测失败，使用本地 mock 数据', e);
+        console.warn('[CueTrace] 认证云服务探测失败', e);
       });
   },
 

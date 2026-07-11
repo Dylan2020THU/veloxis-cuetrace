@@ -13,6 +13,61 @@ function flushPromises() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
+function loadDataServiceForLogin(cloudReady) {
+  const dataPath = path.join(root, 'miniprogram/services/data.js');
+  const calls = [];
+  const app = {
+    globalData: {
+      cloudReady,
+      openid: '',
+      roles: [],
+      currentRole: '',
+      role: ''
+    }
+  };
+  global.getApp = () => app;
+  global.wx = {
+    cloud: {
+      callFunction(input) {
+        calls.push(input);
+        return Promise.resolve({
+          result: {
+            ok: true,
+            openid: 'openid_from_cloud',
+            roles: ['member', 'coach'],
+            currentRole: 'coach'
+          }
+        });
+      }
+    },
+    getStorageSync() {
+      return null;
+    },
+    setStorageSync() {},
+    removeStorageSync() {},
+    showToast() {}
+  };
+  delete require.cache[require.resolve(dataPath)];
+  return { data: require(dataPath), app, calls };
+}
+
+async function testDataLoginUsesOnlyServerAuthorizedRole() {
+  const connected = loadDataServiceForLogin(true);
+  const openid = await connected.data.login('coach', ['member', 'coach'], 'coach1');
+  assert.strictEqual(openid, 'openid_from_cloud');
+  assert.deepStrictEqual(connected.calls, [
+    { name: 'login', data: { role: 'coach' } }
+  ]);
+
+  const disconnected = loadDataServiceForLogin(false);
+  await assert.rejects(
+    () => disconnected.data.login('member'),
+    (error) => error.code === 'CLOUD_NOT_READY'
+  );
+  assert.strictEqual(disconnected.calls.length, 0);
+  assert.strictEqual(disconnected.app.globalData.openid, '');
+}
+
 function loadLoginPage(accounts, fakeData, appData) {
   const loginPath = path.join(root, 'miniprogram/pages/login/index.js');
   const dataPath = path.join(root, 'miniprogram/services/data.js');
@@ -350,6 +405,7 @@ async function testSwitchRoleUsesRegisteredAccountRolesBeforeSessionRoles() {
   await testApprovedShopApplicationEnablesShopRolePickerOption();
   await testSwitchRoleParamOpensRolePickerFromCurrentSession();
   await testSwitchRoleUsesRegisteredAccountRolesBeforeSessionRoles();
+  await testDataLoginUsesOnlyServerAuthorizedRole();
   const page = loadLoginPage([
     { account: 'member1', password: '123456', role: 'member', roles: ['member'] }
   ]);
