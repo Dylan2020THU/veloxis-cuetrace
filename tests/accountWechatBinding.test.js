@@ -54,10 +54,18 @@ function matches(document, query) {
 
 function makeDatabase(state) {
   const root = {
+    failNextRead: false,
     failNextWrite: false
   };
 
   function createFacade(targetState, transactionMode) {
+    function maybeFailRead() {
+      if (root.failNextRead) {
+        root.failNextRead = false;
+        throw new Error('simulated read failure');
+      }
+    }
+
     function maybeFailWrite() {
       if (root.failNextWrite) {
         root.failNextWrite = false;
@@ -72,6 +80,7 @@ function makeDatabase(state) {
         doc(id) {
           return {
             async get() {
+              maybeFailRead();
               return { data: clone(findById(documents, id) || null) };
             },
             async set({ data }) {
@@ -130,6 +139,14 @@ function makeDatabase(state) {
   }
 
   const database = createFacade(state, false);
+  Object.defineProperty(database, 'failNextRead', {
+    get() {
+      return root.failNextRead;
+    },
+    set(value) {
+      root.failNextRead = Boolean(value);
+    }
+  });
   Object.defineProperty(database, 'failNextWrite', {
     get() {
       return root.failNextWrite;
@@ -287,6 +304,23 @@ async function run() {
   });
   assert.strictEqual(inconsistent.code, 'ACCOUNT_NOT_BOUND');
   assert.deepStrictEqual(snapshot(inconsistentState), inconsistentBefore);
+
+  const readFailureState = makeState();
+  const readFailureBefore = snapshot(readFailureState);
+  const readFailureModule = loadAccountAuth('wechat_read_failure', readFailureState);
+  fakeDb.failNextRead = true;
+  const readFailureConsoleError = console.error;
+  console.error = () => {};
+  let readFailure;
+  try {
+    readFailure = await readFailureModule.main({
+      action: 'register', account: 'MemberR', password: '123456'
+    });
+  } finally {
+    console.error = readFailureConsoleError;
+  }
+  assert.strictEqual(readFailure.code, 'AUTH_INTERNAL_ERROR');
+  assert.deepStrictEqual(snapshot(readFailureState), readFailureBefore);
 
   fakeDb = null;
   const rollbackModule = loadAccountAuth('wechat_D', state);

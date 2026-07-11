@@ -44,12 +44,8 @@ function authError(code) {
 }
 
 async function getOptional(ref) {
-  try {
-    const result = await ref.get();
-    return result && result.data ? result.data : null;
-  } catch (e) {
-    return null;
-  }
+  const result = await ref.get();
+  return result && result.data ? result.data : null;
 }
 
 function normalizeServerRoles(user) {
