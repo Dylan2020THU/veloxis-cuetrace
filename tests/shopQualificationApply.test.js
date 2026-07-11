@@ -17,6 +17,36 @@ function bindingId(openid) {
   return crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
 }
 
+function accountId(account) {
+  return crypto.createHash('sha256').update(`account:${String(account).toLowerCase()}`).digest('hex');
+}
+
+function boundIdentity(openid, account, roles) {
+  const userId = bindingId(openid);
+  const boundAccountId = accountId(account);
+  return {
+    wechat_bindings: [{
+      _id: userId,
+      _openid: openid,
+      accountId: boundAccountId,
+      account
+    }],
+    accounts: [{
+      _id: boundAccountId,
+      _openid: openid,
+      account,
+      status: 'active'
+    }],
+    users: [{
+      _id: userId,
+      _openid: openid,
+      roles,
+      role: 'member',
+      currentRole: 'member'
+    }]
+  };
+}
+
 function createFakeDb(seed) {
   const updates = [];
   const adds = [];
@@ -639,6 +669,71 @@ async function testSaveShopProfileCreatesProfileFromAuthoritativeShopRole() {
   );
 }
 
+async function testSaveShopStoreRequiresBoundShopRoleWithoutWrites() {
+  const variants = [
+    {
+      name: 'unbound caller',
+      expectedCode: 'ACCOUNT_NOT_BOUND',
+      state: { wechat_bindings: [], accounts: [], users: [], stores: [] }
+    },
+    {
+      name: 'bound member',
+      expectedCode: 'SHOP_ROLE_REQUIRED',
+      state: Object.assign(boundIdentity('member_openid', 'member1', ['member']), { stores: [] })
+    }
+  ];
+
+  for (const variant of variants) {
+    const openid = variant.name === 'unbound caller' ? 'unbound_openid' : 'member_openid';
+    const { fn, fakeDb } = loadCloudFunction(
+      'cloudfunctions/saveShopStore/index.js',
+      openid,
+      variant.state
+    );
+
+    const result = await fn.main({ store: { name: 'Forged Store' } });
+
+    assert.strictEqual(result.ok, false, variant.name);
+    assert.strictEqual(result.code, variant.expectedCode, variant.name);
+    assert.strictEqual(fakeDb.__updates.length, 0, variant.name);
+    assert.strictEqual(fakeDb.__adds.length, 0, variant.name);
+    assert.strictEqual(variant.state.stores.length, 0, variant.name);
+  }
+}
+
+async function testSaveShopStoreNeverFallsBackToAddForForeignOrMissingStore() {
+  const variants = [
+    {
+      name: 'foreign store',
+      stores: [{ _id: 'store1', _openid: 'another_shop', name: 'Foreign Store' }]
+    },
+    {
+      name: 'missing store',
+      stores: []
+    }
+  ];
+
+  for (const variant of variants) {
+    const state = Object.assign(boundIdentity('shop_openid', 'shop1', ['member', 'shop']), {
+      stores: variant.stores
+    });
+    const before = clone(state.stores);
+    const { fn, fakeDb } = loadCloudFunction(
+      'cloudfunctions/saveShopStore/index.js',
+      'shop_openid',
+      state
+    );
+
+    const result = await fn.main({ store: { _id: 'store1', name: 'Hijacked Store' } });
+
+    assert.strictEqual(result.ok, false, variant.name);
+    assert.strictEqual(result.code, 'STORE_NOT_OWNED', variant.name);
+    assert.deepStrictEqual(state.stores, before, variant.name);
+    assert.strictEqual(fakeDb.__updates.length, 0, variant.name);
+    assert.strictEqual(fakeDb.__adds.length, 0, `${variant.name} must not fall back to add.`);
+  }
+}
+
 (async () => {
   await testRolePickerApplyDoesNotTreatLegacyShopAsApproved();
   await testRolePickerApplyDoesNotAutoEnterShopWhenStatusApproved();
@@ -652,4 +747,6 @@ async function testSaveShopProfileCreatesProfileFromAuthoritativeShopRole() {
   await testSaveShopProfileRejectsMemberWithoutWrites();
   await testSaveShopProfileAllowsAuthorizedShopWithoutRoleWrites();
   await testSaveShopProfileCreatesProfileFromAuthoritativeShopRole();
+  await testSaveShopStoreRequiresBoundShopRoleWithoutWrites();
+  await testSaveShopStoreNeverFallsBackToAddForForeignOrMissingStore();
 })();

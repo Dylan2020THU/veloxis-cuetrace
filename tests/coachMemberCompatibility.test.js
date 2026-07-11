@@ -677,6 +677,92 @@ async function testAddShopCoachRejectsForeignStoreWithoutLinkWrites() {
   assert.strictEqual(fakeDb.__adds.length, 0);
 }
 
+async function testCoachApplicationRejectsUnboundNonShopAndSelfAttackersWithoutWrites() {
+  const applicantBinding = bindingFor('member_openid', 'member1');
+  const ownerBinding = bindingFor('shop_openid', 'shop1');
+  const variants = [
+    {
+      name: 'unbound applicant',
+      openid: 'unbound_openid',
+      expectedCode: 'ACCOUNT_NOT_BOUND',
+      bindings: [ownerBinding],
+      accounts: [accountFor('shop_openid', 'shop1')],
+      users: [{
+        _id: ownerBinding._id,
+        _openid: 'shop_openid',
+        roles: ['member', 'shop'],
+        role: 'member',
+        currentRole: 'member'
+      }]
+    },
+    {
+      name: 'store owner without shop role',
+      openid: 'member_openid',
+      expectedCode: 'SHOP_ROLE_REQUIRED',
+      bindings: [applicantBinding, ownerBinding],
+      accounts: [accountFor('member_openid', 'member1'), accountFor('shop_openid', 'shop1')],
+      users: [
+        {
+          _id: applicantBinding._id,
+          _openid: 'member_openid',
+          roles: ['member'],
+          role: 'member',
+          currentRole: 'member'
+        },
+        {
+          _id: ownerBinding._id,
+          _openid: 'shop_openid',
+          roles: ['member'],
+          role: 'shop',
+          currentRole: 'shop'
+        }
+      ]
+    },
+    {
+      name: 'self application',
+      openid: 'shop_openid',
+      expectedCode: 'SELF_APPLICATION_NOT_ALLOWED',
+      bindings: [ownerBinding],
+      accounts: [accountFor('shop_openid', 'shop1')],
+      users: [{
+        _id: ownerBinding._id,
+        _openid: 'shop_openid',
+        roles: ['member', 'shop'],
+        role: 'member',
+        currentRole: 'member'
+      }]
+    }
+  ];
+
+  for (const variant of variants) {
+    const state = {
+      wechat_bindings: variant.bindings,
+      accounts: variant.accounts,
+      users: variant.users,
+      stores: [{ _id: 'store1', _openid: 'shop_openid', name: 'Canonical Store' }],
+      coach_shop_applications: []
+    };
+    const { fn, fakeDb } = loadCloudFunction(
+      'cloudfunctions/applyCoachShopBinding/index.js',
+      variant.openid,
+      state
+    );
+
+    const result = await fn.main({
+      storeId: 'store1',
+      coachNickname: 'Attacker',
+      shopOpenid: variant.openid,
+      storeName: 'Forged Store'
+    });
+
+    assert.strictEqual(result.ok, false, variant.name);
+    assert.strictEqual(result.code, variant.expectedCode, variant.name);
+    assert.strictEqual(fakeDb.__updates.length, 0, variant.name);
+    assert.strictEqual(fakeDb.__adds.length, 0, variant.name);
+    assert.strictEqual(state.coach_shop_applications.length, 0, variant.name);
+  }
+}
+
 function testCheckinPageExposesDetailFilters() {
   const js = read('miniprogram/pages/checkin/index.js');
   const wxml = read('miniprogram/pages/checkin/index.wxml');
@@ -709,5 +795,6 @@ function testCheckinPageExposesDetailFilters() {
   await testAddShopCoachRejectsNonShopCallerWithoutLinkWrites();
   await testAddShopCoachRejectsForeignStoreWithoutLinkWrites();
   await testAddShopCoachRejectsMemberWithoutLinkWrites();
+  await testCoachApplicationRejectsUnboundNonShopAndSelfAttackersWithoutWrites();
   testCheckinPageExposesDetailFilters();
 })();
