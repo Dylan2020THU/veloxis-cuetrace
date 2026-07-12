@@ -1,9 +1,9 @@
 const cloud = require('wx-server-sdk');
+const crypto = require('crypto');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
-const ADMIN_ACCOUNTS = ['admin_zhx'];
 const SEED_STORE = {
   _id: 'seed_store_dachuan_flag',
   _openid: 'ot_test_dachuan_official',
@@ -24,10 +24,21 @@ const SEED_STORE = {
   createdAt: new Date('2025-01-01T00:00:00.000Z')
 };
 
+function adminId(openid) {
+  return crypto.createHash('sha256').update(`admin-openid:${openid}`).digest('hex');
+}
+
 async function isAdminOpenid(openid, loginName) {
-  if (ADMIN_ACCOUNTS.indexOf(loginName) === -1) return false;
-  const res = await db.collection('admins').where({ status: 'active' }).get().catch(() => ({ data: [] }));
-  return (res.data || []).some((item) => item._openid === openid && item.account === loginName);
+  const id = adminId(openid);
+  const res = await db.collection('admins').doc(id).get();
+  const admin = res && res.data;
+  return !!(
+    admin &&
+    admin._id === id &&
+    admin._openid === openid &&
+    admin.account === loginName &&
+    admin.status === 'active'
+  );
 }
 
 async function readCollection(name) {

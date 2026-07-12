@@ -1,4 +1,4 @@
->更新时间：2026.06.25
+>更新时间：2026.07.11
 
 # 微信支付 - 商家转账（普通商户）文档索引
 
@@ -37,6 +37,8 @@
 - [商户单号查询授权结果](https://pay.weixin.qq.com/doc/v3/merchant/4014399423.md)
 - [用户授权后转账](https://pay.weixin.qq.com/doc/v3/merchant/4014399371.md)
 - [免确认收款授权结果通知](https://pay.weixin.qq.com/doc/v3/merchant/4014512908.md)
+- [商户单号查询转账单](https://pay.weixin.qq.com/doc/v3/merchant/4024814206.md)
+- [微信单号查询转账单](https://pay.weixin.qq.com/doc/v3/merchant/4024819515.md)
 - [解除免确认收款授权](https://pay.weixin.qq.com/doc/v3/merchant/4015653811.md)
 #### APP调起用户免确认收款授权
 - [Android](https://pay.weixin.qq.com/doc/v3/merchant/4020320167.md)
@@ -62,6 +64,9 @@
 - [商户单号查询转账单 - curl 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716437-curl.md)
 - [商户单号查询转账单 - Java 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716437-java.md)
 - [商户单号查询转账单 - Go 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716437-go.md)
+- [商户单号查询转账单 - curl 示例](https://pay.weixin.qq.com/doc/v3/merchant/4024814206-curl.md)
+- [商户单号查询转账单 - Java 示例](https://pay.weixin.qq.com/doc/v3/merchant/4024814206-java.md)
+- [商户单号查询转账单 - Go 示例](https://pay.weixin.qq.com/doc/v3/merchant/4024814206-go.md)
 - [商户单号申请电子回单 - curl 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716452-curl.md)
 - [商户单号申请电子回单 - Java 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716452-java.md)
 - [商户单号申请电子回单 - Go 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716452-go.md)
@@ -71,6 +76,9 @@
 - [微信单号查询转账单 - curl 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716457-curl.md)
 - [微信单号查询转账单 - Java 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716457-java.md)
 - [微信单号查询转账单 - Go 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716457-go.md)
+- [微信单号查询转账单 - curl 示例](https://pay.weixin.qq.com/doc/v3/merchant/4024819515-curl.md)
+- [微信单号查询转账单 - Java 示例](https://pay.weixin.qq.com/doc/v3/merchant/4024819515-java.md)
+- [微信单号查询转账单 - Go 示例](https://pay.weixin.qq.com/doc/v3/merchant/4024819515-go.md)
 - [微信单号申请电子回单 - curl 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716456-curl.md)
 - [微信单号申请电子回单 - Java 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716456-java.md)
 - [微信单号申请电子回单 - Go 示例](https://pay.weixin.qq.com/doc/v3/merchant/4012716456-go.md)

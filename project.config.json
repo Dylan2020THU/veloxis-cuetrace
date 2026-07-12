@@ -2,7 +2,7 @@
   "description": "强化杆迹 · 台球训练数据智能管理系统",
   "miniprogramRoot": "miniprogram/",
   "cloudfunctionRoot": "cloudfunctions/",
-  "appid": "",
+  "appid": "wxa7c9920cda26d7ca",
   "compileType": "miniprogram",
   "libVersion": "3.5.0",
   "projectname": "veloxis-cuetrace",
@@ -39,5 +39,6 @@
     "ignore": [],
     "include": []
   },
-  "editorSetting": {}
+  "editorSetting": {},
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }

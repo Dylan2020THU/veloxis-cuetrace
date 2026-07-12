@@ -63,6 +63,18 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## 5. Token 效率且不降能力
+
+- 保持项目默认主模型与最高推理能力；不得为了节省 token 降级实现、审查或安全模型。
+- 任务开始优先运行 `scripts/codex-context.ps1` 和 `scripts/codex-status.ps1`；机械检查使用脚本摘要，失败时才展开详情。
+- 业务状态默认排除 `.agents/**`；任务未明确涉及技能或缓存时，不读取、同步或修改 `.agents`。
+- 禁止打印完整 session、模型缓存、全量配置或大型状态列表，只选择当前任务需要的字段。
+- 行为修改后运行 focused 测试；全量测试、全分支语法、diff 和文本检查只由根任务通过 `scripts/codex-verify.ps1` 在最终收口运行一次。
+- 子代理仅用于真正独立且值得并行的高风险工作；使用短 brief 或 `fork_turns: "none"`，不得默认复制完整线程或嵌套派生。
+- commentary 只在里程碑、风险变化或持续工作接近 60 秒时发送，保持两句以内。
+- `scripts/codex-context.ps1` 输出 `NEW_TASK_RECOMMENDED` 时，完成当前小阶段后更新 `docs/codex/HANDOFF.md`，并建议在新 Codex 任务继续下一独立目标。
+- 上述规则只压缩重复上下文和成功输出，不减少 brainstorming、TDD、独立复审、失败详情或最终验证。
+
 # Strict Rules
 1. 每次回复时都叫我【张总】
 2. 你要删除任何文件时，必须询问我

@@ -1,4 +1,4 @@
->更新时间：2026.06.25
+>更新时间：2026.07.11
 
 # 微信支付 - 商家名片会员（普通服务商）文档索引
 
@@ -8,6 +8,7 @@
 - [产品介绍](https://pay.weixin.qq.com/doc/v3/partner/4015274636.md)
 - [常见问题](https://pay.weixin.qq.com/doc/v3/partner/4017418554.md)
 - [开发指引](https://pay.weixin.qq.com/doc/v3/partner/4015274639.md)
+- [错误码](https://pay.weixin.qq.com/doc/v3/partner/4023146634.md)
 
 ## API 列表
 - [图片上传](https://pay.weixin.qq.com/doc/v3/partner/4015900513.md)

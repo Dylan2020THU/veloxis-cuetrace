@@ -1,0 +1,93 @@
+.page {
+  min-height: 100vh;
+  padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom));
+}
+
+.binding-card {
+  overflow: hidden;
+  padding: 0 32rpx;
+  border-radius: 20rpx;
+  background: var(--card-bg);
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.current-row,
+.field-row {
+  min-height: 104rpx;
+  display: flex;
+  align-items: center;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.field-row:last-child {
+  border-bottom: none;
+}
+
+.row-title,
+.field-label {
+  flex-shrink: 0;
+  width: 132rpx;
+  font-size: 30rpx;
+  color: var(--text);
+}
+
+.current-value {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 30rpx;
+  color: var(--text-weak);
+}
+
+.field-input {
+  min-width: 0;
+  flex: 1;
+  height: 72rpx;
+  font-size: 30rpx;
+  color: var(--text);
+}
+
+.code-input {
+  margin-right: 16rpx;
+}
+
+.code-button {
+  flex-shrink: 0;
+  width: 190rpx;
+  height: 64rpx;
+  padding: 0;
+  border-radius: 32rpx;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 26rpx;
+  line-height: 64rpx;
+}
+
+.code-button::after {
+  border: none;
+}
+
+.submit-button {
+  margin-top: 40rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: #067ef9;
+  color: #fff;
+  font-size: 32rpx;
+  line-height: 88rpx;
+}
+
+.submit-button::after {
+  border: none;
+}
+
+.privacy-tip {
+  display: block;
+  margin: 24rpx 16rpx 0;
+  color: var(--text-weak);
+  font-size: 24rpx;
+  line-height: 1.6;
+}

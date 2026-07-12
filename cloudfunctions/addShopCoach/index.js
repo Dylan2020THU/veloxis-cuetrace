@@ -10,11 +10,47 @@ exports.main = async (event) => {
 
   if (!coachOpenid) return { ok: false, msg: '缺少 coachOpenid' };
 
+  const shopRes = await db.collection('users').where({ _openid: OPENID }).get();
+  const shop = shopRes.data && shopRes.data[0];
+  if (!shop || !Array.isArray(shop.roles) || shop.roles.indexOf('shop') === -1) {
+    return { ok: false, code: 'SHOP_ROLE_REQUIRED', msg: '当前用户尚未通过店主审核' };
+  }
+
+  const coachRes = await db.collection('users').where({ _openid: coachOpenid }).get();
+  const coach = coachRes.data && coachRes.data[0];
+  if (!coach || !Array.isArray(coach.roles) || coach.roles.indexOf('coach') === -1) {
+    return { ok: false, code: 'COACH_ROLE_REQUIRED', msg: '该用户尚未通过教练审核' };
+  }
+
+  let store = null;
+  if (storeId) {
+    let storeRes;
+    try {
+      storeRes = await db.collection('stores').doc(storeId).get();
+    } catch (error) {
+      return { ok: false, code: 'STORE_NOT_OWNED', msg: '门店不存在或不属于当前店主' };
+    }
+    store = storeRes && storeRes.data;
+    if (!store || store._openid !== OPENID) {
+      return { ok: false, code: 'STORE_NOT_OWNED', msg: '门店不存在或不属于当前店主' };
+    }
+  }
+  const trustedStoreName = store ? (store.name || '') : null;
+
   const links = db.collection('shop_coach_links');
   const existing = await links.where({ shopOpenid: OPENID, coachOpenid }).get();
   if (existing.data.length) {
-    if (existing.data[0].status !== 'active') {
-      await links.doc(existing.data[0]._id).update({ data: { status: 'active', storeId: storeId || existing.data[0].storeId || '', storeName: storeName || existing.data[0].storeName || '', source: 'shop_add', updatedAt: db.serverDate() } });
+    const link = existing.data[0];
+    if (link.status !== 'active') {
+      await links.doc(link._id).update({
+        data: {
+          status: 'active',
+          storeId: storeId || link.storeId || '',
+          storeName: trustedStoreName !== null ? trustedStoreName : (storeName || link.storeName || ''),
+          source: 'shop_add',
+          updatedAt: db.serverDate()
+        }
+      });
     }
     return { ok: true, msg: '已添加' };
   }
@@ -24,7 +60,7 @@ exports.main = async (event) => {
       shopOpenid: OPENID,
       coachOpenid,
       storeId: storeId || '',
-      storeName: storeName || '',
+      storeName: trustedStoreName !== null ? trustedStoreName : (storeName || ''),
       status: 'active',
       source: 'shop_add',
       createdAt: db.serverDate()

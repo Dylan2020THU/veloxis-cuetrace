@@ -14,6 +14,23 @@ const PERIOD_PLAN_ENV = {
 };
 const PERIOD_LABEL = { month: '包月', quarter: '包季', year: '包年' };
 
+function bindingId(openid) {
+  return crypto.createHash('sha256').update(`wechat:${openid}`).digest('hex');
+}
+
+function fail(code, msg) {
+  return { ok: false, code, msg };
+}
+
+function isBlockingSubscriptionStatus(status) {
+  return status === 'active' || status === 'pending_contract' || status === 'cancel_required';
+}
+
+async function getOptional(ref) {
+  const result = await ref.get();
+  return result && result.data ? result.data : null;
+}
+
 function signParams(params, key) {
   const text = Object.keys(params)
     .filter((k) => k !== 'sign' && params[k] !== undefined && params[k] !== '')
@@ -36,9 +53,8 @@ function envConfig(period) {
   return { config, missing };
 }
 
-function genContractCode(openid) {
-  const tail = String(openid || '').slice(-8).replace(/[^0-9A-Za-z]/g, '0');
-  return ('CTRC' + Date.now() + tail).slice(0, 32);
+function genContractCode() {
+  return `CTRC${Date.now().toString(36)}${crypto.randomBytes(10).toString('hex')}`.slice(0, 32);
 }
 
 exports.main = async (event = {}) => {
@@ -58,54 +74,101 @@ exports.main = async (event = {}) => {
     };
   }
 
-  const users = db.collection('users');
-  const found = await users.where({ _openid: OPENID }).limit(1).get();
-  if (!found.data.length) return { ok: false, code: 'USER_NOT_FOUND', msg: '请先登录' };
-  const user = found.data[0];
-  const perRole = (user.per_role && typeof user.per_role === 'object') ? user.per_role : {};
-  const current = (perRole[role] && typeof perRole[role] === 'object') ? perRole[role] : {};
-  const priced = fulfill.computeAmountYuan({ planKey, role, period, current, paymentMode });
-  if (!priced.ok) return { ok: false, code: priced.code, msg: '套餐校验失败' };
-
-  const contractCode = genContractCode(OPENID);
+  const contractCode = genContractCode();
   const requestSerial = Date.now();
   const timestamp = Math.floor(Date.now() / 1000);
-  const extraData = {
+  const signingParams = {
     appid: config.appid,
     mch_id: config.mch_id,
     plan_id: config.plan_id,
     contract_code: contractCode,
     request_serial: requestSerial,
     contract_display_account: '强化杆迹' + (PERIOD_LABEL[period] || '包年') + '连续订阅',
-    notify_url: encodeURIComponent(config.notify_url),
+    notify_url: config.notify_url,
     timestamp,
-    outerid: OPENID,
-    path: 'pages/index/index'
+    outerid: OPENID
   };
-  extraData.sign = signParams(extraData, config.key);
-
-  await db.collection('subscriptions').add({
-    data: {
-      _openid: OPENID,
-      userId: user._id,
-      role,
-      planKey,
-      period,
-      paymentMode,
-      amount: priced.amount,
-      contractCode,
-      contractId: '',
-      status: 'pending_contract',
-      signTarget: SIGN_TARGET,
-      createdAt: db.serverDate(),
-      updatedAt: db.serverDate()
-    }
+  const extraData = Object.assign({}, signingParams, {
+    notify_url: encodeURIComponent(config.notify_url)
   });
+  extraData.sign = signParams(signingParams, config.key);
 
-  return {
-    ok: true,
-    appId: SIGN_MINI_APPID,
-    path: 'pages/index/index',
-    extraData
-  };
+  return db.runTransaction(async (transaction) => {
+    const userId = bindingId(OPENID);
+    const binding = await getOptional(transaction.collection('wechat_bindings').doc(userId));
+    if (
+      !binding ||
+      binding._id !== userId ||
+      binding._openid !== OPENID ||
+      !binding.accountId ||
+      !binding.account
+    ) {
+      return fail('ACCOUNT_NOT_BOUND', '账号绑定信息不完整');
+    }
+    const account = await getOptional(transaction.collection('accounts').doc(binding.accountId));
+    const userRef = transaction.collection('users').doc(userId);
+    const user = await getOptional(userRef);
+    if (
+      !account ||
+      account._id !== binding.accountId ||
+      account._openid !== OPENID ||
+      account.account !== binding.account ||
+      account.status !== 'active' ||
+      !user ||
+      user._id !== userId ||
+      user._openid !== OPENID
+    ) {
+      return fail('ACCOUNT_NOT_BOUND', '账号绑定信息不完整');
+    }
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+    if (roles.indexOf(role) === -1) {
+      return fail('ROLE_NOT_ALLOWED', '该账号未开通此身份');
+    }
+    if (user.deletionStatus === 'pending' || user.deletionStatus === 'purging') {
+      return fail('ACCOUNT_DELETION_PENDING', '账号正在注销，无法开通连续订阅');
+    }
+    if (isBlockingSubscriptionStatus(user.subscriptionStatus)) {
+      return fail('ACTIVE_SUBSCRIPTION', '已有连续订阅或签约正在处理中');
+    }
+
+    const perRole = (user.per_role && typeof user.per_role === 'object') ? user.per_role : {};
+    const current = (perRole[role] && typeof perRole[role] === 'object') ? perRole[role] : {};
+    const priced = fulfill.computeAmountYuan({ planKey, role, period, current, paymentMode });
+    if (!priced.ok) return fail(priced.code, '套餐校验失败');
+
+    const added = await transaction.collection('subscriptions').add({
+      data: {
+        _openid: OPENID,
+        userId,
+        role,
+        planKey,
+        planId: config.plan_id,
+        period,
+        paymentMode,
+        amount: priced.amount,
+        contractCode,
+        contractId: '',
+        requestSerial,
+        status: 'pending_contract',
+        signTarget: SIGN_TARGET,
+        createdAt: db.serverDate(),
+        updatedAt: db.serverDate()
+      }
+    });
+    await userRef.update({
+      data: {
+        subscriptionStatus: 'pending_contract',
+        subscriptionId: added._id,
+        updatedAt: db.serverDate()
+      }
+    });
+
+    return {
+      ok: true,
+      appId: SIGN_MINI_APPID,
+      path: 'pages/index/index',
+      extraData,
+      subscriptionId: added._id
+    };
+  });
 };

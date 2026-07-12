@@ -7,11 +7,11 @@ const { levelFromMinutes } = require('../utils/color');
 const billing = require('../utils/billing');
 const adminAuth = require('../utils/adminAuth');
 
-const ACCOUNT_DELETION_KEY = 'dc_account_deletion_pending';
 const LOGIN_DEFAULT_NICKNAME_KEY = 'dc_login_default_nickname';
 const ADMIN_LOGIN_NAME_KEY = 'dc_admin_login_name';
 const USER_PROFILE_KEY = 'dc_user_profile';
 const VALID_ROLES = ['member', 'coach', 'shop'];
+let uploadIdentityPromise = null;
 
 function normalizeRoles(role, roles) {
   const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
@@ -38,6 +38,86 @@ function cloudReady() {
 function callCloud(name, data) {
   console.warn('[cloud] calling:', name);
   return wx.cloud.callFunction({ name, data }).then((res) => res.result);
+}
+
+function cloudNotReadyError() {
+  return Object.assign(new Error('云服务未连接，无法登录'), {
+    code: 'CLOUD_NOT_READY'
+  });
+}
+
+function applyAuthResult(result) {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  if (!app || !app.globalData || !result) return result;
+  app.globalData.account = result.account || '';
+  app.globalData.roles = Array.isArray(result.roles) ? result.roles.slice() : ['member'];
+  app.globalData.currentRole = result.currentRole || app.globalData.roles[0] || 'member';
+  try {
+    wx.setStorageSync('dc_account_name', app.globalData.account);
+  } catch (e) {}
+  return result;
+}
+
+function resultError(result, fallback) {
+  const error = new Error((result && result.msg) || fallback);
+  error.code = (result && result.code) || 'AUTH_FAILED';
+  error.result = result;
+  return error;
+}
+
+function cloudAuth(action, payload, applySession = true) {
+  if (!cloudReady()) return Promise.reject(cloudNotReadyError());
+  return callCloud('accountAuth', Object.assign({}, payload || {}, { action })).then((result) => {
+    if (result && result.ok === false) throw resultError(result, '认证失败');
+    return applySession ? applyAuthResult(result) : result;
+  });
+}
+
+function callCheckedCloud(name, input) {
+  if (!cloudReady()) return Promise.reject(cloudNotReadyError());
+  return callCloud(name, input || {}).then((result) => {
+    if (result && result.ok === false) throw resultError(result, '操作失败');
+    return result;
+  });
+}
+
+function registerAccount(input) {
+  return cloudAuth('register', input);
+}
+
+function loginWithPassword(input) {
+  return cloudAuth('passwordLogin', input);
+}
+
+function loginWithWechat() {
+  return cloudAuth('wechatLogin');
+}
+
+function getAccountSecurity() {
+  return cloudAuth('status');
+}
+
+function resetPasswordByWechat(input) {
+  return cloudAuth('resetPasswordByWechat', input, false);
+}
+
+function resetPasswordByEmail(input) {
+  return cloudAuth('resetPasswordByEmail', input, false);
+}
+
+function bindEmail(input) {
+  return cloudAuth('bindEmail', input, false);
+}
+
+function sendEmailCode(input) {
+  return callCheckedCloud('sendEmailCode', Object.assign({}, input || {}, { action: 'send' }));
+}
+
+function probeAuthCloud() {
+  if (typeof wx === 'undefined' || !wx.cloud) {
+    return Promise.reject(cloudNotReadyError());
+  }
+  return callCloud('accountAuth', { action: 'probe' });
 }
 
 // 初始化（播种演示数据；cloudReady 时云端数据优先，本地数据作为兜底）
@@ -131,23 +211,16 @@ function getAdminProfile() {
 
 function loginAdmin({ account, password }) {
   const loginName = (account || '').trim();
-  if (cloudReady()) {
-    return callCloud('adminLogin', { account: loginName, password }).then((r) => {
-      if (r && r.ok === false) {
-        const err = new Error(r.msg || '管理员登录失败');
-        err.code = r.code || '';
-        throw err;
-      }
-      setAdminSession(loginName);
-      return r || { ok: true };
-    });
-  }
-  const admin = adminAuth.ADMIN_ACCOUNTS.find((item) => item.account === loginName);
-  if (!admin || admin.password !== password) {
-    return Promise.reject(new Error('管理员账号或密码错误'));
-  }
-  setAdminSession(loginName);
-  return Promise.resolve({ ok: true, isAdmin: true });
+  if (!cloudReady()) return Promise.reject(cloudNotReadyError());
+  return callCloud('adminLogin', { account: loginName, password }).then((r) => {
+    if (!r || r.ok !== true || r.isAdmin !== true) {
+      const err = new Error((r && r.msg) || '管理员登录失败');
+      err.code = (r && r.code) || 'ADMIN_LOGIN_FAILED';
+      throw err;
+    }
+    setAdminSession(loginName);
+    return r;
+  });
 }
 
 function applyDefaultNickname(user) {
@@ -165,6 +238,9 @@ function applyUserResult(r) {
   const app = getApp();
   if (!app || !app.globalData || !r) return;
   if (r.openid) app.globalData.openid = r.openid;
+  if (/^[0-9a-f]{64}$/.test(String(r.storageNamespace || ''))) {
+    app.globalData.storageNamespace = r.storageNamespace;
+  }
   const roles = normalizeRoles(r.role, r.roles);
   const currentRole = r.currentRole || r.role || roles[0] || 'member';
   app.globalData.roles = roles;
@@ -187,10 +263,10 @@ function applyUserResult(r) {
   }
 }
 
-// 登录，返回 openid。role 可选：登录页选定身份，传入时写入云端 users 集合。
-function login(role, roles, loginName) {
+// 进入选定角色，服务端依据已绑定账号的角色权限决定是否放行；断云时拒绝登录。
+function login(role) {
   if (cloudReady()) {
-    return callCloud('login', role ? { role, roles: normalizeRoles(role, roles), loginName: loginName || '' } : {}).then((r) => {
+    return callCloud('login', { role }).then((r) => {
       if (r && r.ok === false) {
         const err = new Error(r.msg || '登录失败');
         err.code = r.code || '';
@@ -204,21 +280,7 @@ function login(role, roles, loginName) {
       return (r && r.openid) || '';
     });
   }
-  const pendingDeletion = mock.readObject(ACCOUNT_DELETION_KEY, null);
-  if (pendingDeletion && pendingDeletion.deletionStatus === 'pending') {
-    if ((pendingDeletion.deletionScheduledAt || 0) > Date.now()) {
-      try { wx.removeStorageSync(ACCOUNT_DELETION_KEY); } catch (e) {}
-      wx.showToast({ title: '已中止注销流程', icon: 'none' });
-    } else {
-      return Promise.reject(Object.assign(new Error('账号注销已进入删除流程'), { code: 'ACCOUNT_DELETION_LOCKED' }));
-    }
-  }
-  getApp().globalData.openid = mock.MOCK_OPENID;
-  getApp().globalData.roles = normalizeRoles(role, roles);
-  getApp().globalData.currentRole = role;
-  getApp().globalData.role = role;
-  mock.setRole(role);
-  return Promise.resolve(mock.MOCK_OPENID);
+  return Promise.reject(cloudNotReadyError());
 }
 
 function sendSmsCode(phone) {
@@ -286,7 +348,6 @@ function saveUserProfile({
   avatar,
   gender,
   birthDate,
-  phone,
   locationCity,
   hometown,
   years,
@@ -303,7 +364,6 @@ function saveUserProfile({
       avatar,
       gender,
       birthDate,
-      phone,
       locationCity,
       hometown,
       years,
@@ -325,7 +385,6 @@ function saveUserProfile({
     avatar,
     gender,
     birthDate,
-    phone,
     locationCity,
     hometown,
     years,
@@ -713,7 +772,7 @@ function getAdminStatus() {
   }
   return Promise.resolve({
     ok: true,
-    isAdmin: accountAdmin,
+    isAdmin: false,
     bootstrap: false,
     accountAdmin
   });
@@ -733,9 +792,7 @@ function getPendingShopApplications(status = 'pending') {
       return (r && r.applications) || [];
     });
   }
-  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS).slice();
-  const filtered = status === 'all' ? list : list.filter((a) => (a.status || 'pending') === status);
-  return Promise.resolve(filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)));
+  return Promise.reject(cloudNotReadyError());
 }
 
 // 管理员：审核（approve=true 通过 / false 驳回；驳回写 reason）
@@ -744,16 +801,7 @@ function reviewShopApplication({ applicationId, approve, reason }) {
     const loginName = currentLoginName();
     return callCloud('reviewShopApplication', { applicationId, approve, reason, loginName });
   }
-  const list = mock.readArray(mock.KEY_SHOP_APPLICATIONS);
-  const idx = list.findIndex((a) => a._id === applicationId);
-  if (idx === -1) return Promise.resolve({ ok: false, msg: '申请不存在' });
-  list[idx] = Object.assign({}, list[idx], {
-    status: approve ? 'approved' : 'rejected',
-    reason: approve ? '' : (reason || '资料未通过核验'),
-    reviewedAt: Date.now()
-  });
-  mock.writeArray(mock.KEY_SHOP_APPLICATIONS, list);
-  return Promise.resolve({ ok: true, status: approve ? 'approved' : 'rejected' });
+  return Promise.reject(cloudNotReadyError());
 }
 
 function latestLocalApplication(applications, openid) {
@@ -857,7 +905,7 @@ function getAdminStores() {
       return r || { summary: {}, stores: [] };
     });
   }
-  return Promise.resolve(buildLocalAdminStores(mock.readArray(mock.KEY_STORES), mock.readArray(mock.KEY_SHOP_APPLICATIONS)));
+  return Promise.reject(cloudNotReadyError());
 }
 
 function getAdminCoaches() {
@@ -868,11 +916,7 @@ function getAdminCoaches() {
       return r || { summary: {}, coaches: [] };
     });
   }
-  return Promise.resolve(buildLocalAdminCoaches(
-    mock.readArray(mock.KEY_ALL_COACHES),
-    mock.readArray(mock.KEY_SHOP_COACHES),
-    mock.readArray(mock.KEY_COACH_SHOP_APPLICATIONS)
-  ));
+  return Promise.reject(cloudNotReadyError());
 }
 
 function getAdminMembers() {
@@ -883,7 +927,7 @@ function getAdminMembers() {
       return r || { summary: {}, members: [] };
     });
   }
-  return Promise.resolve(buildLocalAdminMembers(mock.readArray(mock.KEY_MEMBERS), mock.readArray(mock.KEY_SESSIONS)));
+  return Promise.reject(cloudNotReadyError());
 }
 
 // ============ 品牌管理 ============
@@ -1569,12 +1613,45 @@ function uploadImage(tempFilePath) {
   return uploadFile(tempFilePath, 'coach');
 }
 
+function uploadPathError() {
+  return Object.assign(new Error('上传路径或账号身份无效'), { code: 'INVALID_UPLOAD_PATH' });
+}
+
+function isSafeUploadNamespace(value) {
+  return /^[0-9a-f]{64}$/.test(String(value || ''));
+}
+
+function resolveUploadNamespace() {
+  const app = typeof getApp === 'function' ? getApp() : null;
+  const current = app && app.globalData && app.globalData.storageNamespace;
+  if (isSafeUploadNamespace(current)) return Promise.resolve(current);
+  if (uploadIdentityPromise) return uploadIdentityPromise;
+  uploadIdentityPromise = getUserProfile().then((user) => {
+    const namespace = user && user.storageNamespace;
+    if (!isSafeUploadNamespace(namespace)) throw uploadPathError();
+    return namespace;
+  });
+  uploadIdentityPromise.then(
+    () => { uploadIdentityPromise = null; },
+    () => { uploadIdentityPromise = null; }
+  );
+  return uploadIdentityPromise;
+}
+
 // 通用文件上传（图片 / 视频）。dir 为云存储目录前缀。
 function uploadFile(tempFilePath, dir) {
   if (cloudReady()) {
     const ext = (tempFilePath.split('.').pop() || 'dat').toLowerCase().split('?')[0];
-    const cloudPath = `${dir || 'misc'}/${Date.now()}-${Math.floor(Math.random() * 1e6)}.${ext}`;
-    return wx.cloud.uploadFile({ cloudPath, filePath: tempFilePath }).then((res) => res.fileID);
+    const directory = String(dir || 'misc');
+    if (!/^[a-z0-9-]+(?:\/[a-z0-9-]+)*$/.test(directory)) {
+      return Promise.reject(uploadPathError());
+    }
+    const safeExt = /^[a-z0-9]{1,10}$/.test(ext) ? ext : 'dat';
+    return resolveUploadNamespace().then((namespace) => {
+      const filename = `${Date.now()}-${Math.floor(Math.random() * 1e6)}.${safeExt}`;
+      const cloudPath = `user-content/${namespace}/${directory}/${filename}`;
+      return wx.cloud.uploadFile({ cloudPath, filePath: tempFilePath }).then((res) => res.fileID);
+    });
   }
   return Promise.resolve(tempFilePath);
 }
@@ -2456,21 +2533,30 @@ function getTodayShopRevenue() {
 function deleteAccount(opts) {
   const reason = (opts && opts.reason) || '';
   if (cloudReady()) {
-    return callCloud('deleteAccount', { reason });
+    return callCloud('deleteAccount', { reason }).then((result) => {
+      if (result && result.ok === false) {
+        const error = new Error(result.msg || '账号注销申请失败');
+        error.code = result.code || 'ACCOUNT_DELETION_FAILED';
+        error.result = result;
+        throw error;
+      }
+      return result;
+    });
   }
-  const now = Date.now();
-  const deletionScheduledAt = now + 7 * 24 * 60 * 60 * 1000;
-  mock.writeObject(ACCOUNT_DELETION_KEY, {
-    deletionStatus: 'pending',
-    deletionReason: reason,
-    deletionRequestedAt: now,
-    deletionScheduledAt
-  });
-  return Promise.resolve({ ok: true, deletionStatus: 'pending', deletionScheduledAt });
+  return Promise.reject(cloudNotReadyError());
 }
 
 module.exports = {
   initData,
+  registerAccount,
+  loginWithPassword,
+  loginWithWechat,
+  getAccountSecurity,
+  resetPasswordByWechat,
+  resetPasswordByEmail,
+  bindEmail,
+  sendEmailCode,
+  probeAuthCloud,
   login,
   loginAdmin,
   logoutAdmin,

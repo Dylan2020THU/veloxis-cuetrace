@@ -1,5 +1,4 @@
 const data = require('../../services/data');
-const mock = require('../../utils/mock');
 const adminAuth = require('../../utils/adminAuth');
 
 // 三种登录身份，顺序即页面从上至下的展示顺序
@@ -10,37 +9,16 @@ const ROLES = [
 ];
 
 const PHONE_RE = /^1\d{10}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCOUNT_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;
 const ACCOUNT_RULE_TEXT = '账号需 4-20 位，字母开头，仅支持字母、数字、下划线';
 
-// 本地注册账号存储（演示阶段）
-const ACCOUNTS_KEY = 'dc_accounts';
-const WECHAT_BINDINGS_KEY = 'dc_wechat_bindings';
 const VALID_ROLES = ['member', 'coach', 'shop'];
-const ADMIN_ROLES = ['member', 'coach', 'shop'];
-
-function normalizeAccountRoles(account) {
-  const roles = account && Array.isArray(account.roles) ? account.roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
-  if (roles.length) return Array.from(new Set(roles));
-  if (account && account.role === 'coach') return ['member', 'coach'];
-  if (account && account.role === 'shop') return ['shop'];
-  return ['member'];
-}
-
-function accountSupportsRole(account, role) {
-  return normalizeAccountRoles(account).indexOf(role) !== -1;
-}
 
 function roleOptions(roles) {
   const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : ['member'];
   const unique = Array.from(new Set(list.length ? list : ['member']));
   return ROLES.map((item) => Object.assign({}, item, { enabled: unique.indexOf(item.key) !== -1 }));
-}
-
-function mergeRole(roles, role) {
-  const list = Array.isArray(roles) ? roles.slice() : [];
-  if (VALID_ROLES.indexOf(role) !== -1 && list.indexOf(role) === -1) list.push(role);
-  return Array.from(new Set(list.filter((r) => VALID_ROLES.indexOf(r) !== -1)));
 }
 
 // 各身份登录后的落地首页
@@ -69,7 +47,7 @@ Page({
     roleLabel: '球员',
     // 登录步骤：auth = 账号登录/注册，role = 验证账号后选择身份
     step: 'auth',
-    // 账号页模式：login = 登录，wechatBind = 微信绑定，register = 注册
+    // 账号页模式：login = 登录，wechatBind = 微信绑定，register = 注册，recover = 找回密码
     mode: 'login',
     // 登录方式：password = 账号密码，sms = 手机验证码
     loginType: 'password',
@@ -86,12 +64,24 @@ Page({
     regAccount: '',
     regPassword: '',
     regConfirm: '',
+    // 密码找回表单（独立于手机号验证码登录状态）
+    recoveryType: 'wechat',
+    recoveryAccount: '',
+    recoveryEmail: '',
+    recoveryCode: '',
+    recoveryPassword: '',
+    recoveryConfirm: '',
+    recoveryCounting: false,
+    recoverySending: false,
+    recoverySubmitting: false,
+    recoveryCountdown: 60,
     pendingAccount: '',
     pendingRoles: [],
     availableRoles: []
   },
 
   onLoad(options = {}) {
+    this._disposed = false;
     this.syncCloudReady();
     if (options.switchRole === '1') {
       this.openSwitchRolePicker();
@@ -135,41 +125,77 @@ Page({
     });
   },
 
-  currentSessionRoles(loginName) {
-    const registered = this.findRegisteredAccount(loginName || '');
-    if (registered) return normalizeAccountRoles(registered);
+  handleAuthenticated(result) {
+    const account = (result && result.account) || '';
+    const roles = (result && Array.isArray(result.roles) && result.roles.length)
+      ? result.roles
+      : ['member'];
+    try {
+      wx.removeStorageSync('dc_accounts');
+      wx.removeStorageSync('dc_wechat_bindings');
+    } catch (e) {}
+    this.showRolePicker(account, roles);
+  },
+
+  handleAuthError(error, fallback) {
+    wx.hideLoading();
+    wx.showToast({ title: (error && error.message) || fallback, icon: 'none' });
+  },
+
+  handlePasswordLoginError(error) {
+    wx.hideLoading();
+    if (error && error.code === 'ACCOUNT_NOT_FOUND') {
+      wx.showModal({
+        title: '账号未注册',
+        content: '未找到该账号，是否现在注册？',
+        success: (res) => {
+          if (!res.confirm) return;
+          this.setData({
+            mode: 'register',
+            regAccount: this.data.account,
+            regPassword: '',
+            regConfirm: ''
+          });
+        }
+      });
+      return;
+    }
+    if (error && error.code === 'INVALID_PASSWORD') {
+      wx.showToast({ title: '账号密码错误', icon: 'none' });
+      return;
+    }
+    wx.showToast({ title: (error && error.message) || '账号或密码错误', icon: 'none' });
+  },
+
+  currentSessionRoles() {
     const app = getApp();
     const gd = (app && app.globalData) || {};
-    const profile = gd.userProfile || {};
-    const roles = Array.isArray(gd.roles) && gd.roles.length
-      ? gd.roles
-      : Array.isArray(profile.roles) && profile.roles.length
-        ? profile.roles
-        : [gd.currentRole || gd.role || profile.currentRole || profile.role || mock.getRole() || 'member'];
+    const roles = Array.isArray(gd.roles) ? gd.roles : [];
     const valid = roles.filter((role) => VALID_ROLES.indexOf(role) !== -1);
-    return Array.from(new Set(valid.length ? valid : ['member']));
+    return {
+      account: gd.account || '',
+      roles: Array.from(new Set(valid))
+    };
   },
 
   openSwitchRolePicker() {
-    const app = getApp();
-    const gd = (app && app.globalData) || {};
-    const profile = gd.userProfile || {};
-    const loginName = (typeof data.getCurrentLoginName === 'function' && data.getCurrentLoginName())
-      || profile.nickname
-      || '';
-    this.resolveApprovedRoles(this.currentSessionRoles(loginName))
-      .then((roles) => this.showRolePicker(loginName, roles));
-  },
-
-  resolveApprovedRoles(roles) {
-    const baseRoles = Array.isArray(roles) && roles.length ? roles.slice() : ['member'];
-    if (typeof data.getShopApplicationStatus !== 'function') {
-      return Promise.resolve(baseRoles);
+    const session = this.currentSessionRoles();
+    if (session.account && session.roles.length) {
+      this.showRolePicker(session.account, session.roles);
+      return;
     }
-    return data
-      .getShopApplicationStatus()
-      .then((res) => ((res && res.status) === 'approved' ? mergeRole(baseRoles, 'shop') : baseRoles))
-      .catch(() => baseRoles);
+    if (typeof data.getAccountSecurity !== 'function') {
+      this.handleAuthError(null, '登录状态已失效，请重新登录');
+      return;
+    }
+    wx.showLoading({ title: '加载中', mask: true });
+    data
+      .getAccountSecurity()
+      .then((result) => {
+        wx.hideLoading();
+        this.handleAuthenticated(result);
+      })
+      .catch((error) => this.handleAuthError(error, '登录状态已失效，请重新登录'));
   },
 
   chooseRole(e) {
@@ -183,12 +209,12 @@ Page({
   },
 
   enterSelectedRole() {
-    const { role, pendingAccount, pendingRoles } = this.data;
-    if (this.data.pendingRoles.indexOf(role) === -1) {
+    const { role, pendingRoles } = this.data;
+    if (pendingRoles.indexOf(role) === -1) {
       this.promptOpenRole(role);
       return;
     }
-    this.doLogin(role, pendingAccount, pendingRoles);
+    this.doLogin(role);
   },
 
   promptOpenRole(role) {
@@ -215,9 +241,23 @@ Page({
     });
   },
 
-  // 微信登录先绑定账号或手机号，绑定完成后再选身份
   wechatLogin() {
-    this.setData({ mode: 'wechatBind', loginType: 'password', password: '', code: '', agreementChecked: false });
+    if (!this.ensureAgreementChecked()) return;
+    wx.showLoading({ title: '登录中', mask: true });
+    data
+      .loginWithWechat()
+      .then((result) => {
+        wx.hideLoading();
+        this.handleAuthenticated(result);
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        if (error && error.code === 'WECHAT_NOT_BOUND') {
+          this.setData({ step: 'auth', mode: 'wechatBind', loginType: 'password', password: '', code: '' });
+          return;
+        }
+        this.handleAuthError(error, '微信登录失败');
+      });
   },
 
   doAdminLogin(account, password) {
@@ -228,25 +268,27 @@ Page({
         wx.hideLoading();
         wx.reLaunch({ url: ADMIN_HOME });
       })
-      .catch((e) => {
+      .catch((error) => {
         wx.hideLoading();
-        wx.showToast({ title: isCloudFunctionNotFound(e) ? '请先部署 adminLogin 云函数' : ((e && e.message) || '管理员登录失败'), icon: 'none' });
+        wx.showToast({
+          title: isCloudFunctionNotFound(error)
+            ? '请先部署 adminLogin 云函数'
+            : ((error && error.message) || '管理员登录失败'),
+          icon: 'none'
+        });
       });
   },
 
-  doLogin(role, loginName, roles) {
+  doLogin(role) {
     // 店主需先通过营业执照资质审核，单独走带状态网关的登录流程
     if (role === 'shop') {
-      this.doShopLogin(loginName, roles);
+      this.doShopLogin();
       return;
     }
     wx.showLoading({ title: '登录中', mask: true });
     data
-      .login(role, roles, loginName)
-      .then(() => {
-        if (loginName) data.rememberLoginNickname(loginName, role);
-        return data.getUserProfile();
-      })
+      .login(role)
+      .then(() => data.getUserProfile())
       .then(() => data.markFirstLogin(role))
       .then(() => {
         wx.hideLoading();
@@ -259,16 +301,12 @@ Page({
   },
 
   // 店主登录网关：登录后查资质状态。approved → 进店主端；其余（未申请/待审核/已驳回）→ 资质核验页。
-  doShopLogin(loginName, roles) {
-    const isAdmin = adminAuth.isAdminAccount(loginName);
+  doShopLogin() {
     wx.showLoading({ title: '登录中', mask: true });
     data
-      .login('shop', roles, loginName)
-      .then(() => {
-        if (loginName) data.rememberLoginNickname(loginName, 'shop');
-        return data.getUserProfile();
-      })
-      .then(() => (isAdmin ? { status: 'approved' } : data.getShopApplicationStatus()))
+      .login('shop')
+      .then(() => data.getUserProfile())
+      .then(() => data.getShopApplicationStatus())
       .then((res) => {
         const status = (res && res.status) || 'none';
         if (status === 'approved') {
@@ -300,12 +338,230 @@ Page({
 
   // 切换到注册态
   goRegister() {
+    this.cancelRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
     this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '', agreementChecked: false });
   },
 
   // 注册态 → 返回登录态
   backToLogin() {
+    this.cancelRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
     this.setData({ mode: 'login', agreementChecked: false });
+  },
+
+  openRecovery() {
+    this.invalidateRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
+    this.setData({
+      mode: 'recover',
+      recoveryType: 'wechat',
+      recoveryAccount: (this.data.account || '').trim(),
+      recoveryEmail: '',
+      recoveryCode: '',
+      recoveryPassword: '',
+      recoveryConfirm: '',
+      recoveryCounting: false,
+      recoverySending: false,
+      recoverySubmitting: false,
+      recoveryCountdown: 60
+    });
+  },
+
+  switchRecoveryType(e) {
+    const type = e.currentTarget.dataset.type === 'email' ? 'email' : 'wechat';
+    this.cancelRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
+    this.setData({
+      recoveryType: type,
+      recoveryCode: ''
+    });
+  },
+
+  invalidateRecoveryEmailRequest() {
+    this._recoveryEmailRequestToken = (this._recoveryEmailRequestToken || 0) + 1;
+    return this._recoveryEmailRequestToken;
+  },
+
+  cancelRecoveryEmailRequest() {
+    const wasSending = this.data.recoverySending;
+    this.invalidateRecoveryEmailRequest();
+    this.clearRecoveryCountdown();
+    if (wasSending) wx.hideLoading();
+    this.setData({
+      recoverySending: false,
+      recoveryCounting: false,
+      recoveryCountdown: 60
+    });
+  },
+
+  isCurrentRecoveryEmailRequest(requestToken) {
+    return !this._disposed &&
+      requestToken === this._recoveryEmailRequestToken &&
+      this.data.mode === 'recover' &&
+      this.data.recoveryType === 'email';
+  },
+
+  beginRecoverySubmission(type) {
+    if (this.data.recoverySubmitting) return null;
+    const token = (this._recoverySubmissionToken || 0) + 1;
+    this._recoverySubmissionToken = token;
+    this.setData({ recoverySubmitting: true });
+    return token;
+  },
+
+  isRecoverySubmissionCurrent(token, type) {
+    return !this._disposed &&
+      token === this._recoverySubmissionToken &&
+      this.data.recoverySubmitting &&
+      this.data.mode === 'recover' &&
+      this.data.recoveryType === type;
+  },
+
+  cancelRecoverySubmission() {
+    const wasSubmitting = this.data.recoverySubmitting;
+    this._recoverySubmissionToken = (this._recoverySubmissionToken || 0) + 1;
+    if (wasSubmitting) wx.hideLoading();
+    if (wasSubmitting) this.setData({ recoverySubmitting: false });
+  },
+
+  clearRecoveryCountdown() {
+    if (this._recoveryTimer) {
+      clearInterval(this._recoveryTimer);
+      this._recoveryTimer = null;
+    }
+  },
+
+  startRecoveryCountdown() {
+    this.clearRecoveryCountdown();
+    this.setData({ recoveryCounting: true, recoveryCountdown: 60 });
+    this._recoveryTimer = setInterval(() => {
+      const next = this.data.recoveryCountdown - 1;
+      if (next <= 0) {
+        this.clearRecoveryCountdown();
+        this.setData({ recoveryCounting: false, recoveryCountdown: 60 });
+      } else {
+        this.setData({ recoveryCountdown: next });
+      }
+    }, 1000);
+  },
+
+  sendRecoveryEmailCode() {
+    if (this.data.recoveryCounting || this.data.recoverySending) return;
+    const account = (this.data.recoveryAccount || '').trim();
+    const email = (this.data.recoveryEmail || '').trim();
+    if (!account) {
+      return wx.showToast({ title: '请输入账号', icon: 'none' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return wx.showToast({ title: '请输入正确的邮箱', icon: 'none' });
+    }
+    this.setData({ recoverySending: true });
+    wx.showLoading({ title: '发送中', mask: true });
+    const requestToken = this.invalidateRecoveryEmailRequest();
+    data
+      .sendEmailCode({ purpose: 'reset', account, email })
+      .then((result) => {
+        if (!this.isCurrentRecoveryEmailRequest(requestToken)) return;
+        wx.hideLoading();
+        this.setData({ recoverySending: false });
+        wx.showToast({
+          title: (result && result.msg) || '若信息匹配，验证码将发送至绑定邮箱',
+          icon: 'none'
+        });
+        this.startRecoveryCountdown();
+      })
+      .catch((error) => {
+        if (!this.isCurrentRecoveryEmailRequest(requestToken)) return;
+        wx.hideLoading();
+        this.setData({ recoverySending: false });
+        wx.showToast({ title: (error && error.message) || '验证码发送失败', icon: 'none' });
+      });
+  },
+
+  finishRecovery(result) {
+    this.cancelRecoverySubmission();
+    this.cancelRecoveryEmailRequest();
+    this.setData({
+      mode: 'login',
+      loginType: 'password',
+      account: (result && result.account) || '',
+      password: '',
+      recoveryCode: '',
+      recoveryPassword: '',
+      recoveryConfirm: '',
+      recoveryCounting: false,
+      recoverySending: false,
+      recoverySubmitting: false,
+      recoveryCountdown: 60
+    });
+    wx.showToast({ title: '密码已重置，请使用新密码登录', icon: 'none' });
+  },
+
+  submitRecovery() {
+    if (this.data.recoverySubmitting) return;
+    const password = this.data.recoveryPassword || '';
+    if (password.length < 6) {
+      return wx.showToast({ title: '密码至少 6 位', icon: 'none' });
+    }
+    if (password !== this.data.recoveryConfirm) {
+      return wx.showToast({ title: '两次密码不一致', icon: 'none' });
+    }
+
+    if (this.data.recoveryType === 'wechat') {
+      const requestToken = this.beginRecoverySubmission('wechat');
+      if (requestToken === null) return;
+      wx.showLoading({ title: '重置中', mask: true });
+      data
+        .resetPasswordByWechat({ password })
+        .then((result) => {
+          if (!this.isRecoverySubmissionCurrent(requestToken, 'wechat')) return;
+          this.finishRecovery(result);
+        })
+        .catch((error) => {
+          if (!this.isRecoverySubmissionCurrent(requestToken, 'wechat')) return;
+          this.cancelRecoverySubmission();
+          if (error && error.code === 'WECHAT_NOT_BOUND') {
+            this.setData({ recoveryType: 'email' });
+            wx.showToast({ title: '当前微信未绑定账号，请使用已绑定邮箱找回', icon: 'none' });
+            return;
+          }
+          wx.showToast({ title: (error && error.message) || '密码重置失败', icon: 'none' });
+        });
+      return;
+    }
+
+    const account = (this.data.recoveryAccount || '').trim();
+    const email = (this.data.recoveryEmail || '').trim();
+    const code = (this.data.recoveryCode || '').trim();
+    if (!account) {
+      return wx.showToast({ title: '请输入账号', icon: 'none' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return wx.showToast({ title: '请输入正确的邮箱', icon: 'none' });
+    }
+    if (!code) {
+      return wx.showToast({ title: '请输入验证码', icon: 'none' });
+    }
+    const requestToken = this.beginRecoverySubmission('email');
+    if (requestToken === null) return;
+    wx.showLoading({ title: '重置中', mask: true });
+    data
+      .resetPasswordByEmail({ account, email, code, password })
+      .then((result) => {
+        if (!this.isRecoverySubmissionCurrent(requestToken, 'email')) return;
+        this.finishRecovery(result);
+      })
+      .catch((error) => {
+        if (!this.isRecoverySubmissionCurrent(requestToken, 'email')) return;
+        this.cancelRecoverySubmission();
+        wx.showToast({
+          title: error && error.code === 'EMAIL_NOT_BOUND'
+            ? '该邮箱未绑定账号，请联系管理员'
+            : ((error && error.message) || '密码重置失败'),
+          icon: 'none'
+        });
+      });
   },
 
   toggleAgreement() {
@@ -326,78 +582,14 @@ Page({
     return false;
   },
 
-  readRegisteredAccounts() {
-    try {
-      const accounts = wx.getStorageSync(ACCOUNTS_KEY) || [];
-      const list = Array.isArray(accounts) ? accounts.slice() : [];
-      adminAuth.ADMIN_ACCOUNTS.forEach((admin) => {
-        const idx = list.findIndex((item) => item && item.account === admin.account);
-        const adminAccount = Object.assign({}, idx >= 0 ? list[idx] : {}, {
-            role: 'member',
-            roles: ADMIN_ROLES.slice(),
-            account: admin.account,
-            password: admin.password,
-            builtInAdmin: true
-        });
-        if (idx >= 0) list[idx] = adminAccount;
-        else list.push(adminAccount);
-      });
-      return list;
-    } catch (e) {
-      return adminAuth.ADMIN_ACCOUNTS.map((admin) => ({
-        role: 'member',
-        roles: ADMIN_ROLES.slice(),
-        account: admin.account,
-        password: admin.password,
-        builtInAdmin: true
-      }));
-    }
-  },
-
-  findRegisteredAccount(account, role) {
-    const key = (account || '').trim();
-    if (!key) return null;
-    if (!role) return this.readRegisteredAccounts().find((a) => a && a.account === key) || null;
-    return this.readRegisteredAccounts().find((a) => a && a.account === key && accountSupportsRole(a, role)) || null;
-  },
-
   isValidRegisterAccount(account) {
     return ACCOUNT_RE.test(account);
   },
 
-  saveWechatBinding(account, role) {
-    const key = (account || '').trim();
-    if (!key) return;
-    const now = Date.now();
-    try {
-      const bindings = wx.getStorageSync(WECHAT_BINDINGS_KEY) || [];
-      const list = Array.isArray(bindings) ? bindings : [];
-      const idx = list.findIndex((item) => item && item.account === key && item.role === role);
-      const record = { account: key, role, boundAt: now };
-      if (idx >= 0) list[idx] = Object.assign({}, list[idx], record);
-      else list.push(record);
-      wx.setStorageSync(WECHAT_BINDINGS_KEY, list);
-    } catch (e) {}
-
-    const accounts = this.readRegisteredAccounts();
-    const accountIdx = accounts.findIndex((item) => item && item.account === key && accountSupportsRole(item, role));
-    if (accountIdx >= 0) {
-      accounts[accountIdx] = Object.assign({}, accounts[accountIdx], {
-        wechatBound: true,
-        wechatBoundAt: now
-      });
-      try {
-        wx.setStorageSync(ACCOUNTS_KEY, accounts);
-      } catch (e) {}
-    }
-  },
-
-  // 注册（演示阶段：本地校验并保存账号，成功后返回登录态）
   register() {
     if (!this.ensureAgreementChecked()) return;
     const account = (this.data.regAccount || '').trim();
     const { regPassword, regConfirm } = this.data;
-    const baseRole = 'member';
     if (!account) {
       return wx.showToast({ title: '请输入账号', icon: 'none' });
     }
@@ -410,34 +602,14 @@ Page({
     if (regPassword !== regConfirm) {
       return wx.showToast({ title: '两次密码不一致', icon: 'none' });
     }
-
-    const accounts = this.readRegisteredAccounts();
-    const existingIdx = accounts.findIndex((a) => a && a.account === account);
-    if (existingIdx >= 0) {
-      return wx.showToast({ title: '该账号已注册', icon: 'none' });
-    }
-    accounts.push({
-      role: baseRole,
-      roles: [baseRole],
-      account,
-      password: regPassword,
-      createdAt: Date.now()
-    });
-    try {
-      wx.setStorageSync(ACCOUNTS_KEY, accounts);
-    } catch (e) {}
-
-    wx.showToast({ title: '注册成功，请登录', icon: 'none' });
-    // 返回登录态并回填账号，方便直接登录
-    this.setData({
-      mode: 'login',
-      loginType: 'password',
-      account,
-      password: '',
-      regAccount: '',
-      regPassword: '',
-      regConfirm: ''
-    });
+    wx.showLoading({ title: '注册中', mask: true });
+    data
+      .registerAccount({ account, password: regPassword })
+      .then((result) => {
+        wx.hideLoading();
+        this.handleAuthenticated(result);
+      })
+      .catch((error) => this.handleAuthError(error, '注册失败，请重试'));
   },
 
   switchType(e) {
@@ -468,10 +640,6 @@ Page({
     const phone = (this.data.phone || '').trim();
     if (!PHONE_RE.test(phone)) {
       wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
-      return;
-    }
-    if (!this.findRegisteredAccount(phone)) {
-      wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
       return;
     }
     this.setData({ sendingCode: true });
@@ -506,15 +674,14 @@ Page({
         this.doAdminLogin(account, this.data.password);
         return;
       }
-      const registered = this.findRegisteredAccount(account);
-      if (!registered) {
-        return wx.showToast({ title: '账号未注册，请先注册', icon: 'none' });
-      }
-      if (registered.password !== this.data.password) {
-        return wx.showToast({ title: '密码错误', icon: 'none' });
-      }
-      this.resolveApprovedRoles(normalizeAccountRoles(registered))
-        .then((roles) => this.showRolePicker(account, roles));
+      wx.showLoading({ title: '登录中', mask: true });
+      data
+        .loginWithPassword({ account, password: this.data.password })
+        .then((result) => {
+          wx.hideLoading();
+          this.handleAuthenticated(result);
+        })
+        .catch((error) => this.handlePasswordLoginError(error));
       return;
     } else {
       const phone = (this.data.phone || '').trim();
@@ -524,17 +691,12 @@ Page({
       if (!(this.data.code || '').trim()) {
         return wx.showToast({ title: '请输入验证码', icon: 'none' });
       }
-      const registered = this.findRegisteredAccount(phone);
-      if (!registered) {
-        return wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
-      }
       wx.showLoading({ title: '校验中', mask: true });
       data
         .verifySmsCode(phone, (this.data.code || '').trim())
-        .then(() => this.resolveApprovedRoles(normalizeAccountRoles(registered)))
-        .then((roles) => {
+        .then((result) => {
           wx.hideLoading();
-          this.showRolePicker(phone, roles);
+          this.handleAuthenticated(result);
         })
         .catch((e) => {
           wx.hideLoading();
@@ -542,58 +704,6 @@ Page({
         });
       return;
     }
-  },
-
-  bindWechat() {
-    if (!this.ensureAgreementChecked()) return;
-    const { loginType } = this.data;
-    if (loginType === 'password') {
-      const account = (this.data.account || '').trim();
-      if (!account) {
-        return wx.showToast({ title: '请输入账号', icon: 'none' });
-      }
-      if (!this.data.password) {
-        return wx.showToast({ title: '请输入密码', icon: 'none' });
-      }
-      const registered = this.findRegisteredAccount(account);
-      if (!registered) {
-        return wx.showToast({ title: '账号未注册，请先注册', icon: 'none' });
-      }
-      if (registered.password !== this.data.password) {
-        return wx.showToast({ title: '密码错误', icon: 'none' });
-      }
-      this.resolveApprovedRoles(normalizeAccountRoles(registered))
-        .then((roles) => {
-          roles.forEach((item) => this.saveWechatBinding(account, item));
-          this.showRolePicker(account, roles);
-        });
-      return;
-    }
-
-    const phone = (this.data.phone || '').trim();
-    if (!PHONE_RE.test(phone)) {
-      return wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
-    }
-    if (!(this.data.code || '').trim()) {
-      return wx.showToast({ title: '请输入验证码', icon: 'none' });
-    }
-    const registered = this.findRegisteredAccount(phone);
-    if (!registered) {
-      return wx.showToast({ title: '手机号未注册，请先注册', icon: 'none' });
-    }
-    wx.showLoading({ title: '校验中', mask: true });
-    data
-      .verifySmsCode(phone, (this.data.code || '').trim())
-      .then(() => this.resolveApprovedRoles(normalizeAccountRoles(registered)))
-      .then((roles) => {
-        wx.hideLoading();
-        roles.forEach((item) => this.saveWechatBinding(phone, item));
-        this.showRolePicker(phone, roles);
-      })
-      .catch((e) => {
-        wx.hideLoading();
-        wx.showToast({ title: (e && e.message) || '验证码错误或已过期', icon: 'none' });
-      });
   },
 
   onUnload() {
@@ -605,5 +715,8 @@ Page({
       clearTimeout(this._cloudTimer);
       this._cloudTimer = null;
     }
+    this.cancelRecoverySubmission();
+    this.cancelRecoveryEmailRequest();
+    this._disposed = true;
   }
 });

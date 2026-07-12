@@ -41,7 +41,8 @@
     <!-- 手机号 -->
     <view class="form-row">
       <text class="form-label">手机号</text>
-      <input class="form-input" type="number" placeholder="请输入" value="{{phone}}" bindinput="onPhoneInput" maxlength="11" />
+      <input class="form-input" type="number" placeholder="未验证" value="{{phone}}" maxlength="11" disabled />
+      <text class="form-value muted">如需更新，请通过短信验证</text>
     </view>
 
     <!-- 所在地 -->

@@ -1,64 +1,77 @@
 const cloud = require('wx-server-sdk');
+const crypto = require('crypto');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
 const db = cloud.database();
 
 const VALID_ROLES = ['member', 'coach', 'shop'];
 
-function normalizeRoles(role, roles) {
+function sha256(value) {
+  return crypto.createHash('sha256').update(String(value)).digest('hex');
+}
+
+function bindingId(openid) {
+  return sha256(`wechat:${openid}`);
+}
+
+function normalizeRoles(roles) {
   const list = Array.isArray(roles) ? roles.filter((r) => VALID_ROLES.indexOf(r) !== -1) : [];
   if (list.length) return Array.from(new Set(list));
-  if (role === 'coach') return ['member', 'coach'];
-  if (role === 'shop') return ['shop'];
   return ['member'];
 }
 
-// 读取当前微信用户在 users 集合中的资料；昵称缺失时从教练/店铺资料补全
+async function getDocument(collection, id) {
+  const result = await db.collection(collection).doc(id).get();
+  return result && result.data ? result.data : null;
+}
+
+// 只读取当前微信绑定对应的确定性 users 文档。
 exports.main = async () => {
   const { OPENID } = cloud.getWXContext();
-  const users = db.collection('users');
-
-  let user = { openid: OPENID, role: 'member', roles: ['member'], currentRole: 'member', nickname: '', avatar: '' };
 
   try {
-    const res = await users.where({ _openid: OPENID }).get();
-    if (res.data.length) {
-      const u = res.data[0];
-      const roles = normalizeRoles(u.role, u.roles);
-      const currentRole = u.currentRole || u.role || roles[0] || 'member';
-      user = Object.assign(user, {
-        role: currentRole,
-        roles,
-        currentRole,
-        nickname: u.nickname || '',
-        avatar: u.avatar || '',
-        gender: u.gender || '',
-        birthDate: u.birthDate || '',
-        phone: u.phone || '',
-        locationCity: u.locationCity || '',
-        hometown: Array.isArray(u.hometown) ? u.hometown : [],
-        years: u.years || '',
-        level: u.level || '',
-        canSeeGender: u.canSeeGender !== undefined ? !!u.canSeeGender : true,
-        canSeeBirthDate: u.canSeeBirthDate !== undefined ? !!u.canSeeBirthDate : true,
-        canSeeHometown: u.canSeeHometown !== undefined ? !!u.canSeeHometown : true,
-        canSeePhone: u.canSeePhone !== undefined ? !!u.canSeePhone : false
-      });
-    } else {
+    const userId = bindingId(OPENID);
+    const binding = await getDocument('wechat_bindings', userId);
+    if (!binding || binding._id !== userId || binding._openid !== OPENID || !binding.accountId) {
+      return { user: null };
+    }
+    const account = await getDocument('accounts', binding.accountId);
+    const source = await getDocument('users', userId);
+    if (
+      !account ||
+      account._id !== binding.accountId ||
+      account._openid !== OPENID ||
+      account.account !== binding.account ||
+      account.status !== 'active' ||
+      !source ||
+      source._id !== userId ||
+      source._openid !== OPENID
+    ) {
       return { user: null };
     }
 
-    if (!user.nickname) {
-      if (user.currentRole === 'coach' || user.roles.indexOf('coach') !== -1) {
-        const c = await db.collection('coaches').where({ _openid: OPENID }).get();
-        if (c.data.length && c.data[0].nickname) user.nickname = c.data[0].nickname;
-      } else if (user.currentRole === 'shop') {
-        const s = await db.collection('shops').where({ _openid: OPENID }).get();
-        if (s.data.length && s.data[0].name) user.nickname = s.data[0].name;
-      }
-    }
-
-    if (!user.nickname) user.nickname = '大川会员';
+    const roles = normalizeRoles(source.roles);
+    const currentRole = roles.indexOf(source.currentRole) !== -1 ? source.currentRole : roles[0];
+    const user = {
+      openid: OPENID,
+      storageNamespace: userId,
+      role: currentRole,
+      roles,
+      currentRole,
+      nickname: source.nickname || '大川会员',
+      avatar: source.avatar || '',
+      gender: source.gender || '',
+      birthDate: source.birthDate || '',
+      phone: source.phoneVerifiedAt ? (source.phone || '') : '',
+      locationCity: source.locationCity || '',
+      hometown: Array.isArray(source.hometown) ? source.hometown : [],
+      years: source.years || '',
+      level: source.level || '',
+      canSeeGender: source.canSeeGender !== undefined ? !!source.canSeeGender : true,
+      canSeeBirthDate: source.canSeeBirthDate !== undefined ? !!source.canSeeBirthDate : true,
+      canSeeHometown: source.canSeeHometown !== undefined ? !!source.canSeeHometown : true,
+      canSeePhone: source.canSeePhone !== undefined ? !!source.canSeePhone : false
+    };
     return { user };
   } catch (err) {
     console.error('getUserProfile failed', err);

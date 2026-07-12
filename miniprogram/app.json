@@ -6,6 +6,7 @@
     "pages/profile/index",
     "pages/settings/index",
     "pages/settings/account-security/index",
+    "pages/settings/email-binding/index",
     "pages/coach/apply/index",
     "pages/coach/profile/index",
     "pages/coach/members/index",
