@@ -57,6 +57,7 @@ function loadSendEmailCode(openid, state, options) {
       v20201002: {
         Client: class FakeSesClient {
           constructor(clientConfig) {
+            if (config.clientError) throw config.clientError;
             clientConfigs.push(clientConfig);
           }
 
@@ -109,6 +110,38 @@ function configureEmail(overrides) {
   EMAIL_ENV_KEYS.forEach((key) => {
     process.env[key] = values[key] || '';
   });
+}
+
+async function withImmediateTimers(callback) {
+  const originalSetTimeout = global.setTimeout;
+  const originalDateNow = Date.now;
+  const startedAt = originalDateNow();
+  const delays = [];
+  let now = startedAt;
+  global.setTimeout = (handler, delay) => {
+    delays.push(delay);
+    now += delay;
+    handler();
+    return 1;
+  };
+  Date.now = () => now;
+  try {
+    const result = await callback({
+      advance(milliseconds) {
+        now += milliseconds;
+      }
+    });
+    return { result, delays, elapsed: now - startedAt };
+  } finally {
+    global.setTimeout = originalSetTimeout;
+    Date.now = originalDateNow;
+  }
+}
+
+function assertPublicResetTiming(timed, expectedDelay) {
+  assert.deepStrictEqual(timed.result, PUBLIC_RESET_RESULT);
+  assert.deepStrictEqual(timed.delays, [expectedDelay]);
+  assert.strictEqual(timed.elapsed, 9500);
 }
 
 function emailRateId(purpose, actor) {
@@ -592,6 +625,33 @@ async function run() {
       return { resetState, resetAccount };
     }
 
+    const clientErrorFixture = loadSendEmailCode(
+      'wechat_public_client_error',
+      makeState(),
+      { clientError: Object.assign(new Error('client init failed'), { code: 'ClientError' }) }
+    );
+    const reserveErrorState = makeState();
+    const reserveErrorFixture = loadSendEmailCode(
+      'wechat_public_reserve_error',
+      reserveErrorState
+    );
+    console.error = () => {};
+    let clientErrorTimed;
+    let reserveErrorTimed;
+    try {
+      clientErrorTimed = await withImmediateTimers(() => clientErrorFixture.module.main({
+        purpose: 'reset', account: 'ClientError', email: 'client-error@example.com'
+      }));
+      getFakeDb().failNextRead = true;
+      reserveErrorTimed = await withImmediateTimers(() => reserveErrorFixture.module.main({
+        purpose: 'reset', account: 'ReserveError', email: 'reserve-error@example.com'
+      }));
+    } finally {
+      console.error = originalConsoleError;
+    }
+    assertPublicResetTiming(clientErrorTimed, 9500);
+    assertPublicResetTiming(reserveErrorTimed, 9500);
+
     const mismatchSetup = await makeResetState(
       'wechat_reset_owner_mismatch',
       'ResetMismatch',
@@ -601,12 +661,12 @@ async function run() {
       'wechat_public_mismatch',
       mismatchSetup.resetState
     );
-    const mismatchSend = await mismatchFixture.module.main({
+    const mismatchTimed = await withImmediateTimers(() => mismatchFixture.module.main({
       purpose: 'reset',
       account: 'DifferentAccount',
       email: 'reset-mismatch@example.com'
-    });
-    assert.deepStrictEqual(mismatchSend, PUBLIC_RESET_RESULT);
+    }));
+    assertPublicResetTiming(mismatchTimed, 9500);
     assert.strictEqual(mismatchFixture.sendCalls.length, 0);
     assert.strictEqual(findById(
       mismatchSetup.resetState.email_codes,
@@ -628,12 +688,12 @@ async function run() {
       'wechat_public_target',
       resetTargetSetup.resetState
     );
-    const resetTargetCooldown = await resetTargetFixture.module.main({
+    const resetTargetTimed = await withImmediateTimers(() => resetTargetFixture.module.main({
       purpose: 'reset',
       account: 'ResetTarget',
       email: 'reset-target@example.com'
-    });
-    assert.deepStrictEqual(resetTargetCooldown, PUBLIC_RESET_RESULT);
+    }));
+    assertPublicResetTiming(resetTargetTimed, 9500);
     assert.strictEqual(resetTargetFixture.sendCalls.length, 0);
 
     const resetActorSetup = await makeResetState(
@@ -651,12 +711,12 @@ async function run() {
       'wechat_public_actor',
       resetActorSetup.resetState
     );
-    const resetActorCooldown = await resetActorFixture.module.main({
+    const resetActorTimed = await withImmediateTimers(() => resetActorFixture.module.main({
       purpose: 'reset',
       account: 'ResetActor',
       email: 'reset-actor@example.com'
-    });
-    assert.deepStrictEqual(resetActorCooldown, PUBLIC_RESET_RESULT);
+    }));
+    assertPublicResetTiming(resetActorTimed, 9500);
     assert.strictEqual(resetActorFixture.sendCalls.length, 0);
 
     const resetFailedSetup = await makeResetState(
@@ -664,23 +724,32 @@ async function run() {
       'ResetFailed',
       'reset-failed@example.com'
     );
+    let advanceResetFailure = () => {};
     const resetFailedFixture = loadSendEmailCode(
       'wechat_public_failed',
       resetFailedSetup.resetState,
-      { sendEmail() { throw new Error('simulated SES failure'); } }
+      {
+        sendEmail() {
+          advanceResetFailure(8000);
+          throw new Error('simulated SES failure');
+        }
+      }
     );
     console.error = () => {};
-    let resetFailed;
+    let resetFailedTimed;
     try {
-      resetFailed = await resetFailedFixture.module.main({
-        purpose: 'reset',
-        account: 'ResetFailed',
-        email: 'reset-failed@example.com'
+      resetFailedTimed = await withImmediateTimers((clock) => {
+        advanceResetFailure = clock.advance;
+        return resetFailedFixture.module.main({
+          purpose: 'reset',
+          account: 'ResetFailed',
+          email: 'reset-failed@example.com'
+        });
       });
     } finally {
       console.error = originalConsoleError;
     }
-    assert.deepStrictEqual(resetFailed, PUBLIC_RESET_RESULT);
+    assertPublicResetTiming(resetFailedTimed, 1500);
     assert.strictEqual(findById(
       resetFailedSetup.resetState.email_codes,
       emailCodeId('reset', 'reset-failed@example.com')
@@ -691,17 +760,27 @@ async function run() {
       'ResetSuccess',
       'reset-success@example.com'
     );
+    let advanceResetSuccess = () => {};
     const resetSuccessFixture = loadSendEmailCode(
       'wechat_public_success',
-      resetSuccessSetup.resetState
+      resetSuccessSetup.resetState,
+      {
+        sendEmail() {
+          advanceResetSuccess(2000);
+          return { RequestId: 'ses-request-id' };
+        }
+      }
     );
-    const resetSuccess = await resetSuccessFixture.module.main({
-      action: 'send',
-      purpose: 'reset',
-      account: ' ResetSuccess ',
-      email: ' RESET-SUCCESS@EXAMPLE.COM '
+    const resetSuccessTimed = await withImmediateTimers((clock) => {
+      advanceResetSuccess = clock.advance;
+      return resetSuccessFixture.module.main({
+        action: 'send',
+        purpose: 'reset',
+        account: ' ResetSuccess ',
+        email: ' RESET-SUCCESS@EXAMPLE.COM '
+      });
     });
-    assert.deepStrictEqual(resetSuccess, PUBLIC_RESET_RESULT);
+    assertPublicResetTiming(resetSuccessTimed, 7500);
     assert.strictEqual(resetSuccessFixture.sendCalls.length, 1);
     const resetSuccessChallenge = findById(
       resetSuccessSetup.resetState.email_codes,

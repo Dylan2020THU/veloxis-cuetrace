@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "engines": {
-    "node": ">=10"
+    "node": ">=16.13"
   },
   "dependencies": {
     "tencentcloud-sdk-nodejs-ses": "4.1.265",

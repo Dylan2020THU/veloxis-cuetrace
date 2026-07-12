@@ -13,6 +13,8 @@ const PUBLIC_RESET_RESULT = {
   accepted: true,
   msg: '若信息匹配，验证码将发送至绑定邮箱'
 };
+const SES_TIMEOUT_MS = 8000;
+const RESET_RESPONSE_MIN_MS = SES_TIMEOUT_MS + 1500;
 const COOLDOWN_MS = 60 * 1000;
 const EXPIRES_MS = 10 * 60 * 1000;
 
@@ -92,6 +94,15 @@ function fail(code) {
   return { ok: false, code, msg: messageFor(code) };
 }
 
+async function publicResetResult(startedAt) {
+  const elapsed = Math.max(0, Date.now() - startedAt);
+  const remaining = Math.max(0, RESET_RESPONSE_MIN_MS - elapsed);
+  if (remaining > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remaining));
+  }
+  return PUBLIC_RESET_RESULT;
+}
+
 function serviceError(code) {
   const error = new Error(code);
   error.serviceCode = code;
@@ -164,7 +175,7 @@ function makeSesClient(config) {
     profile: {
       httpProfile: {
         endpoint: 'ses.tencentcloudapi.com',
-        reqTimeout: 8
+        reqTimeout: SES_TIMEOUT_MS / 1000
       }
     }
   });
@@ -342,6 +353,7 @@ async function sendReserved(client, config, reservation, email, code, codeHash) 
 }
 
 async function main(event) {
+  const startedAt = Date.now();
   const input = event || {};
   const config = getConfig();
   if (!isConfigured(config)) return fail('EMAIL_NOT_CONFIGURED');
@@ -354,13 +366,14 @@ async function main(event) {
   const email = normalizeEmail(input.email);
   if (!EMAIL_RE.test(email) || email.length > 254) return fail('EMAIL_INVALID');
 
-  const context = cloud.getWXContext() || {};
-  const openid = String(context.OPENID || '');
+  let openid;
   let client;
   let requestId;
   let resetCode;
   let resetCodeHash;
   try {
+    const context = cloud.getWXContext() || {};
+    openid = String(context.OPENID || '');
     client = makeSesClient(config);
     requestId = makeRequestId();
     if (input.purpose === 'reset') {
@@ -369,7 +382,9 @@ async function main(event) {
     }
   } catch (error) {
     logFailure(error, 'EMAIL_SERVICE_ERROR');
-    return input.purpose === 'reset' ? PUBLIC_RESET_RESULT : fail('EMAIL_SEND_FAILED');
+    return input.purpose === 'reset'
+      ? publicResetResult(startedAt)
+      : fail('EMAIL_SEND_FAILED');
   }
 
   let reservation;
@@ -378,14 +393,14 @@ async function main(event) {
   } catch (error) {
     if (input.purpose === 'reset') {
       if (!error.serviceCode) logFailure(error, 'DATABASE_ERROR');
-      return PUBLIC_RESET_RESULT;
+      return publicResetResult(startedAt);
     }
     if (error.serviceCode) return fail(error.serviceCode);
     logFailure(error, 'DATABASE_ERROR');
     return fail('EMAIL_SEND_FAILED');
   }
 
-  if (!reservation.shouldSend) return PUBLIC_RESET_RESULT;
+  if (!reservation.shouldSend) return publicResetResult(startedAt);
 
   let sent;
   try {
@@ -394,9 +409,11 @@ async function main(event) {
     sent = await sendReserved(client, config, reservation, email, code, codeHash);
   } catch (error) {
     logFailure(error, 'DATABASE_ERROR');
-    return input.purpose === 'reset' ? PUBLIC_RESET_RESULT : fail('EMAIL_SEND_FAILED');
+    return input.purpose === 'reset'
+      ? publicResetResult(startedAt)
+      : fail('EMAIL_SEND_FAILED');
   }
-  if (input.purpose === 'reset') return PUBLIC_RESET_RESULT;
+  if (input.purpose === 'reset') return publicResetResult(startedAt);
   if (!sent) return fail('EMAIL_SEND_FAILED');
   return { ok: true, accepted: true, msg: '验证码已发送' };
 }
