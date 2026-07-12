@@ -56,10 +56,11 @@ function matches(document, query) {
   });
 }
 
-function makeDatabase(state) {
+function makeDatabase(state, options) {
   const root = {
     failNextRead: false,
-    failNextWrite: false
+    failNextWrite: false,
+    throwOnNotFound: !options || options.throwOnNotFound !== false
   };
 
   function createFacade(targetState, transactionMode) {
@@ -85,7 +86,11 @@ function makeDatabase(state) {
           return {
             async get() {
               maybeFailRead();
-              return { data: clone(findById(documents, id) || null) };
+              const document = findById(documents, id);
+              if (!document && root.throwOnNotFound) {
+                throw new Error(`document with _id ${id} does not exist`);
+              }
+              return { data: clone(document || null) };
             },
             async set({ data }) {
               maybeFailWrite();
@@ -166,11 +171,11 @@ let fakeDb;
 
 function loadAccountAuth(openid, seed, unionid) {
   const state = makeState(seed);
-  fakeDb = makeDatabase(state);
   const fakeCloud = {
     DYNAMIC_CURRENT_ENV: 'test-env',
     init() {},
-    database() {
+    database(options) {
+      fakeDb = makeDatabase(state, options);
       return fakeDb;
     },
     getWXContext() {

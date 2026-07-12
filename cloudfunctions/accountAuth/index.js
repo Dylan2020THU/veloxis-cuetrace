@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
-const db = cloud.database();
+const db = cloud.database({ throwOnNotFound: false });
 const ACCOUNT_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;
 const RESERVED_ACCOUNTS = ['admin_zhx'];
 
