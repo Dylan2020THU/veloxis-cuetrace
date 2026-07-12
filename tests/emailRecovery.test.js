@@ -226,6 +226,11 @@ async function run() {
     const main = await register('wechat_email_a', state, 'MemberEmail');
     const account = findAccount(state, 'MemberEmail');
 
+    const wechatResetResult = await main({
+      action: 'resetPasswordByWechat', password: 'wechatpass'
+    });
+    assert.deepStrictEqual(wechatResetResult, { ok: true, account: 'MemberEmail' });
+
     const firstEmail = 'first@example.com';
     putChallenge(state, {
       purpose: 'bind', email: firstEmail, accountId: account._id
@@ -405,7 +410,7 @@ async function run() {
       code: '123456',
       password: 'newpass1'
     });
-    assert.strictEqual(resetResult.ok, true);
+    assert.deepStrictEqual(resetResult, { ok: true, account: 'MemberEmail' });
     assert.strictEqual(findById(state.email_codes, emailCodeId('reset', nextEmail)).status, 'used');
     assert.strictEqual((await main({
       action: 'passwordLogin', account: 'MemberEmail', password: 'oldpass'

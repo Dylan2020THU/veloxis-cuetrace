@@ -73,6 +73,7 @@ Page({
     recoveryConfirm: '',
     recoveryCounting: false,
     recoverySending: false,
+    recoverySubmitting: false,
     recoveryCountdown: 60,
     pendingAccount: '',
     pendingRoles: [],
@@ -338,17 +339,20 @@ Page({
   // 切换到注册态
   goRegister() {
     this.cancelRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
     this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '', agreementChecked: false });
   },
 
   // 注册态 → 返回登录态
   backToLogin() {
     this.cancelRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
     this.setData({ mode: 'login', agreementChecked: false });
   },
 
   openRecovery() {
     this.invalidateRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
     this.setData({
       mode: 'recover',
       recoveryType: 'wechat',
@@ -359,6 +363,7 @@ Page({
       recoveryConfirm: '',
       recoveryCounting: false,
       recoverySending: false,
+      recoverySubmitting: false,
       recoveryCountdown: 60
     });
   },
@@ -366,6 +371,7 @@ Page({
   switchRecoveryType(e) {
     const type = e.currentTarget.dataset.type === 'email' ? 'email' : 'wechat';
     this.cancelRecoveryEmailRequest();
+    this.cancelRecoverySubmission();
     this.setData({
       recoveryType: type,
       recoveryCode: ''
@@ -394,6 +400,29 @@ Page({
       requestToken === this._recoveryEmailRequestToken &&
       this.data.mode === 'recover' &&
       this.data.recoveryType === 'email';
+  },
+
+  beginRecoverySubmission(type) {
+    if (this.data.recoverySubmitting) return null;
+    const token = (this._recoverySubmissionToken || 0) + 1;
+    this._recoverySubmissionToken = token;
+    this.setData({ recoverySubmitting: true });
+    return token;
+  },
+
+  isRecoverySubmissionCurrent(token, type) {
+    return !this._disposed &&
+      token === this._recoverySubmissionToken &&
+      this.data.recoverySubmitting &&
+      this.data.mode === 'recover' &&
+      this.data.recoveryType === type;
+  },
+
+  cancelRecoverySubmission() {
+    const wasSubmitting = this.data.recoverySubmitting;
+    this._recoverySubmissionToken = (this._recoverySubmissionToken || 0) + 1;
+    if (wasSubmitting) wx.hideLoading();
+    if (wasSubmitting) this.setData({ recoverySubmitting: false });
   },
 
   clearRecoveryCountdown() {
@@ -451,6 +480,7 @@ Page({
   },
 
   finishRecovery(result) {
+    this.cancelRecoverySubmission();
     this.cancelRecoveryEmailRequest();
     this.setData({
       mode: 'login',
@@ -462,12 +492,14 @@ Page({
       recoveryConfirm: '',
       recoveryCounting: false,
       recoverySending: false,
+      recoverySubmitting: false,
       recoveryCountdown: 60
     });
     wx.showToast({ title: '密码已重置，请使用新密码登录', icon: 'none' });
   },
 
   submitRecovery() {
+    if (this.data.recoverySubmitting) return;
     const password = this.data.recoveryPassword || '';
     if (password.length < 6) {
       return wx.showToast({ title: '密码至少 6 位', icon: 'none' });
@@ -477,15 +509,18 @@ Page({
     }
 
     if (this.data.recoveryType === 'wechat') {
+      const requestToken = this.beginRecoverySubmission('wechat');
+      if (requestToken === null) return;
       wx.showLoading({ title: '重置中', mask: true });
       data
         .resetPasswordByWechat({ password })
         .then((result) => {
-          wx.hideLoading();
+          if (!this.isRecoverySubmissionCurrent(requestToken, 'wechat')) return;
           this.finishRecovery(result);
         })
         .catch((error) => {
-          wx.hideLoading();
+          if (!this.isRecoverySubmissionCurrent(requestToken, 'wechat')) return;
+          this.cancelRecoverySubmission();
           if (error && error.code === 'WECHAT_NOT_BOUND') {
             this.setData({ recoveryType: 'email' });
             wx.showToast({ title: '当前微信未绑定账号，请使用已绑定邮箱找回', icon: 'none' });
@@ -508,15 +543,18 @@ Page({
     if (!code) {
       return wx.showToast({ title: '请输入验证码', icon: 'none' });
     }
+    const requestToken = this.beginRecoverySubmission('email');
+    if (requestToken === null) return;
     wx.showLoading({ title: '重置中', mask: true });
     data
       .resetPasswordByEmail({ account, email, code, password })
       .then((result) => {
-        wx.hideLoading();
+        if (!this.isRecoverySubmissionCurrent(requestToken, 'email')) return;
         this.finishRecovery(result);
       })
       .catch((error) => {
-        wx.hideLoading();
+        if (!this.isRecoverySubmissionCurrent(requestToken, 'email')) return;
+        this.cancelRecoverySubmission();
         wx.showToast({
           title: error && error.code === 'EMAIL_NOT_BOUND'
             ? '该邮箱未绑定账号，请联系管理员'
@@ -677,6 +715,7 @@ Page({
       clearTimeout(this._cloudTimer);
       this._cloudTimer = null;
     }
+    this.cancelRecoverySubmission();
     this.cancelRecoveryEmailRequest();
     this._disposed = true;
   }

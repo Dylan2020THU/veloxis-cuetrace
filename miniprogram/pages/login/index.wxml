@@ -297,7 +297,7 @@
           />
         </view>
 
-        <button class="btn-primary login-btn" bindtap="submitRecovery">重置密码</button>
+        <button class="btn-primary login-btn" disabled="{{recoverySubmitting}}" bindtap="submitRecovery">{{recoverySubmitting ? '提交中' : '重置密码'}}</button>
 
         <view class="alt-line">
           <text class="alt-link alt-link--solo" bindtap="backToLogin">返回登录</text>

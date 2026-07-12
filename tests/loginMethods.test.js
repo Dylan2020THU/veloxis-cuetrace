@@ -275,6 +275,12 @@ assert(
   'Recovery UI should provide independent WeChat and email password-reset flows.'
 );
 
+assert(
+  loginWxml.includes('disabled="{{recoverySubmitting}}"') &&
+    loginWxml.includes("{{recoverySubmitting ? '提交中' : '重置密码'}}"),
+  'Recovery submit should be disabled and show submitting copy while pending.'
+);
+
 async function testPasswordLoginErrorsAreHandledExplicitly() {
   const missing = loadLoginPage([], {
     loginWithPassword() {
@@ -526,6 +532,104 @@ async function testWechatNotBoundRecoveryGuidesEmailAndTimersAreCleared() {
   page.switchRecoveryType({ currentTarget: { dataset: { type: 'wechat' } } });
   page.onUnload();
   assert.strictEqual(clearCalls, 2, 'Switching recovery type and unloading should clear its timer.');
+}
+
+async function testRecoverySubmissionIsSingleFlightForWechatAndEmail() {
+  for (const type of ['wechat', 'email']) {
+    const request = deferred();
+    const resetCalls = [];
+    const fakeData = type === 'wechat'
+      ? {
+        resetPasswordByWechat(input) {
+          resetCalls.push(input);
+          return request.promise;
+        }
+      }
+      : {
+        resetPasswordByEmail(input) {
+          resetCalls.push(input);
+          return request.promise;
+        }
+      };
+    const page = loadLoginPage([], fakeData);
+    page.openRecovery();
+    if (type === 'email') {
+      page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+    }
+    page.setData({
+      recoveryAccount: 'MemberA',
+      recoveryEmail: 'member@example.com',
+      recoveryCode: '123456',
+      recoveryPassword: 'newpass1',
+      recoveryConfirm: 'newpass1'
+    });
+
+    page.submitRecovery();
+    page.submitRecovery();
+
+    assert.strictEqual(resetCalls.length, 1, `${type} recovery should submit once while pending.`);
+    assert.strictEqual(page.data.recoverySubmitting, true);
+    request.resolve({ ok: true, account: 'CanonicalAccount' });
+    await flushPromises();
+    assert.strictEqual(page.data.recoverySubmitting, false);
+  }
+}
+
+async function testRecoverySubmissionCallbacksAreIgnoredAfterLifecycleInvalidation() {
+  for (const type of ['wechat', 'email']) {
+    for (const action of ['switch', 'back', 'success', 'unload']) {
+      for (const outcome of ['resolve', 'reject']) {
+        const request = deferred();
+        const fakeData = type === 'wechat'
+          ? { resetPasswordByWechat() { return request.promise; } }
+          : { resetPasswordByEmail() { return request.promise; } };
+        const page = loadLoginPage([], fakeData);
+        page.openRecovery();
+        if (type === 'email') {
+          page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+        }
+        page.setData({
+          recoveryAccount: 'MemberA',
+          recoveryEmail: 'member@example.com',
+          recoveryCode: '123456',
+          recoveryPassword: 'newpass1',
+          recoveryConfirm: 'newpass1'
+        });
+        page.submitRecovery();
+
+        if (action === 'switch') {
+          page.switchRecoveryType({
+            currentTarget: { dataset: { type: type === 'wechat' ? 'email' : 'wechat' } }
+          });
+        } else if (action === 'back') {
+          page.backToLogin();
+        } else if (action === 'success') {
+          page.finishRecovery({ account: 'FreshAccount' });
+        } else {
+          page.onUnload();
+        }
+        assert.strictEqual(page.data.recoverySubmitting, false, `${action} should end pending submit state.`);
+        const mode = page.data.mode;
+        const recoveryType = page.data.recoveryType;
+        const toastCount = page._testCalls.toasts.length;
+        let staleSetDataCalls = 0;
+        const setData = page.setData;
+        page.setData = function trackStaleSetData(next) {
+          staleSetDataCalls += 1;
+          setData.call(this, next);
+        };
+
+        if (outcome === 'resolve') request.resolve({ ok: true, account: 'StaleAccount' });
+        else request.reject(new Error('stale reset failure'));
+        await flushPromises();
+
+        assert.strictEqual(staleSetDataCalls, 0, `${type}/${action}/${outcome} should not setData.`);
+        assert.strictEqual(page._testCalls.toasts.length, toastCount, `${type}/${action}/${outcome} should not toast.`);
+        assert.strictEqual(page.data.mode, mode, `${type}/${action}/${outcome} should not change mode.`);
+        assert.strictEqual(page.data.recoveryType, recoveryType, `${type}/${action}/${outcome} should not change type.`);
+      }
+    }
+  }
 }
 
 async function testPasswordLoginUsesServerAuthResult() {
@@ -858,6 +962,8 @@ async function testSwitchRoleRefreshesMissingRuntimeSessionFromCloud() {
   await testOnlyLatestRecoveryEmailRequestCanUpdatePage();
   await testRecoveryEmailCallbacksAreIgnoredAfterUnload();
   await testWechatNotBoundRecoveryGuidesEmailAndTimersAreCleared();
+  await testRecoverySubmissionIsSingleFlightForWechatAndEmail();
+  await testRecoverySubmissionCallbacksAreIgnoredAfterLifecycleInvalidation();
   await testPasswordLoginUsesServerAuthResult();
   await testWechatLoginUsesServerAuthResult();
   await testWechatNotBoundShowsGuidance();

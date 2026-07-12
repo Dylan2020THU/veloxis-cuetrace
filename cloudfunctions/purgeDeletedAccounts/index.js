@@ -231,7 +231,7 @@ function createCleanupTracker() {
 }
 
 async function buildCleanupPlan(identity, tracker) {
-  const { openid, user } = identity;
+  const { openid, accountId, user } = identity;
   const removals = new Map();
   const files = new Set();
 
@@ -261,6 +261,11 @@ async function buildCleanupPlan(identity, tracker) {
   }
 
   addCloudValue(files, user, identity, tracker.files);
+  await gather('email_bindings', { accountId });
+  await gather('email_codes', _.or(
+    { accountId },
+    { actorHash: sha256(openid) }
+  ));
   await gather('training_sessions', { _openid: openid });
   await gather('coaches', { _openid: openid });
   await gather('shops', { _openid: openid });

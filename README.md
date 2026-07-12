@@ -38,7 +38,7 @@ Import this directory in WeChat DevTools, then compile and run.
 | `coaches` | 教练资料及审核后的门店绑定状态。 |
 | `account_deletion_requests` | 登录时处理待注销账号恢复/锁定状态。 |
 
-账号到期清理不会在集合缺失时跳过。部署 `purgeDeletedAccounts` 前，除上述认证集合外，必须预先创建全部清理依赖集合：`training_sessions`、`posts`、`post_likes`、`post_comments`、`matches`、`match_joins`、`bookings`、`checkin_requests`、`sessions`、`coach_lessons`、`brands`、`members`、`coach_member_links`、`user_follows`，并确认已有的 `sms_codes`、`shop_applications`、`shops`、`stores`、`shop_coach_links`、`coach_shop_applications`、`coaches`、`subscriptions` 均存在。任一依赖集合读取或清理失败时，该账号的 `accounts`、`wechat_bindings`、`users` 与确定性注销请求会保留供重试。
+账号到期清理不会在集合缺失时跳过。部署 `purgeDeletedAccounts` 前，除上述认证集合外，必须预先创建全部清理依赖集合：`training_sessions`、`posts`、`post_likes`、`post_comments`、`matches`、`match_joins`、`bookings`、`checkin_requests`、`sessions`、`coach_lessons`、`brands`、`members`、`coach_member_links`、`user_follows`，并确认已有的 `email_bindings`、`email_codes`、`sms_codes`、`shop_applications`、`shops`、`stores`、`shop_coach_links`、`coach_shop_applications`、`coaches`、`subscriptions` 均存在。认证链删除前会先清理该账号的全部 `email_bindings` 与 `email_codes`；任一依赖集合读取或清理失败时，该账号的 `accounts`、`wechat_bindings`、`users` 与确定性注销请求会保留供重试。
 
 确认所有集合存在后，再配置云数据库安全规则，然后才按第 3 节上传云函数。`accounts`、`wechat_bindings`、`email_bindings`、`email_codes`、`users`、`admins`、`admin_account_bindings`、`sms_codes` 以及角色申请/关联集合都承载认证或授权依据。`email_bindings` 与 `email_codes` 必须禁止小程序客户端直接读写，仅允许 `accountAuth` / `sendEmailCode` 云函数访问；其余认证与授权集合也建议禁止客户端直接读写，由云函数通过可信 `OPENID` 完成访问，尤其不要允许客户端直接修改 `users.roles`。业务展示集合若需开放读取，应按页面的最小字段和最小权限单独配置，不要复用认证集合权限。
 

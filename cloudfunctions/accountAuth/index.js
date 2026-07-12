@@ -427,7 +427,7 @@ async function resetPasswordByWechat(event, context) {
       passwordHash: hashPassword(event.password, salt),
       updatedAt: db.serverDate()
     } });
-    return { ok: true };
+    return { ok: true, account: account.account };
   });
 }
 
@@ -585,7 +585,7 @@ async function resetPasswordByEmail(event) {
       usedAt: db.serverDate(),
       updatedAt: db.serverDate()
     } });
-    return { ok: true };
+    return { ok: true, account: account.account };
   });
 }
 

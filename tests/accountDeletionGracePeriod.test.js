@@ -18,6 +18,8 @@ const AUXILIARY_COLLECTIONS = [
   'match_joins',
   'bookings',
   'sms_codes',
+  'email_bindings',
+  'email_codes',
   'shop_applications',
   'coach_shop_applications',
   'checkin_requests',
@@ -1212,18 +1214,46 @@ async function testPurgeCountsMalformedPendingSchedulesButSkipsValidFuture() {
 }
 
 async function testPurgeMissingAuxiliaryCollectionFailsClosed() {
-  const fixture = dueState('missing-collection-openid', 'MissingCollectionA');
-  delete fixture.state.brands;
-  const { fn } = loadCloudFunction(
-    'cloudfunctions/purgeDeletedAccounts/index.js',
-    '',
-    fixture.state
-  );
+  for (const name of ['brands', 'email_bindings', 'email_codes']) {
+    const fixture = dueState(`missing-${name}-openid`, `Missing${name}`);
+    delete fixture.state[name];
+    const { fn } = loadCloudFunction(
+      'cloudfunctions/purgeDeletedAccounts/index.js',
+      '',
+      fixture.state
+    );
 
-  const captured = await captureWarnings(() => atTime(1000, () => fn.main(timerEvent())));
+    const captured = await captureWarnings(() => atTime(1000, () => fn.main(timerEvent())));
 
-  assert.deepStrictEqual(captured.result, { ok: false, checked: 1, purged: 0, failed: 1 });
-  assertPurgingLease(fixture.state, fixture.auth);
+    assert.deepStrictEqual(captured.result, { ok: false, checked: 1, purged: 0, failed: 1 }, name);
+    assertPurgingLease(fixture.state, fixture.auth);
+  }
+}
+
+async function testPurgeEmailCleanupFailureKeepsAuthenticationChain() {
+  for (const name of ['email_bindings', 'email_codes']) {
+    const fixture = dueState(`email-failure-${name}`, `EmailFailure${name}`);
+    fixture.state[name].push({
+      _id: `${name}-owned`,
+      accountId: fixture.auth.account._id,
+      actorHash: sha256(fixture.auth.binding._openid)
+    });
+    const { fn } = loadCloudFunction(
+      'cloudfunctions/purgeDeletedAccounts/index.js',
+      '',
+      fixture.state,
+      {
+        failTransactionWrite(operation) {
+          return operation.collection === name && operation.method === 'delete';
+        }
+      }
+    );
+
+    const captured = await captureWarnings(() => atTime(1000, () => fn.main(timerEvent())));
+
+    assert.deepStrictEqual(captured.result, { ok: false, checked: 1, purged: 0, failed: 1 }, name);
+    assertPurgingLease(fixture.state, fixture.auth);
+  }
 }
 
 async function testPurgeBlocksActiveRecurringSubscription() {
@@ -1365,6 +1395,17 @@ async function testPurgeRemovesPersonalDataCascadesAndCloudFilesButKeepsFinance(
     storeId: fixture.state.stores[0]._id
   });
   fixture.state.sms_codes.push({ _id: 'sms-owned', _openid: openid });
+  fixture.state.email_bindings.push(
+    { _id: 'email-binding-active', accountId: fixture.auth.account._id, status: 'active' },
+    { _id: 'email-binding-revoked', accountId: fixture.auth.account._id, status: 'revoked' },
+    { _id: 'email-binding-foreign', accountId: 'foreign-account-id', status: 'active' }
+  );
+  fixture.state.email_codes.push(
+    { _id: 'email-challenge-owned', accountId: fixture.auth.account._id },
+    { _id: 'email-rate-owned', actorHash: sha256(openid) },
+    { _id: 'email-challenge-foreign', accountId: 'foreign-account-id' },
+    { _id: 'email-rate-foreign', actorHash: sha256('foreign-openid') }
+  );
   fixture.state.coach_lessons.push(
     { _id: 'lesson-personal', coachOpenid: openid },
     { _id: 'lesson-zero', coachOpenid: openid, amount: 0 },
@@ -1416,6 +1457,11 @@ async function testPurgeRemovesPersonalDataCascadesAndCloudFilesButKeepsFinance(
     'match_joins',
     'shop_coach_links'
   ].forEach((name) => assert.strictEqual(fixture.state[name].length, 0, name));
+  assert.deepStrictEqual(fixture.state.email_bindings.map((item) => item._id), ['email-binding-foreign']);
+  assert.deepStrictEqual(
+    fixture.state.email_codes.map((item) => item._id).sort(),
+    ['email-challenge-foreign', 'email-rate-foreign']
+  );
   assert.strictEqual(fixture.state.coach_lessons.some((item) => item._id === 'lesson-personal'), false);
   assert.strictEqual(fixture.state.coach_lessons.some((item) => item._id === 'lesson-zero'), false);
   assert.strictEqual(fixture.state.coach_lessons.some((item) => item._id === 'lesson-financial'), true);
@@ -2068,6 +2114,7 @@ function testExistingDeletionUxAndDeploymentDocumentation() {
     assert(readme.includes(name), `README upload checklist must include ${name}`);
   });
   assert(/purgeDeletedAccounts[\s\S]{0,200}(定时|触发器)/.test(readme));
+  assert(readme.includes('认证链删除前会先清理该账号的全部 `email_bindings` 与 `email_codes`'));
   AUXILIARY_COLLECTIONS.forEach((name) => {
     assert(readme.includes(`\`${name}\``), `README must require pre-creating ${name}`);
   });
@@ -2106,6 +2153,7 @@ const tests = [
   testPurgeProcessesAllDuePagesBeforeDeleting,
   testPurgeCountsMalformedPendingSchedulesButSkipsValidFuture,
   testPurgeMissingAuxiliaryCollectionFailsClosed,
+  testPurgeEmailCleanupFailureKeepsAuthenticationChain,
   testPurgeBlocksActiveRecurringSubscription,
   testPurgeRechecksSubscriptionBeforeDestructiveCleanup,
   testPurgeRemovesPersonalDataCascadesAndCloudFilesButKeepsFinance,

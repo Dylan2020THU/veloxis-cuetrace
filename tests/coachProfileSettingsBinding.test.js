@@ -474,6 +474,11 @@ async function testEmailBindingDoesNotForgeSuccessAfterFailureOrUnload() {
   assert(/\u9a8c\u8bc1\u7801\u53d1\u9001\u8bb0\u5f55/.test(legalJs), 'Privacy policy must disclose verification-code delivery records.');
   assert(/\u5bc6\u7801\u627e\u56de/.test(legalJs), 'Privacy policy must disclose the password-recovery purpose.');
   assert(!/\u9a8c\u8bc1\u7801\u660e\u6587|\u5bc6\u94a5/.test(legalJs), 'Privacy policy must not claim collection of code plaintext or keys.');
+  assert(legalJs.includes("updatedAt: '2026-07-12'"), 'Privacy policy date must match the final review date.');
+  assert(
+    /腾讯云 SES[\s\S]{0,200}完整收件邮箱[\s\S]{0,100}验证码投递[\s\S]{0,100}API/.test(legalJs),
+    'Third-party list must disclose Tencent Cloud SES API delivery of the complete recipient email.'
+  );
 
   await testEmailBindingCloudFlowAndLifecycle();
   await testEmailBindingDoesNotForgeSuccessAfterFailureOrUnload();
