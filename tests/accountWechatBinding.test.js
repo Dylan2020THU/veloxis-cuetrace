@@ -60,6 +60,7 @@ function makeDatabase(state, options) {
   const root = {
     failNextRead: false,
     failNextWrite: false,
+    beforeTransaction: null,
     throwOnNotFound: !options || options.throwOnNotFound !== false
   };
 
@@ -94,6 +95,9 @@ function makeDatabase(state, options) {
             },
             async set({ data }) {
               maybeFailWrite();
+              if (Object.prototype.hasOwnProperty.call(data, '_id')) {
+                throw new Error('-501007 不能更新_id的值');
+              }
               const next = Object.assign({}, clone(data), { _id: id });
               const index = documents.findIndex((item) => item._id === id);
               if (index === -1) documents.push(next);
@@ -133,6 +137,9 @@ function makeDatabase(state, options) {
       async runTransaction(callback) {
         if (transactionMode) throw new Error('nested transactions are unsupported');
         const workingState = clone(targetState);
+        const beforeTransaction = root.beforeTransaction;
+        root.beforeTransaction = null;
+        if (beforeTransaction) beforeTransaction(workingState);
         const result = await callback(createFacade(workingState, true));
         Object.keys(targetState).forEach((key) => {
           if (Array.isArray(targetState[key])) targetState[key] = workingState[key] || [];
@@ -162,6 +169,14 @@ function makeDatabase(state, options) {
     },
     set(value) {
       root.failNextWrite = Boolean(value);
+    }
+  });
+  Object.defineProperty(database, 'beforeTransaction', {
+    get() {
+      return root.beforeTransaction;
+    },
+    set(value) {
+      root.beforeTransaction = value;
     }
   });
   return database;
@@ -386,6 +401,24 @@ async function run() {
   const projectConfig = JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'));
   assert.strictEqual(projectConfig.appid, 'wxa7c9920cda26d7ca');
 
+  const setSemanticsState = makeState();
+  const setSemanticsDb = makeDatabase(setSemanticsState, { throwOnNotFound: false });
+  const setSemanticsBefore = snapshot(setSemanticsState);
+  await assert.rejects(
+    setSemanticsDb.collection('accounts').doc('path-account').set({
+      data: { _id: 'payload-account', account: 'MemberSet' }
+    }),
+    (error) => error.message.includes('-501007') && error.message.includes('不能更新_id的值')
+  );
+  assert.deepStrictEqual(snapshot(setSemanticsState), setSemanticsBefore);
+  await setSemanticsDb.collection('accounts').doc('path-account').set({
+    data: { account: 'MemberSet' }
+  });
+  assert.deepStrictEqual(findById(setSemanticsState.accounts, 'path-account'), {
+    account: 'MemberSet',
+    _id: 'path-account'
+  });
+
   const seed = makeState();
   const state = seed;
 
@@ -436,6 +469,55 @@ async function run() {
   assert.strictEqual(findAccount(unboundState, 'MemberU')._openid, 'wechat_U');
   assert.strictEqual(findBinding(unboundState, 'wechat_U').accountId, sha256('account:memberu'));
   assert.deepStrictEqual(firstPasswordBinding.roles, ['member']);
+
+  const transactionSalt = '33'.repeat(16);
+  const transactionSeed = makeState({
+    accounts: [{
+      _id: sha256('account:membert'),
+      account: 'MemberT',
+      accountNormalized: 'membert',
+      passwordAlgorithm: 'scrypt-v1',
+      passwordSalt: transactionSalt,
+      passwordHash: crypto.scryptSync('123456', Buffer.from(transactionSalt, 'hex'), 64).toString('hex'),
+      status: 'active'
+    }]
+  });
+
+  const transactionMissingState = makeState(snapshot(transactionSeed));
+  const transactionMissingModule = loadAccountAuth('wechat_T_missing', transactionMissingState);
+  fakeDb.beforeTransaction = (workingState) => {
+    workingState.accounts = [];
+  };
+  const transactionMissingBefore = snapshot(transactionMissingState);
+  const transactionMissing = await transactionMissingModule.main({
+    action: 'passwordLogin', account: 'MemberT', password: '123456'
+  });
+  assert.strictEqual(transactionMissing.code, 'ACCOUNT_NOT_FOUND');
+  assert.deepStrictEqual(snapshot(transactionMissingState), transactionMissingBefore);
+
+  const transactionInvalidState = makeState(snapshot(transactionSeed));
+  const transactionInvalidModule = loadAccountAuth('wechat_T_invalid', transactionInvalidState);
+  fakeDb.beforeTransaction = (workingState) => {
+    findById(workingState.accounts, sha256('account:membert')).accountNormalized = 'different';
+  };
+  const transactionInvalidBefore = snapshot(transactionInvalidState);
+  const transactionInvalid = await transactionInvalidModule.main({
+    action: 'passwordLogin', account: 'MemberT', password: '123456'
+  });
+  assert.strictEqual(transactionInvalid.code, 'ACCOUNT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(transactionInvalidState), transactionInvalidBefore);
+
+  const transactionPasswordState = makeState(snapshot(transactionSeed));
+  const transactionPasswordModule = loadAccountAuth('wechat_T_password', transactionPasswordState);
+  fakeDb.beforeTransaction = (workingState) => {
+    findById(workingState.accounts, sha256('account:membert')).passwordHash = '00'.repeat(64);
+  };
+  const transactionPasswordBefore = snapshot(transactionPasswordState);
+  const transactionPassword = await transactionPasswordModule.main({
+    action: 'passwordLogin', account: 'MemberT', password: '123456'
+  });
+  assert.strictEqual(transactionPassword.code, 'INVALID_PASSWORD');
+  assert.deepStrictEqual(snapshot(transactionPasswordState), transactionPasswordBefore);
 
   const orphanPasswordState = makeState();
   const orphanPasswordSalt = '22'.repeat(16);
@@ -522,15 +604,38 @@ async function run() {
   assert.strictEqual(passwordLogin.ok, true);
   assert.strictEqual(passwordLogin.account, 'MemberA');
 
+  const malformedAccountState = makeState(snapshot(state));
+  findById(malformedAccountState.accounts, sha256('account:membera')).accountNormalized = 'different';
+  const malformedAccountBefore = snapshot(malformedAccountState);
+  const malformedAccount = await loadAccountAuth('wechat_A', malformedAccountState).main({
+    action: 'passwordLogin', account: 'MemberA', password: '123456'
+  });
+  assert.strictEqual(malformedAccount.code, 'ACCOUNT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(malformedAccountState), malformedAccountBefore);
+
+  const wrongPasswordBefore = snapshot(state);
   const wrongPassword = await loadAccountAuth('wechat_A', state).main({
     action: 'passwordLogin', account: 'MemberA', password: 'bad-password'
   });
-  assert.strictEqual(wrongPassword.code, 'INVALID_CREDENTIALS');
+  assert.strictEqual(wrongPassword.code, 'INVALID_PASSWORD');
+  assert.strictEqual(wrongPassword.msg, '账号密码错误');
+  assert.deepStrictEqual(snapshot(state), wrongPasswordBefore);
 
+  const nonStringPasswordBefore = snapshot(state);
+  const nonStringPassword = await loadAccountAuth('wechat_A', state).main({
+    action: 'passwordLogin', account: 'MemberA', password: 123456
+  });
+  assert.strictEqual(nonStringPassword.code, 'INVALID_PASSWORD');
+  assert.strictEqual(nonStringPassword.msg, '账号密码错误');
+  assert.deepStrictEqual(snapshot(state), nonStringPasswordBefore);
+
+  const missingAccountBefore = snapshot(state);
   const missingAccount = await loadAccountAuth('wechat_A', state).main({
     action: 'passwordLogin', account: 'MissingA', password: '123456'
   });
-  assert.strictEqual(missingAccount.code, 'INVALID_CREDENTIALS');
+  assert.strictEqual(missingAccount.code, 'ACCOUNT_NOT_FOUND');
+  assert.strictEqual(missingAccount.msg, '账号未注册');
+  assert.deepStrictEqual(snapshot(state), missingAccountBefore);
 
   const secondWechat = await loadAccountAuth('wechat_B', state).main({
     action: 'passwordLogin', account: 'MemberA', password: '123456'

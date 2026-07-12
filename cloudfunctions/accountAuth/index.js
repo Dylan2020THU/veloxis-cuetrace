@@ -48,6 +48,12 @@ async function getOptional(ref) {
   return result && result.data ? result.data : null;
 }
 
+function withoutDocumentId(document) {
+  const data = Object.assign({}, document || {});
+  delete data._id;
+  return data;
+}
+
 function normalizeServerRoles(user) {
   const source = Array.isArray(user && user.roles) ? user.roles : [];
   const roles = source.filter((role) => ['member', 'coach', 'shop'].indexOf(role) !== -1);
@@ -103,7 +109,8 @@ function messageFor(code) {
   const messages = {
     INVALID_INPUT: '账号或密码格式不正确',
     ACCOUNT_EXISTS: '账号已存在，请直接登录',
-    INVALID_CREDENTIALS: '账号或密码错误',
+    ACCOUNT_NOT_FOUND: '账号未注册',
+    INVALID_PASSWORD: '账号密码错误',
     WECHAT_NOT_BOUND: '当前微信尚未绑定账号',
     ACCOUNT_NOT_BOUND: '账号绑定信息不完整，请重新登录',
     WECHAT_ALREADY_BOUND: '当前微信已绑定其他账号',
@@ -173,9 +180,9 @@ async function register(event, context) {
     };
     const defaultMemberData = defaultMember(bindingDocId, OPENID);
 
-    await accountRef.set({ data: accountData });
-    await bindingRef.set({ data: bindingData });
-    await userRef.set({ data: defaultMemberData });
+    await accountRef.set({ data: withoutDocumentId(accountData) });
+    await bindingRef.set({ data: withoutDocumentId(bindingData) });
+    await userRef.set({ data: withoutDocumentId(defaultMemberData) });
     return authResult(accountData, defaultMemberData);
   });
 }
@@ -213,12 +220,10 @@ async function passwordLogin(event, context) {
   const normalized = normalizeAccount(event.account);
   const accountDocId = accountId(normalized);
   const account = await getOptional(db.collection('accounts').doc(accountDocId));
-  if (
-    !isAccountIdentity(account, accountDocId) ||
-    typeof event.password !== 'string' ||
-    !verifyPassword(event.password, account)
-  ) {
-    throw authError('INVALID_CREDENTIALS');
+  if (!account) throw authError('ACCOUNT_NOT_FOUND');
+  if (!isAccountIdentity(account, accountDocId)) throw authError('ACCOUNT_NOT_BOUND');
+  if (typeof event.password !== 'string' || !verifyPassword(event.password, account)) {
+    throw authError('INVALID_PASSWORD');
   }
   if (account.status !== 'active') throw authError('ACCOUNT_DISABLED');
 
@@ -248,8 +253,10 @@ async function passwordLogin(event, context) {
     const currentAccount = await getOptional(accountRef);
     const currentBinding = await getOptional(bindingRef);
     const currentUser = await getOptional(userRef);
-    if (!isAccountIdentity(currentAccount, accountDocId) || !verifyPassword(event.password, currentAccount)) {
-      throw authError('INVALID_CREDENTIALS');
+    if (!currentAccount) throw authError('ACCOUNT_NOT_FOUND');
+    if (!isAccountIdentity(currentAccount, accountDocId)) throw authError('ACCOUNT_NOT_BOUND');
+    if (typeof event.password !== 'string' || !verifyPassword(event.password, currentAccount)) {
+      throw authError('INVALID_PASSWORD');
     }
     if (currentAccount.status !== 'active') throw authError('ACCOUNT_DISABLED');
     if (currentAccount._openid && currentAccount._openid !== OPENID) {
@@ -281,8 +288,8 @@ async function passwordLogin(event, context) {
       boundAt: updatedAccount.boundAt,
       updatedAt: updatedAccount.updatedAt
     } });
-    await bindingRef.set({ data: bindingData });
-    await userRef.set({ data: userData });
+    await bindingRef.set({ data: withoutDocumentId(bindingData) });
+    await userRef.set({ data: withoutDocumentId(userData) });
     return authResult(updatedAccount, userData);
   });
 }
