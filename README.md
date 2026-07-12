@@ -18,12 +18,14 @@ Import this directory in WeChat DevTools, then compile and run.
 
 ### 2. 集合与权限
 
-先进入云开发控制台的数据库，在上传云函数前按下表逐一创建或确认集合已经存在。以下是本次认证和角色链路必须创建或确认存在的集合：核心集合 `accounts`、`wechat_bindings`、`users`、`admins`、`admin_account_bindings`、`sms_codes`，角色业务集合 `shop_applications`、`shops`、`stores`、`shop_coach_links`、`coach_shop_applications`、`coaches`，以及登录链路使用的 `account_deletion_requests`。
+先进入云开发控制台的数据库，在上传云函数前按下表逐一创建或确认集合已经存在。以下是本次认证和角色链路必须创建或确认存在的集合：核心集合 `accounts`、`wechat_bindings`、`email_bindings`、`email_codes`、`users`、`admins`、`admin_account_bindings`、`sms_codes`，角色业务集合 `shop_applications`、`shops`、`stores`、`shop_coach_links`、`coach_shop_applications`、`coaches`，以及登录链路使用的 `account_deletion_requests`。
 
 | 集合 | 当前用途与关键字段 |
 | --- | --- |
 | `accounts` | 业务账号；确定性 `_id`、`_openid`、`account`、`accountNormalized`、`passwordAlgorithm`、`passwordSalt`、`passwordHash`、`status`、绑定时间。密码只保存 scrypt 派生值和盐。 |
 | `wechat_bindings` | 微信到业务账号的唯一映射；确定性 `_id`、`_openid`、`accountId`、`account`、`unionidHash`、绑定时间。 |
+| `email_bindings` | 已验证邮箱到业务账号的唯一映射；记录确定性 `_id`、账号与微信标识、规范化邮箱、状态和绑定/撤销时间。 |
+| `email_codes` | 邮箱绑定与找回的验证码挑战及限流记录；只保存目标散列、验证码 HMAC 散列、状态、次数和有效期，不保存验证码明文。 |
 | `users` | 服务端角色与资料；与微信绑定一致的 `_id` / `_openid`、`roles`、`currentRole`、`role` 及昵称、头像、手机号等资料。 |
 | `admins` | 已绑定管理员微信；确定性 `_id`、`_openid`、管理员账号和状态。 |
 | `admin_account_bindings` | 管理员账号到微信的反向唯一锁。 |
@@ -38,13 +40,13 @@ Import this directory in WeChat DevTools, then compile and run.
 
 账号到期清理不会在集合缺失时跳过。部署 `purgeDeletedAccounts` 前，除上述认证集合外，必须预先创建全部清理依赖集合：`training_sessions`、`posts`、`post_likes`、`post_comments`、`matches`、`match_joins`、`bookings`、`checkin_requests`、`sessions`、`coach_lessons`、`brands`、`members`、`coach_member_links`、`user_follows`，并确认已有的 `sms_codes`、`shop_applications`、`shops`、`stores`、`shop_coach_links`、`coach_shop_applications`、`coaches`、`subscriptions` 均存在。任一依赖集合读取或清理失败时，该账号的 `accounts`、`wechat_bindings`、`users` 与确定性注销请求会保留供重试。
 
-确认所有集合存在后，再配置云数据库安全规则，然后才按第 3 节上传云函数。`accounts`、`wechat_bindings`、`users`、`admins`、`admin_account_bindings`、`sms_codes` 以及角色申请/关联集合都承载认证或授权依据。建议在安全规则中禁止小程序客户端直接读写，由云函数通过可信 `OPENID` 完成访问；尤其不要允许客户端直接修改 `users.roles`。业务展示集合若需开放读取，应按页面的最小字段和最小权限单独配置，不要复用认证集合权限。
+确认所有集合存在后，再配置云数据库安全规则，然后才按第 3 节上传云函数。`accounts`、`wechat_bindings`、`email_bindings`、`email_codes`、`users`、`admins`、`admin_account_bindings`、`sms_codes` 以及角色申请/关联集合都承载认证或授权依据。`email_bindings` 与 `email_codes` 必须禁止小程序客户端直接读写，仅允许 `accountAuth` / `sendEmailCode` 云函数访问；其余认证与授权集合也建议禁止客户端直接读写，由云函数通过可信 `OPENID` 完成访问，尤其不要允许客户端直接修改 `users.roles`。业务展示集合若需开放读取，应按页面的最小字段和最小权限单独配置，不要复用认证集合权限。
 
 ### 3. 上传云函数
 
 在微信开发者工具中，对以下云函数逐个选择“上传并部署：云端安装依赖”，并确认它们部署到 `miniprogram/app.js` 指定的同一云环境：
 
-- 核心认证：`accountAuth`、`login`、`adminLogin`。
+- 核心认证与邮箱恢复：`accountAuth`、`sendEmailCode`、`login`、`adminLogin`。
 - 手机号验证：`sendSmsCode`、`verifySmsCode`。
 - 角色与资料：`reviewShopApplication`、`reviewCoachBindingApplication`、`saveUserProfile`、`getUserProfile`、`saveShopProfile`、`addShopCoach`。
 - 完整申请入口同时部署：`submitShopApplication`、`applyCoachShopBinding`。
@@ -52,6 +54,8 @@ Import this directory in WeChat DevTools, then compile and run.
 - 连续订阅：`createRecurringContract`、`recurringContractCallback`、`cancelRecurringContract`；三者必须与账号生命周期函数同时更新，不能混用旧版本。
 
 部署后检查每个函数均已安装其目录内 `package.json` 声明的依赖。不要仅上传客户端代码，否则账号登录会因认证探测失败而保持关闭。
+
+`sendEmailCode` 必须使用 Node.js 16.13 或更高版本运行时，并将云函数超时设置为至少 12 秒；邮箱重置为抗枚举会保证公开响应最短持续 9500ms，过短的超时会在响应前中断函数。
 
 ### 4. 管理员认证配置
 
@@ -76,14 +80,31 @@ Import this directory in WeChat DevTools, then compile and run.
 
 本次 B 方案不迁移旧的随机 ID 验证码记录。仅在可重建的纯测试环境中，部署新版 `sendSmsCode` / `verifySmsCode` 前清空 `sms_codes` 旧测试记录，再由新版函数创建确定性最新码文档；生产环境或任何需要保留的数据不得执行该清空操作。
 
-### 6. 身份约束
+### 6. 邮箱绑定与找回配置
+
+发送真实验证码前，先在腾讯云开通 SES 邮件推送服务，完成发信域名验证和发信地址配置，并提交验证码邮件模板直至审核通过；尚未完成其中任何一项时不要进行真机送达验收。
+
+在 `sendEmailCode` 云函数中配置全部 SES 环境变量：
+
+- `CUETRACE_SES_SECRET_ID`、`CUETRACE_SES_SECRET_KEY`：具备所需 SES 最小权限的云 API 凭据。
+- `CUETRACE_SES_REGION`：SES 服务地域。
+- `CUETRACE_SES_FROM_EMAIL`：已在 SES 配置完成的发信地址。
+- `CUETRACE_SES_TEMPLATE_ID`：已审核通过的验证码模板 ID。
+- `CUETRACE_SES_SUBJECT`：验证码邮件主题。
+- `CUETRACE_SES_REPLY_TO`：邮件回复地址；不需要接收回复时可留空。
+
+另在 `sendEmailCode` 与 `accountAuth` 中配置完全相同的 `CUETRACE_EMAIL_CODE_SECRET`，用于验证码 HMAC 散列校验。所有凭据、散列密钥和发信地址只配置在云函数环境变量中，不要写入代码、README 或日志。
+
+邮箱重置请求始终公开返回“若信息匹配，验证码将发送至绑定邮箱”一类统一提示；该提示仅用于抗账号枚举，不代表账号与邮箱实际匹配，也不代表邮件已经成功送达。
+
+### 7. 身份约束
 
 - 注册会把当前可信 `OPENID` 与新业务账号绑定；已存在但尚未绑定的账号只能在密码校验成功后绑定。
 - 微信图标只对已绑定微信执行免密恢复。未绑定微信不会被静默创建为用户。
 - 一个业务账号只能绑定一个微信，一个微信也只能绑定一个业务账号。当前版本不提供解绑、换绑或覆盖绑定入口；不要通过控制台手工改一侧映射来规避限制。
 - 角色只认云端 `users.roles`。会员注册不会自动获得教练或店主角色，必须走对应审核流程。
 
-### 7. 注销清理与数据保留矩阵
+### 8. 注销清理与数据保留矩阵
 
 `createRecurringContract`、`deleteAccount` 与定时清理在确定性 `users/{sha256(wechat:OPENID)}` 上共享原子 guard：签约事务写入 `subscriptionStatus=pending_contract`，注销写入 `deletionStatus=pending`，清理先通过事务把状态抢占为 `purging`。任一方看到对方的 active / pending 状态都会拒绝；清理失败会保留带过期时间的 `purging` 租约，只有原租约或租约到期后的新任务可以继续。存在 `active`、`pending_contract` 或 `cancel_required` 连续订阅状态时，必须先通过 `cancelRecurringContract` 完成微信侧解约；微信侧解约失败不会释放本地订阅 guard。`cancel_required` 表示旧合约的迟到 ADD 回调与当前新合约发生冲突，取消接口会优先处理该旧合约。该协议已由本地事务回归测试覆盖，但真实 CloudBase 写冲突与回调并发仍须按下方清单验收。
 
@@ -94,12 +115,17 @@ Import this directory in WeChat DevTools, then compile and run.
 | 教练课时 | 无金额或结算字段的 `coach_lessons` 可作为个人活动数据清理；含金额、订单或结算依据的课时保留。 |
 | 财务与支付依据 | `orders`、`subscriptions`、`shop_orders`、`coach_settlements`、`fulfill_failures` 以及财务课时不由注销任务擅自删除。部署方必须依据适用法律、支付审计和争议处理要求确定并记录具体留存期限。 |
 
-### 8. 发布前真机验收
+### 9. 发布前真机验收
 
 本地 Node 测试只验证代码逻辑，不能代替真实微信身份、云环境和集合权限验收。发布前在已部署环境逐项完成并保留记录：
 
 - [ ] 使用真实 `OPENID` 完成首次账号注册，并确认 `accounts`、`wechat_bindings`、`users` 三份记录一致。
 - [ ] 退出后点击微信图标，确认已绑定账号可以免密恢复，未绑定微信明确失败且不创建用户。
+- [ ] 在已登录真机上向未被占用的邮箱发送绑定验证码并完成绑定，确认状态页只展示脱敏邮箱，`accounts` 与 `email_bindings` 的指向一致，验证码记录已标记为使用。
+- [ ] 为同一账号发送新邮箱验证码并完成换绑，确认旧 `email_bindings` 记录已撤销、新记录生效，旧邮箱不能再用于该账号找回。
+- [ ] 使用已绑定微信执行密码重置，确认只有当前微信绑定的账号密码被更新。
+- [ ] 退出登录后通过账号与已绑定邮箱接收真实验证码并完成邮箱重置，同时确认不匹配信息仍只得到统一公开提示，不能据此判断账号或邮箱是否存在。
+- [ ] 分别完成微信重置与邮箱重置后，确认旧密码登录失败、新密码登录成功。
 - [ ] 清除小程序 storage 后恢复登录；再换一台设备登录同一微信，确认结果来自云端绑定而不是本地缓存。
 - [ ] 用第二个微信登录已绑定账号，确认返回账号已绑定冲突；再用已绑定微信尝试另一账号，确认返回微信已绑定冲突，且两次失败都不改写原绑定。
 - [ ] 验证账号密码、手机号验证码、管理员登录、店主审核、教练/门店关联的成功与拒绝路径。
