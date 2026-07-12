@@ -17,6 +17,8 @@ function makeState(seed) {
   const source = seed || {};
   source.accounts = Array.isArray(source.accounts) ? source.accounts : [];
   source.wechat_bindings = Array.isArray(source.wechat_bindings) ? source.wechat_bindings : [];
+  source.email_bindings = Array.isArray(source.email_bindings) ? source.email_bindings : [];
+  source.email_codes = Array.isArray(source.email_codes) ? source.email_codes : [];
   source.users = Array.isArray(source.users) ? source.users : [];
   return source;
 }
@@ -25,6 +27,8 @@ function snapshot(state) {
   return clone({
     accounts: state.accounts,
     wechat_bindings: state.wechat_bindings,
+    email_bindings: state.email_bindings,
+    email_codes: state.email_codes,
     users: state.users
   });
 }
@@ -429,6 +433,32 @@ async function run() {
   );
   assert.deepStrictEqual(snapshot(state), probeBefore);
 
+  const unboundRecoveryState = makeState();
+  const unboundRecoveryBefore = snapshot(unboundRecoveryState);
+  const unboundRecovery = await loadAccountAuth('wechat_recovery_missing', unboundRecoveryState).main({
+    action: 'resetPasswordByWechat', password: 'newpass1'
+  });
+  assert.strictEqual(unboundRecovery.code, 'WECHAT_NOT_BOUND');
+  assert.deepStrictEqual(snapshot(unboundRecoveryState), unboundRecoveryBefore);
+
+  const recoveryState = makeState();
+  const recoveryMain = loadAccountAuth('wechat_recovery', recoveryState).main;
+  assert.strictEqual((await recoveryMain({
+    action: 'register', account: 'MemberA', password: 'oldpass'
+  })).ok, true);
+  assert.strictEqual((await recoveryMain({
+    action: 'resetPasswordByWechat',
+    account: 'InjectedAccount',
+    openid: 'injected-openid',
+    password: 'newpass1'
+  })).ok, true);
+  assert.strictEqual((await recoveryMain({
+    action: 'passwordLogin', account: 'MemberA', password: 'oldpass'
+  })).code, 'INVALID_PASSWORD');
+  assert.strictEqual((await recoveryMain({
+    action: 'passwordLogin', account: 'MemberA', password: 'newpass1'
+  })).ok, true);
+
   const reserved = await loadAccountAuth('wechat_X', state).main({
     action: 'register', account: 'admin_zhx', password: '123456'
   });
@@ -664,6 +694,8 @@ async function run() {
   assert.strictEqual(status.account, 'MemberA');
   assert.strictEqual(status.passwordSet, true);
   assert.strictEqual(status.phone, '');
+  assert.strictEqual(status.emailBound, false);
+  assert.strictEqual(status.emailMasked, '');
   ['passwordHash', 'passwordSalt', '_openid', 'unionidHash'].forEach((field) => {
     assert.strictEqual(status[field], undefined);
   });
@@ -723,7 +755,20 @@ async function run() {
   console.log('accountWechatBinding tests passed');
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  clone,
+  findById,
+  findAccount,
+  loadAccountAuth,
+  makeState,
+  sha256,
+  snapshot,
+  getFakeDb: () => fakeDb
+};
