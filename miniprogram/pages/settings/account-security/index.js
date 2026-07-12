@@ -16,6 +16,7 @@ Page({
     passwordText: '未设置',
     qrText: '查看',
     phoneText: '未绑定',
+    emailText: '未绑定',
     wechatText: '未绑定'
   },
 
@@ -29,12 +30,14 @@ Page({
         accountText: status.account || '未设置',
         passwordText: status.passwordSet ? '已设置' : '未设置',
         phoneText: maskPhone(status.phone) || '未绑定',
+        emailText: status.emailBound && status.emailMasked ? status.emailMasked : '未绑定',
         wechatText: status.wechatBound ? '已绑定' : '未绑定'
       }))
       .catch(() => this.setData({
         accountText: '未登录',
         passwordText: '未设置',
         phoneText: '未绑定',
+        emailText: '未绑定',
         wechatText: '未绑定'
       }));
   },
@@ -57,6 +60,10 @@ Page({
 
   onPhone() {
     wx.showToast({ title: '请在登录页使用手机号完成绑定', icon: 'none' });
+  },
+
+  onEmail() {
+    wx.navigateTo({ url: '/pages/settings/email-binding/index' });
   },
 
   onWechat() {

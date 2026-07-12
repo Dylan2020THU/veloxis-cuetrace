@@ -32,6 +32,14 @@
       </view>
     </view>
 
+    <view class="security-row" bindtap="onEmail">
+      <text class="row-title">邮箱</text>
+      <view class="row-right">
+        <text class="row-value">{{emailText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
     <view class="security-row" bindtap="onWechat">
       <text class="row-title">微信账号</text>
       <view class="row-right">
