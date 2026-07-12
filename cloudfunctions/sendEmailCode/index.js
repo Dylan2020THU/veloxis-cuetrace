@@ -81,6 +81,7 @@ function messageFor(code) {
     WECHAT_NOT_BOUND: '当前微信尚未绑定账号',
     ACCOUNT_NOT_BOUND: '账号绑定信息不完整，请重新登录',
     ACCOUNT_DISABLED: '账号已停用',
+    ACCOUNT_DELETION_IN_PROGRESS: '账号注销处理中，请稍后重试',
     EMAIL_INVALID: '邮箱格式不正确',
     EMAIL_ALREADY_BOUND: '该邮箱已绑定其他账号',
     EMAIL_CODE_COOLDOWN: '请稍后重新发送',
@@ -243,6 +244,9 @@ async function reserve(event, openid, email, requestId) {
         throw serviceError('ACCOUNT_NOT_BOUND');
       }
       if (account.status !== 'active') throw serviceError('ACCOUNT_DISABLED');
+      if (user.deletionStatus === 'purging') {
+        throw serviceError('ACCOUNT_DELETION_IN_PROGRESS');
+      }
       const targetId = emailBindingId(email);
       const existing = await getOptional(
         transaction.collection('email_bindings').doc(targetId)
@@ -255,6 +259,17 @@ async function reserve(event, openid, email, requestId) {
         throw serviceError('EMAIL_CODE_COOLDOWN');
       }
     } else {
+      if (openid) {
+        const actorUserId = wechatBindingId(openid);
+        const actorUser = await getOptional(
+          transaction.collection('users').doc(actorUserId)
+        );
+        if (isUserIdentity(actorUser, actorUserId, openid) &&
+          actorUser.deletionStatus === 'purging'
+        ) {
+          return { shouldSend: false };
+        }
+      }
       const expectedAccountId = accountId(event.account);
       const account = await getOptional(
         transaction.collection('accounts').doc(expectedAccountId)
@@ -263,10 +278,20 @@ async function reserve(event, openid, email, requestId) {
       const binding = await getOptional(
         transaction.collection('email_bindings').doc(targetId)
       );
-      const matched = isAccountIdentity(account, expectedAccountId, account && account._openid) &&
-        account.status === 'active' &&
+      const validAccount = isAccountIdentity(
+        account,
+        expectedAccountId,
+        account && account._openid
+      ) && account.status === 'active';
+      const userId = validAccount ? wechatBindingId(account._openid) : '';
+      const user = userId
+        ? await getOptional(transaction.collection('users').doc(userId))
+        : null;
+      const matched = validAccount &&
+        isUserIdentity(user, userId, account._openid) &&
         isEmailIdentity(binding, targetId, account, email);
 
+      if (matched && user.deletionStatus === 'purging') return { shouldSend: false };
       if (isCooling(rate, now)) return { shouldSend: false };
 
       if (!matched || isCooling(challenge, now)) {

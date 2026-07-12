@@ -429,6 +429,40 @@ async function run() {
     })).code, 'EMAIL_CODE_INVALID');
     assert.deepStrictEqual(snapshot(state), reusedBefore);
 
+    const purgingBindAuthState = makeState();
+    const purgingBindAuthMain = await register(
+      'wechat_purging_bind_auth',
+      purgingBindAuthState,
+      'PurgingBindAuth'
+    );
+    const purgingBindAuthAccount = findAccount(purgingBindAuthState, 'PurgingBindAuth');
+    findById(
+      purgingBindAuthState.users,
+      sha256('wechat:wechat_purging_bind_auth')
+    ).deletionStatus = 'purging';
+    putChallenge(purgingBindAuthState, {
+      purpose: 'bind',
+      email: 'purging-bind-auth@example.com',
+      accountId: purgingBindAuthAccount._id
+    });
+    const purgingBindAuthBefore = snapshot(purgingBindAuthState);
+    const purgingBindAuthResult = await purgingBindAuthMain({
+      action: 'bindEmail',
+      email: 'purging-bind-auth@example.com',
+      code: '123456'
+    });
+    assert.deepStrictEqual(purgingBindAuthResult, {
+      ok: false,
+      code: 'ACCOUNT_DELETION_IN_PROGRESS',
+      msg: '账号注销处理中，请稍后重试'
+    });
+    ['wechat_purging_bind_auth', 'PurgingBindAuth', 'purging-bind-auth@example.com'].forEach((value) => {
+      assert.strictEqual(JSON.stringify(purgingBindAuthResult).includes(value), false);
+    });
+    assert.strictEqual(purgingBindAuthState.email_bindings.length, 0);
+    assert.strictEqual(purgingBindAuthState.email_codes[0].status, 'active');
+    assert.deepStrictEqual(snapshot(purgingBindAuthState), purgingBindAuthBefore);
+
     configureEmail({
       CUETRACE_SES_SECRET_ID: '',
       CUETRACE_SES_SECRET_KEY: '',
@@ -471,6 +505,30 @@ async function run() {
     });
     assert.strictEqual(unboundBind.code, 'WECHAT_NOT_BOUND');
     assert.strictEqual(unboundFixture.sendCalls.length, 0);
+
+    const purgingBindSendState = makeState();
+    await register('wechat_purging_bind_send', purgingBindSendState, 'PurgingBindSend');
+    findById(
+      purgingBindSendState.users,
+      sha256('wechat:wechat_purging_bind_send')
+    ).deletionStatus = 'purging';
+    const purgingBindSendBefore = snapshot(purgingBindSendState);
+    const purgingBindSendFixture = loadSendEmailCode(
+      'wechat_purging_bind_send',
+      purgingBindSendState
+    );
+    const purgingBindSend = await purgingBindSendFixture.module.main({
+      action: 'send', purpose: 'bind', email: 'purging-bind-send@example.com'
+    });
+    assert.deepStrictEqual(purgingBindSend, {
+      ok: false,
+      code: 'ACCOUNT_DELETION_IN_PROGRESS',
+      msg: '账号注销处理中，请稍后重试'
+    });
+    assert.strictEqual(purgingBindSendFixture.sendCalls.length, 0);
+    assert.strictEqual(purgingBindSendState.email_codes.length, 0);
+    assert.strictEqual(purgingBindSendState.email_bindings.length, 0);
+    assert.deepStrictEqual(snapshot(purgingBindSendState), purgingBindSendBefore);
 
     const conflictState = makeState();
     await register('wechat_conflict_sender', conflictState, 'ConflictSender');
@@ -677,6 +735,57 @@ async function run() {
       mismatchSetup.resetState.email_codes,
       emailCodeId('reset', 'reset-mismatch@example.com')
     ), undefined);
+
+    const purgingActorMismatchState = makeState();
+    await register(
+      'wechat_reset_actor_purging_mismatch',
+      purgingActorMismatchState,
+      'PurgingActorMismatch'
+    );
+    findById(
+      purgingActorMismatchState.users,
+      sha256('wechat:wechat_reset_actor_purging_mismatch')
+    ).deletionStatus = 'purging';
+    const purgingActorMismatchBefore = snapshot(purgingActorMismatchState);
+    const purgingActorMismatchFixture = loadSendEmailCode(
+      'wechat_reset_actor_purging_mismatch',
+      purgingActorMismatchState
+    );
+    const purgingActorMismatchTimed = await withImmediateTimers(
+      () => purgingActorMismatchFixture.module.main({
+        purpose: 'reset',
+        account: 'MissingResetTarget',
+        email: 'missing-reset-target@example.com'
+      })
+    );
+    assert.deepStrictEqual(purgingActorMismatchTimed, mismatchTimed);
+    assert.strictEqual(purgingActorMismatchFixture.sendCalls.length, 0);
+    assert.strictEqual(purgingActorMismatchState.email_codes.length, 0);
+    assert.deepStrictEqual(snapshot(purgingActorMismatchState), purgingActorMismatchBefore);
+
+    const purgingResetSetup = await makeResetState(
+      'wechat_reset_owner_purging',
+      'ResetPurging',
+      'reset-purging@example.com'
+    );
+    findById(
+      purgingResetSetup.resetState.users,
+      sha256('wechat:wechat_reset_owner_purging')
+    ).deletionStatus = 'purging';
+    const purgingResetBefore = snapshot(purgingResetSetup.resetState);
+    const purgingResetFixture = loadSendEmailCode(
+      'wechat_public_purging',
+      purgingResetSetup.resetState
+    );
+    const purgingResetTimed = await withImmediateTimers(() => purgingResetFixture.module.main({
+      purpose: 'reset',
+      account: 'ResetPurging',
+      email: 'reset-purging@example.com'
+    }));
+    assert.deepStrictEqual(purgingResetTimed, mismatchTimed);
+    assert.strictEqual(purgingResetFixture.sendCalls.length, 0);
+    assert.strictEqual(purgingResetSetup.resetState.email_codes.length, 0);
+    assert.deepStrictEqual(snapshot(purgingResetSetup.resetState), purgingResetBefore);
 
     const resetTargetSetup = await makeResetState(
       'wechat_reset_owner_target',

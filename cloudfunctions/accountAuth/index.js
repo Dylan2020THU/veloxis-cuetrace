@@ -206,6 +206,7 @@ function messageFor(code) {
     WECHAT_ALREADY_BOUND: '当前微信已绑定其他账号',
     ACCOUNT_ALREADY_BOUND: '该账号已绑定其他微信',
     ACCOUNT_DISABLED: '账号已停用',
+    ACCOUNT_DELETION_IN_PROGRESS: '账号注销处理中，请稍后重试',
     EMAIL_INVALID: '邮箱格式不正确',
     EMAIL_NOT_BOUND: '邮箱未绑定该账号',
     EMAIL_ALREADY_BOUND: '该邮箱已绑定其他账号',
@@ -463,6 +464,9 @@ async function bindEmail(event, context) {
       throw authError('ACCOUNT_NOT_BOUND');
     }
     if (account.status !== 'active') throw authError('ACCOUNT_DISABLED');
+    if (user.deletionStatus === 'purging') {
+      throw authError('ACCOUNT_DELETION_IN_PROGRESS');
+    }
 
     const challengeFailure = await validateEmailChallenge(challengeRef, challenge, {
       _id: challengeDocId,

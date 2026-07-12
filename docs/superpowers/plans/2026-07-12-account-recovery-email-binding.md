@@ -618,6 +618,8 @@ await gather('email_codes', _.or(
 
 邮箱数据继续通过现有 lease、批量事务、重复稳定扫描删除；不绕过 `executeStableCleanup`，因此任一失败都会阻止最终认证链删除。
 
+同时在 `sendEmailCode.reserve` 的 bind/reset 分支和 `accountAuth.bindEmail` 事务内重读确定性 user；`deletionStatus === 'purging'` 时不得创建 challenge、rate 或 binding。bind 返回安全业务错误，reset 发码继续走统一公开响应。测试覆盖 purging 状态下三条入口均零写入/零 SES，证明最后空扫描到最终认证链删除之间不存在合法邮箱写入。
+
 - [ ] **Step 6: 运行注销 focused GREEN**
 
 Run: `node tests/accountDeletionGracePeriod.test.js`

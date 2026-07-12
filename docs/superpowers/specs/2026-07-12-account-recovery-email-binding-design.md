@@ -269,5 +269,5 @@
 
 1. `resetPasswordByWechat` 与 `resetPasswordByEmail` 成功响应必须返回服务端规范账号名 `{ ok: true, account }`，使登录页能回填账号；测试同时验证服务端返回与页面消费，不能只由页面 fake 虚构字段。
 2. 重置提交本身与验证码发送一样必须具有请求代次和页面生命周期保护：重复点击只发起一次请求，切换方式、返回登录或卸载后，迟到的 resolve/reject 不得更新状态、弹提示或改变页面模式。
-3. 账号到期清理必须同时删除该账号全部 `email_bindings`（包括 active/revoked）和 `email_codes` 挑战，并删除当前 `OPENID` 对应的 actor 限流记录；其他账号/其他 OPENID 的邮箱数据必须保留。任一邮箱集合查询或清理失败时，最终 account/微信绑定/user 认证链不得删除。
+3. 账号到期清理必须同时删除该账号全部 `email_bindings`（包括 active/revoked）和 `email_codes` 挑战，并删除当前 `OPENID` 对应的 actor 限流记录；其他账号/其他 OPENID 的邮箱数据必须保留。任一邮箱集合查询或清理失败时，最终 account/微信绑定/user 认证链不得删除。`users.deletionStatus === 'purging'` 还是所有邮箱写事务的服务端写屏障：bind 发码、reset 发码和 `bindEmail` 必须在各自事务内重读 user，命中时零邮箱写入；reset 发码继续返回统一公开结果。
 4. 隐私政策第三方清单必须披露腾讯云 SES 通过 API 接收完整收件邮箱用于验证码投递，并更新政策日期；仍不得披露或保存验证码明文/密钥。
