@@ -2,6 +2,22 @@ const data = require('../../../services/data');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_RE = /^\d{6}$/;
+const SAFE_EMAIL_ERROR_MESSAGES = {
+  EMAIL_INVALID: '邮箱格式不正确',
+  EMAIL_ALREADY_BOUND: '该邮箱已被绑定',
+  EMAIL_CODE_COOLDOWN: '验证码发送过于频繁，请稍后重试',
+  EMAIL_CODE_INVALID: '验证码错误，请重新输入',
+  EMAIL_CODE_EXPIRED: '验证码已过期，请重新获取',
+  EMAIL_CODE_LOCKED: '验证码错误次数过多，请稍后重试',
+  EMAIL_NOT_CONFIGURED: '邮箱服务暂不可用，请稍后重试',
+  EMAIL_SEND_FAILED: '验证码发送失败，请稍后重试',
+  CLOUD_NOT_READY: '云服务未就绪，请稍后重试'
+};
+
+function getSafeEmailErrorMessage(error, fallback) {
+  const message = SAFE_EMAIL_ERROR_MESSAGES[error && error.code];
+  return typeof message === 'string' ? message : fallback;
+}
 
 Page({
   behaviors: [require('../../../utils/themeBehavior')],
@@ -121,7 +137,10 @@ Page({
       .catch((error) => {
         if (!this.isCurrentRequest('_sendRequestToken', requestToken)) return;
         this.setData({ sending: false });
-        wx.showToast({ title: (error && error.message) || '验证码发送失败', icon: 'none' });
+        wx.showToast({
+          title: getSafeEmailErrorMessage(error, '验证码发送失败，请稍后重试'),
+          icon: 'none'
+        });
       });
   },
 
@@ -157,7 +176,10 @@ Page({
       .catch((error) => {
         if (!this.isCurrentRequest('_bindRequestToken', requestToken)) return;
         this._binding = false;
-        wx.showToast({ title: (error && error.message) || '邮箱绑定失败', icon: 'none' });
+        wx.showToast({
+          title: getSafeEmailErrorMessage(error, '邮箱绑定失败，请稍后重试'),
+          icon: 'none'
+        });
       });
   },
 

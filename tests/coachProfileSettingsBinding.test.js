@@ -21,6 +21,8 @@ function loadAccountSecurityPage(fakeData) {
   let page;
   const storageReads = [];
   const navigations = [];
+  const setDataCalls = [];
+  const toasts = [];
   const originalLoad = Module._load;
   Module._load = function patchedLoad(request, parent, isMain) {
     if (request === '../../../services/data') return fakeData;
@@ -42,7 +44,9 @@ function loadAccountSecurityPage(fakeData) {
       return '';
     },
     setClipboardData() {},
-    showToast() {},
+    showToast(options) {
+      toasts.push(options);
+    },
     navigateTo(options) {
       navigations.push(options.url);
     }
@@ -54,10 +58,13 @@ function loadAccountSecurityPage(fakeData) {
   }
   page.data = Object.assign({}, page.data);
   page.setData = function setData(next) {
+    setDataCalls.push(next);
     this.data = Object.assign({}, this.data, next);
   };
   page._storageReads = storageReads;
   page._navigations = navigations;
+  page._setDataCalls = setDataCalls;
+  page._toasts = toasts;
   return page;
 }
 
@@ -69,6 +76,12 @@ function deferred() {
     reject = rejectPromise;
   });
   return { promise, resolve, reject };
+}
+
+function codedError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }
 
 function loadEmailBindingPage(fakeData) {
@@ -265,6 +278,55 @@ async function testAccountSecurityEmailEntry() {
   assert.deepStrictEqual(page._navigations, ['/pages/settings/email-binding/index']);
 }
 
+async function testAccountSecurityKeepsLatestRefresh() {
+  const firstRequest = deferred();
+  const secondRequest = deferred();
+  const requests = [firstRequest, secondRequest];
+  const page = loadAccountSecurityPage({
+    getAccountSecurity() {
+      return requests.shift().promise;
+    }
+  });
+
+  page.onShow();
+  page.onShow();
+  secondRequest.resolve({ emailBound: true, emailMasked: 'n***@example.com' });
+  await flushPromises();
+  assert.strictEqual(page.data.emailText, 'n***@example.com');
+
+  firstRequest.resolve({ emailBound: true, emailMasked: 'o***@example.com' });
+  await flushPromises();
+  assert.strictEqual(page.data.emailText, 'n***@example.com', 'A stale refresh must not overwrite the latest cloud status.');
+}
+
+async function testAccountSecurityIgnoresRequestsAfterHideOrUnload() {
+  const hiddenRequest = deferred();
+  const hiddenPage = loadAccountSecurityPage({
+    getAccountSecurity() {
+      return hiddenRequest.promise;
+    }
+  });
+  hiddenPage.onShow();
+  if (hiddenPage.onHide) hiddenPage.onHide();
+  hiddenRequest.resolve({ emailBound: true, emailMasked: 'h***@example.com' });
+  await flushPromises();
+  assert.deepStrictEqual(hiddenPage._setDataCalls, [], 'A hidden page must ignore a late status response.');
+  assert.deepStrictEqual(hiddenPage._toasts, [], 'A hidden page must not show late request feedback.');
+
+  const unloadedRequest = deferred();
+  const unloadedPage = loadAccountSecurityPage({
+    getAccountSecurity() {
+      return unloadedRequest.promise;
+    }
+  });
+  unloadedPage.onShow();
+  if (unloadedPage.onUnload) unloadedPage.onUnload();
+  unloadedRequest.reject(new Error('late failure'));
+  await flushPromises();
+  assert.deepStrictEqual(unloadedPage._setDataCalls, [], 'An unloaded page must ignore a late status failure.');
+  assert.deepStrictEqual(unloadedPage._toasts, [], 'An unloaded page must not show late request feedback.');
+}
+
 async function testEmailBindingCloudFlowAndLifecycle() {
   const sendRequest = deferred();
   const bindRequest = deferred();
@@ -321,10 +383,10 @@ async function testEmailBindingDoesNotForgeSuccessAfterFailureOrUnload() {
       return Promise.reject(new Error('offline'));
     },
     sendEmailCode() {
-      return Promise.reject(new Error('send failed'));
+      return Promise.reject(codedError('UNEXPECTED', 'member@example.com internal send detail'));
     },
     bindEmail() {
-      return Promise.reject(new Error('bind failed'));
+      return Promise.reject(codedError('EMAIL_CODE_INVALID', 'member@example.com internal bind detail'));
     }
   });
 
@@ -337,12 +399,16 @@ async function testEmailBindingDoesNotForgeSuccessAfterFailureOrUnload() {
   await flushPromises();
   assert.strictEqual(page.data.counting, false);
   assert.strictEqual(page._timers.size, 0);
+  assert.strictEqual(page._toasts[page._toasts.length - 1].title, '\u9a8c\u8bc1\u7801\u53d1\u9001\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5');
+  assert(!/member@example\.com|internal/.test(page._toasts[page._toasts.length - 1].title));
 
   page.onCodeInput({ detail: { value: '123456' } });
   page.submit();
   await flushPromises();
   assert.strictEqual(page._modals.length, 0);
   assert.strictEqual(page._navigations.length, 0);
+  assert.strictEqual(page._toasts[page._toasts.length - 1].title, '\u9a8c\u8bc1\u7801\u9519\u8bef\uff0c\u8bf7\u91cd\u65b0\u8f93\u5165');
+  assert(!/member@example\.com|internal/.test(page._toasts[page._toasts.length - 1].title));
   page._restoreTimers();
 
   const pendingSend = deferred();
@@ -365,12 +431,36 @@ async function testEmailBindingDoesNotForgeSuccessAfterFailureOrUnload() {
   assert.strictEqual(pendingPage.data.counting, false);
   assert.strictEqual(pendingPage._timers.size, 0);
   pendingPage._restoreTimers();
+
+  const pendingBind = deferred();
+  const hiddenPage = loadEmailBindingPage({
+    getAccountSecurity() {
+      return Promise.resolve({ emailBound: false });
+    },
+    sendEmailCode() {
+      return Promise.resolve({});
+    },
+    bindEmail() {
+      return pendingBind.promise;
+    }
+  });
+  hiddenPage.onEmailInput({ detail: { value: 'member@example.com' } });
+  hiddenPage.onCodeInput({ detail: { value: '123456' } });
+  hiddenPage.submit();
+  hiddenPage.onHide();
+  pendingBind.resolve({});
+  await flushPromises();
+  assert.strictEqual(hiddenPage._modals.length, 0, 'A hidden page must ignore a late bind success.');
+  assert.strictEqual(hiddenPage._navigations.length, 0, 'A hidden page must not navigate after a late bind success.');
+  hiddenPage._restoreTimers();
 }
 
 (async () => {
   await testAccountSecurityUsesCloudStatus();
   await testAccountSecurityFailsClosed();
   await testAccountSecurityEmailEntry();
+  await testAccountSecurityKeepsLatestRefresh();
+  await testAccountSecurityIgnoresRequestsAfterHideOrUnload();
 
   const emailPagePath = path.join(root, 'miniprogram/pages/settings/email-binding/index.js');
   assert(fs.existsSync(emailPagePath), 'Email binding page must exist.');

@@ -20,26 +20,62 @@ Page({
     wechatText: '未绑定'
   },
 
+  onLoad() {
+    this._disposed = false;
+    this._active = true;
+  },
+
   onShow() {
+    this._active = true;
     this.refresh();
   },
 
   refresh() {
+    const requestToken = this.invalidateRefreshRequest();
     data.getAccountSecurity()
-      .then((status) => this.setData({
-        accountText: status.account || '未设置',
-        passwordText: status.passwordSet ? '已设置' : '未设置',
-        phoneText: maskPhone(status.phone) || '未绑定',
-        emailText: status.emailBound && status.emailMasked ? status.emailMasked : '未绑定',
-        wechatText: status.wechatBound ? '已绑定' : '未绑定'
-      }))
-      .catch(() => this.setData({
-        accountText: '未登录',
-        passwordText: '未设置',
-        phoneText: '未绑定',
-        emailText: '未绑定',
-        wechatText: '未绑定'
-      }));
+      .then((status) => {
+        if (!this.isCurrentRefreshRequest(requestToken)) return;
+        this.setData({
+          accountText: status.account || '未设置',
+          passwordText: status.passwordSet ? '已设置' : '未设置',
+          phoneText: maskPhone(status.phone) || '未绑定',
+          emailText: status.emailBound && status.emailMasked ? status.emailMasked : '未绑定',
+          wechatText: status.wechatBound ? '已绑定' : '未绑定'
+        });
+      })
+      .catch(() => {
+        if (!this.isCurrentRefreshRequest(requestToken)) return;
+        this.setData({
+          accountText: '未登录',
+          passwordText: '未设置',
+          phoneText: '未绑定',
+          emailText: '未绑定',
+          wechatText: '未绑定'
+        });
+      });
+  },
+
+  invalidateRefreshRequest() {
+    this._refreshRequestToken = (this._refreshRequestToken || 0) + 1;
+    return this._refreshRequestToken;
+  },
+
+  isCurrentRefreshRequest(requestToken) {
+    return !this._disposed && this._active !== false && requestToken === this._refreshRequestToken;
+  },
+
+  deactivate() {
+    this._active = false;
+    this.invalidateRefreshRequest();
+  },
+
+  onHide() {
+    this.deactivate();
+  },
+
+  onUnload() {
+    this._disposed = true;
+    this.deactivate();
   },
 
   copyAccount() {
