@@ -58,7 +58,7 @@
 
 - `sendEmailCode` 独立持有 SES 依赖和发信凭据，负责目标预校验、限流、生成验证码、写入挑战记录和调用 SES；
 - `accountAuth` 继续作为账号安全唯一写入口，负责验证码校验、邮箱绑定和密码重置事务；
-- 两个云函数共享同一 `EMAIL_CODE_PEPPER` 环境变量，仅保存 HMAC 后的验证码。
+- 两个云函数共享同一 `CUETRACE_EMAIL_CODE_SECRET` 环境变量，仅保存 HMAC 后的验证码。
 
 不把 SES SDK直接放入 `accountAuth`，以免认证主函数加载不必要的网络 SDK，也避免干扰当前本地生成的 `accountAuth/node_modules`。不把密码重置放入发信函数，以免密码规则和账号写入分散到两个服务端入口。
 
@@ -88,13 +88,12 @@
 ```js
 {
   emailBindingId,
-  emailMasked,
   emailVerifiedAt,
   updatedAt
 }
 ```
 
-邮箱明文只保存在云端受限集合中，用于投递和严格匹配；客户端状态接口只返回掩码邮箱。
+邮箱明文只保存在云端受限的 `email_bindings` 集合中，用于投递和严格匹配；账号仅保存绑定指针，状态接口读取有效绑定后即时计算掩码，不冗余保存掩码或明文。
 
 ### `email_codes`
 
@@ -106,8 +105,8 @@
   purpose,          // bind | reset
   accountId,
   emailBindingId,
-  emailNormalized,
-  codeHash,         // HMAC-SHA256(code, EMAIL_CODE_PEPPER + challenge identity)
+  targetHash,       // 绑定目标的不可逆摘要，不重复保存邮箱明文
+  codeHash,         // HMAC-SHA256(code, CUETRACE_EMAIL_CODE_SECRET + challenge identity)
   requestId,        // 防止并发发送覆盖状态
   status,           // sending | active | failed | used | locked
   attemptsLeft,     // 初始 5
@@ -156,8 +155,8 @@
 ```
 
 - `bind`：只允许当前微信已绑定且账号状态正常时发送；若邮箱已绑定其他账号，返回 `EMAIL_ALREADY_BOUND`。
-- `reset`：账号与邮箱是否匹配一律返回相同的“请求已受理”文案；仅真实匹配的有效绑定发送邮件，避免增加邮箱绑定枚举面。
-- 发信前检查配置、邮箱格式、60 秒冷却；事务预留 `sending` 挑战后调用 SES，成功改为 `active`，失败改为 `failed`。
+- `reset`：账号与邮箱是否匹配、是否处于目标冷却、真实投递是否失败，一律返回相同的“若信息匹配，验证码将发送至绑定邮箱”文案；仅真实匹配的有效绑定尝试投递，具体失败只写脱敏服务端日志，避免增加账号—邮箱绑定枚举面。全局配置缺失在查找账号前统一返回 `EMAIL_NOT_CONFIGURED`，不依赖目标是否存在。
+- 发信前检查配置和邮箱格式；事务同时检查“用途+目标”与“用途+当前 OPENID/账号”两类 60 秒冷却，再预留 `sending` 挑战。绑定请求可明确返回冷却/投递错误；公开找回请求保持通用响应。
 - SES 模板变量使用 `code` 和 `minutes`，`TriggerType=1`。
 
 ## 客户端交互
@@ -212,7 +211,7 @@
 1. 密码继续使用随机盐和 `scrypt-v1`，重置后旧密码立即失效。
 2. 微信找回不接受客户端 OPENID/账号作为授权身份。
 3. 邮箱验证码为 6 位加密安全随机数，有效 10 分钟、最多尝试 5 次、60 秒内不可重发、成功后一次性失效。
-4. 验证码只保存 HMAC；生产环境缺少 pepper 或 SES 配置时失败关闭。
+4. 验证码只保存 HMAC；生产环境缺少验证码密钥或 SES 配置时失败关闭。
 5. `email_bindings`、`email_codes`、`accounts` 均禁止小程序端直接读写。
 6. 日志只记录错误类型和服务端 request ID，不打印邮箱、验证码、密码或密钥。
 7. 所有 `doc(id).set()` 必须通过统一去 `_id` 边界，测试 fake 同步拒绝 `_id`，防止再次出现只在生产暴露的问题。
@@ -221,21 +220,23 @@
 
 新增云函数 `sendEmailCode`，配置：
 
-- `TENCENTCLOUD_SECRET_ID`
-- `TENCENTCLOUD_SECRET_KEY`
-- `SES_REGION`（只允许 SES 支持地域，默认 `ap-guangzhou`）
-- `SES_FROM_EMAIL`
-- `SES_TEMPLATE_ID`
-- `SES_SUBJECT`（可选，默认“强化杆迹验证码”）
-- `SES_REPLY_TO`（可选）
-- `EMAIL_CODE_PEPPER`
+- `CUETRACE_SES_SECRET_ID`
+- `CUETRACE_SES_SECRET_KEY`
+- `CUETRACE_SES_REGION`（只允许 SES 支持地域，默认 `ap-guangzhou`）
+- `CUETRACE_SES_FROM_EMAIL`
+- `CUETRACE_SES_TEMPLATE_ID`
+- `CUETRACE_SES_SUBJECT`（可选，默认“强化杆迹验证码”）
+- `CUETRACE_SES_REPLY_TO`（可选）
+- `CUETRACE_EMAIL_CODE_SECRET`
 
-`accountAuth` 同样配置 `EMAIL_CODE_PEPPER`。部署前还需在腾讯云 SES 完成服务开通、发信域名验证、发信地址创建和验证码模板审核。
+`accountAuth` 同样配置 `CUETRACE_EMAIL_CODE_SECRET`。部署前还需在腾讯云 SES 完成服务开通、发信域名验证、发信地址创建和验证码模板审核。
 
 新增集合并设置为仅云函数访问：
 
 - `email_bindings`
 - `email_codes`
+
+隐私政策同步增加“已验证邮箱、邮件验证码发送记录用于账户安全与密码找回”的收集目的、使用范围和保护说明；不把验证码明文或 SES 密钥列为收集数据。
 
 ## 测试与验收
 
