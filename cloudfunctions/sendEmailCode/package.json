@@ -1,0 +1,12 @@
+{
+  "name": "sendEmailCode",
+  "version": "1.0.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=10"
+  },
+  "dependencies": {
+    "tencentcloud-sdk-nodejs-ses": "4.1.265",
+    "wx-server-sdk": "~2.6.3"
+  }
+}
