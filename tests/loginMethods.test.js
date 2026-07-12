@@ -13,6 +13,16 @@ function flushPromises() {
   return new Promise((resolve) => setImmediate(resolve));
 }
 
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, resolve, reject };
+}
+
 function loadDataServiceForLogin(cloudReady) {
   const dataPath = path.join(root, 'miniprogram/services/data.js');
   const calls = [];
@@ -381,6 +391,120 @@ async function testEmailRecoverySendsCodeAndUsesIndependentCountdown() {
   assert.strictEqual(page.data.account, 'CanonicalAccount');
 }
 
+async function testStaleRecoveryEmailSuccessIsIgnoredAfterSwitchOrExit() {
+  for (const action of ['switch', 'back']) {
+    const request = deferred();
+    let countdownCalls = 0;
+    const page = loadLoginPage([], {
+      sendEmailCode() {
+        return request.promise;
+      }
+    });
+    page.startRecoveryCountdown = () => {
+      countdownCalls += 1;
+    };
+    page.openRecovery();
+    page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+    page.setData({ recoveryAccount: 'MemberA', recoveryEmail: 'member@example.com' });
+    page.sendRecoveryEmailCode();
+
+    if (action === 'switch') {
+      page.switchRecoveryType({ currentTarget: { dataset: { type: 'wechat' } } });
+    } else {
+      page.backToLogin();
+    }
+    const sendingAfterExit = page.data.recoverySending;
+    const toastCount = page._testCalls.toasts.length;
+    let staleSetDataCalls = 0;
+    const setData = page.setData;
+    page.setData = function trackStaleSetData(next) {
+      staleSetDataCalls += 1;
+      setData.call(this, next);
+    };
+
+    request.resolve({ ok: true, msg: '验证码已发送' });
+    await flushPromises();
+
+    assert.strictEqual(staleSetDataCalls, 0, `${action} should ignore stale recovery setData.`);
+    assert.strictEqual(countdownCalls, 0, `${action} should not start a stale recovery timer.`);
+    assert.strictEqual(page._testCalls.toasts.length, toastCount, `${action} should not show a stale success toast.`);
+    assert.strictEqual(sendingAfterExit, false, `${action} should reset recovery sending state immediately.`);
+    assert.strictEqual(page.data.recoveryCounting, false);
+    assert.strictEqual(page.data.recoveryCountdown, 60);
+  }
+}
+
+async function testOnlyLatestRecoveryEmailRequestCanUpdatePage() {
+  const first = deferred();
+  const second = deferred();
+  const requests = [first, second];
+  let countdownCalls = 0;
+  const page = loadLoginPage([], {
+    sendEmailCode() {
+      return requests.shift().promise;
+    }
+  });
+  page.startRecoveryCountdown = () => {
+    countdownCalls += 1;
+  };
+
+  page.openRecovery();
+  page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+  page.setData({ recoveryAccount: 'MemberA', recoveryEmail: 'member@example.com' });
+  page.sendRecoveryEmailCode();
+  page.openRecovery();
+  page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+  page.setData({ recoveryAccount: 'MemberA', recoveryEmail: 'member@example.com' });
+  page.sendRecoveryEmailCode();
+
+  first.resolve({ ok: true, msg: '旧请求' });
+  await flushPromises();
+  assert.strictEqual(page._testCalls.toasts.length, 0);
+  assert.strictEqual(countdownCalls, 0);
+  assert.strictEqual(page.data.recoverySending, true, 'The latest request should remain pending.');
+
+  second.resolve({ ok: true, msg: '新请求' });
+  await flushPromises();
+  assert(page._testCalls.toasts.some((item) => item.title === '新请求'));
+  assert.strictEqual(countdownCalls, 1);
+  assert.strictEqual(page.data.recoverySending, false);
+}
+
+async function testRecoveryEmailCallbacksAreIgnoredAfterUnload() {
+  for (const outcome of ['resolve', 'reject']) {
+    const request = deferred();
+    let countdownCalls = 0;
+    const page = loadLoginPage([], {
+      sendEmailCode() {
+        return request.promise;
+      }
+    });
+    page.startRecoveryCountdown = () => {
+      countdownCalls += 1;
+    };
+    page.openRecovery();
+    page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+    page.setData({ recoveryAccount: 'MemberA', recoveryEmail: 'member@example.com' });
+    page.sendRecoveryEmailCode();
+    page.onUnload();
+    const toastCount = page._testCalls.toasts.length;
+    let staleSetDataCalls = 0;
+    const setData = page.setData;
+    page.setData = function trackStaleSetData(next) {
+      staleSetDataCalls += 1;
+      setData.call(this, next);
+    };
+
+    if (outcome === 'resolve') request.resolve({ ok: true, msg: '验证码已发送' });
+    else request.reject(new Error('发送失败'));
+    await flushPromises();
+
+    assert.strictEqual(staleSetDataCalls, 0, `Unload should ignore stale ${outcome} setData.`);
+    assert.strictEqual(countdownCalls, 0, `Unload should not start a timer after ${outcome}.`);
+    assert.strictEqual(page._testCalls.toasts.length, toastCount, `Unload should not toast after ${outcome}.`);
+  }
+}
+
 async function testWechatNotBoundRecoveryGuidesEmailAndTimersAreCleared() {
   const page = loadLoginPage([], {
     resetPasswordByWechat() {
@@ -730,6 +854,9 @@ async function testSwitchRoleRefreshesMissingRuntimeSessionFromCloud() {
   await testPasswordLoginErrorsAreHandledExplicitly();
   await testWechatRecoveryNeedsNoAgreementAndPrefillsServerAccount();
   await testEmailRecoverySendsCodeAndUsesIndependentCountdown();
+  await testStaleRecoveryEmailSuccessIsIgnoredAfterSwitchOrExit();
+  await testOnlyLatestRecoveryEmailRequestCanUpdatePage();
+  await testRecoveryEmailCallbacksAreIgnoredAfterUnload();
   await testWechatNotBoundRecoveryGuidesEmailAndTimersAreCleared();
   await testPasswordLoginUsesServerAuthResult();
   await testWechatLoginUsesServerAuthResult();

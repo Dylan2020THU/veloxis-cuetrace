@@ -80,6 +80,7 @@ Page({
   },
 
   onLoad(options = {}) {
+    this._disposed = false;
     this.syncCloudReady();
     if (options.switchRole === '1') {
       this.openSwitchRolePicker();
@@ -336,17 +337,18 @@ Page({
 
   // 切换到注册态
   goRegister() {
-    this.clearRecoveryCountdown();
+    this.cancelRecoveryEmailRequest();
     this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '', agreementChecked: false });
   },
 
   // 注册态 → 返回登录态
   backToLogin() {
-    this.clearRecoveryCountdown();
+    this.cancelRecoveryEmailRequest();
     this.setData({ mode: 'login', agreementChecked: false });
   },
 
   openRecovery() {
+    this.invalidateRecoveryEmailRequest();
     this.setData({
       mode: 'recover',
       recoveryType: 'wechat',
@@ -363,14 +365,35 @@ Page({
 
   switchRecoveryType(e) {
     const type = e.currentTarget.dataset.type === 'email' ? 'email' : 'wechat';
-    this.clearRecoveryCountdown();
+    this.cancelRecoveryEmailRequest();
     this.setData({
       recoveryType: type,
-      recoveryCode: '',
-      recoveryCounting: false,
+      recoveryCode: ''
+    });
+  },
+
+  invalidateRecoveryEmailRequest() {
+    this._recoveryEmailRequestToken = (this._recoveryEmailRequestToken || 0) + 1;
+    return this._recoveryEmailRequestToken;
+  },
+
+  cancelRecoveryEmailRequest() {
+    const wasSending = this.data.recoverySending;
+    this.invalidateRecoveryEmailRequest();
+    this.clearRecoveryCountdown();
+    if (wasSending) wx.hideLoading();
+    this.setData({
       recoverySending: false,
+      recoveryCounting: false,
       recoveryCountdown: 60
     });
+  },
+
+  isCurrentRecoveryEmailRequest(requestToken) {
+    return !this._disposed &&
+      requestToken === this._recoveryEmailRequestToken &&
+      this.data.mode === 'recover' &&
+      this.data.recoveryType === 'email';
   },
 
   clearRecoveryCountdown() {
@@ -406,9 +429,11 @@ Page({
     }
     this.setData({ recoverySending: true });
     wx.showLoading({ title: '发送中', mask: true });
+    const requestToken = this.invalidateRecoveryEmailRequest();
     data
       .sendEmailCode({ purpose: 'reset', account, email })
       .then((result) => {
+        if (!this.isCurrentRecoveryEmailRequest(requestToken)) return;
         wx.hideLoading();
         this.setData({ recoverySending: false });
         wx.showToast({
@@ -418,6 +443,7 @@ Page({
         this.startRecoveryCountdown();
       })
       .catch((error) => {
+        if (!this.isCurrentRecoveryEmailRequest(requestToken)) return;
         wx.hideLoading();
         this.setData({ recoverySending: false });
         wx.showToast({ title: (error && error.message) || '验证码发送失败', icon: 'none' });
@@ -425,7 +451,7 @@ Page({
   },
 
   finishRecovery(result) {
-    this.clearRecoveryCountdown();
+    this.cancelRecoveryEmailRequest();
     this.setData({
       mode: 'login',
       loginType: 'password',
@@ -651,6 +677,7 @@ Page({
       clearTimeout(this._cloudTimer);
       this._cloudTimer = null;
     }
-    this.clearRecoveryCountdown();
+    this.cancelRecoveryEmailRequest();
+    this._disposed = true;
   }
 });
