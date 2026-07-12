@@ -281,6 +281,23 @@
   color: var(--text-weak);
 }
 
+.forgot-line {
+  margin: -12rpx 4rpx 20rpx;
+  text-align: right;
+}
+
+.forgot-link {
+  font-size: 25rpx;
+  color: var(--brand);
+}
+
+.recovery-tip {
+  margin: -4rpx 4rpx 24rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--text-weak);
+}
+
 .field-code .input {
   margin-right: 24rpx;
 }
@@ -375,6 +392,10 @@
   color: var(--brand);
   font-weight: 600;
   margin-left: 6rpx;
+}
+
+.alt-link--solo {
+  margin-left: 0;
 }
 
 .other-login {

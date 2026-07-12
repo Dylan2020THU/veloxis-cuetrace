@@ -82,6 +82,7 @@ function loadLoginPage(accounts, fakeData, appData) {
     storageWrites: [],
     storageRemovals: [],
     toasts: [],
+    modals: [],
     switchTab: [],
     reLaunch: [],
     navigateTo: []
@@ -114,7 +115,9 @@ function loadLoginPage(accounts, fakeData, appData) {
     },
     showLoading() {},
     hideLoading() {},
-    showModal() {},
+    showModal(options) {
+      calls.modals.push(options);
+    },
     switchTab(options) {
       calls.switchTab.push(options);
     },
@@ -247,6 +250,159 @@ assert(
     loginWxml.includes('bindtap="enterSelectedRole"'),
   'Role picker should render every role, lock unopened roles, and enter only after confirmation.'
 );
+
+assert(
+  loginWxml.includes('忘记密码') && loginWxml.includes('bindtap="openRecovery"'),
+  'Password login should expose a recovery entry.'
+);
+
+assert(
+  loginWxml.includes("mode === 'register'") &&
+    loginWxml.includes("recoveryType === 'wechat'") &&
+    loginWxml.includes("recoveryType === 'email'") &&
+    loginWxml.includes('bindtap="sendRecoveryEmailCode"') &&
+    loginWxml.includes('bindtap="submitRecovery"'),
+  'Recovery UI should provide independent WeChat and email password-reset flows.'
+);
+
+async function testPasswordLoginErrorsAreHandledExplicitly() {
+  const missing = loadLoginPage([], {
+    loginWithPassword() {
+      return Promise.reject(Object.assign(new Error('missing'), { code: 'ACCOUNT_NOT_FOUND' }));
+    }
+  });
+  missing.setData({
+    account: 'NewMember',
+    password: '123456',
+    agreementChecked: true,
+    loginType: 'password'
+  });
+
+  missing.submit();
+  await flushPromises();
+
+  assert.strictEqual(missing._testCalls.modals.length, 1);
+  assert.strictEqual(missing._testCalls.modals[0].title, '账号未注册');
+  assert.strictEqual(missing._testCalls.modals[0].content, '未找到该账号，是否现在注册？');
+  missing._testCalls.modals[0].success({ confirm: true });
+  assert.strictEqual(missing.data.mode, 'register');
+  assert.strictEqual(missing.data.regAccount, 'NewMember');
+  assert.strictEqual(missing.data.regPassword, '');
+  assert.strictEqual(missing.data.regConfirm, '');
+
+  const invalid = loadLoginPage([], {
+    loginWithPassword() {
+      return Promise.reject(Object.assign(new Error('wrong'), { code: 'INVALID_PASSWORD' }));
+    }
+  });
+  invalid.setData({
+    account: 'MemberA',
+    password: 'badpass',
+    agreementChecked: true,
+    loginType: 'password'
+  });
+
+  invalid.submit();
+  await flushPromises();
+
+  assert(invalid._testCalls.toasts.some((item) => item.title === '账号密码错误'));
+  assert.strictEqual(invalid._testCalls.modals.length, 0);
+}
+
+async function testWechatRecoveryNeedsNoAgreementAndPrefillsServerAccount() {
+  const resetCalls = [];
+  const page = loadLoginPage([], {
+    resetPasswordByWechat(input) {
+      resetCalls.push(input);
+      return Promise.resolve({ ok: true, account: 'ServerMember' });
+    }
+  });
+  page.setData({ account: 'typedAccount', agreementChecked: false });
+  page.openRecovery();
+  page.setData({ recoveryPassword: 'newpass1', recoveryConfirm: 'newpass1' });
+
+  page.submitRecovery();
+  await flushPromises();
+
+  assert.deepStrictEqual(resetCalls, [{ password: 'newpass1' }]);
+  assert.strictEqual(page.data.mode, 'login');
+  assert.strictEqual(page.data.account, 'ServerMember');
+  assert.strictEqual(page.data.password, '');
+  assert(page._testCalls.toasts.some((item) => item.title.includes('新密码登录')));
+}
+
+async function testEmailRecoverySendsCodeAndUsesIndependentCountdown() {
+  const sendCalls = [];
+  const resetCalls = [];
+  let countdownCalls = 0;
+  const page = loadLoginPage([], {
+    sendEmailCode(input) {
+      sendCalls.push(input);
+      return Promise.resolve({ ok: true, msg: '若信息匹配，验证码将发送至绑定邮箱' });
+    },
+    resetPasswordByEmail(input) {
+      resetCalls.push(input);
+      return Promise.resolve({ ok: true, account: 'CanonicalAccount' });
+    }
+  });
+  page.startRecoveryCountdown = () => {
+    countdownCalls += 1;
+  };
+  page.openRecovery();
+  page.switchRecoveryType({ currentTarget: { dataset: { type: 'email' } } });
+  page.setData({
+    agreementChecked: false,
+    recoveryAccount: ' MemberA ',
+    recoveryEmail: ' member@example.com ',
+    recoveryCode: ' 123456 ',
+    recoveryPassword: 'newpass2',
+    recoveryConfirm: 'newpass2'
+  });
+
+  page.sendRecoveryEmailCode();
+  await flushPromises();
+  assert.deepStrictEqual(sendCalls, [{
+    purpose: 'reset',
+    account: 'MemberA',
+    email: 'member@example.com'
+  }]);
+  assert.strictEqual(countdownCalls, 1);
+  assert.strictEqual(page.data.counting, false, 'Recovery must not reuse the SMS countdown state.');
+
+  page.submitRecovery();
+  await flushPromises();
+  assert.deepStrictEqual(resetCalls, [{
+    account: 'MemberA',
+    email: 'member@example.com',
+    code: '123456',
+    password: 'newpass2'
+  }]);
+  assert.strictEqual(page.data.mode, 'login');
+  assert.strictEqual(page.data.account, 'CanonicalAccount');
+}
+
+async function testWechatNotBoundRecoveryGuidesEmailAndTimersAreCleared() {
+  const page = loadLoginPage([], {
+    resetPasswordByWechat() {
+      return Promise.reject(Object.assign(new Error('not bound'), { code: 'WECHAT_NOT_BOUND' }));
+    }
+  });
+  let clearCalls = 0;
+  page.clearRecoveryCountdown = () => {
+    clearCalls += 1;
+  };
+  page.openRecovery();
+  page.setData({ recoveryPassword: 'newpass3', recoveryConfirm: 'newpass3' });
+
+  page.submitRecovery();
+  await flushPromises();
+
+  assert.strictEqual(page.data.recoveryType, 'email');
+  assert(page._testCalls.toasts.some((item) => item.title.includes('邮箱')));
+  page.switchRecoveryType({ currentTarget: { dataset: { type: 'wechat' } } });
+  page.onUnload();
+  assert.strictEqual(clearCalls, 2, 'Switching recovery type and unloading should clear its timer.');
+}
 
 async function testPasswordLoginUsesServerAuthResult() {
   const authCalls = [];
@@ -571,6 +727,10 @@ async function testSwitchRoleRefreshesMissingRuntimeSessionFromCloud() {
 }
 
 (async () => {
+  await testPasswordLoginErrorsAreHandledExplicitly();
+  await testWechatRecoveryNeedsNoAgreementAndPrefillsServerAccount();
+  await testEmailRecoverySendsCodeAndUsesIndependentCountdown();
+  await testWechatNotBoundRecoveryGuidesEmailAndTimersAreCleared();
   await testPasswordLoginUsesServerAuthResult();
   await testWechatLoginUsesServerAuthResult();
   await testWechatNotBoundShowsGuidance();

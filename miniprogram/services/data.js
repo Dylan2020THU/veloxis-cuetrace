@@ -58,16 +58,26 @@ function applyAuthResult(result) {
   return result;
 }
 
-function cloudAuth(action, payload) {
+function resultError(result, fallback) {
+  const error = new Error((result && result.msg) || fallback);
+  error.code = (result && result.code) || 'AUTH_FAILED';
+  error.result = result;
+  return error;
+}
+
+function cloudAuth(action, payload, applySession = true) {
   if (!cloudReady()) return Promise.reject(cloudNotReadyError());
   return callCloud('accountAuth', Object.assign({}, payload || {}, { action })).then((result) => {
-    if (result && result.ok === false) {
-      const error = new Error(result.msg || '认证失败');
-      error.code = result.code || 'AUTH_FAILED';
-      error.result = result;
-      throw error;
-    }
-    return applyAuthResult(result);
+    if (result && result.ok === false) throw resultError(result, '认证失败');
+    return applySession ? applyAuthResult(result) : result;
+  });
+}
+
+function callCheckedCloud(name, input) {
+  if (!cloudReady()) return Promise.reject(cloudNotReadyError());
+  return callCloud(name, input || {}).then((result) => {
+    if (result && result.ok === false) throw resultError(result, '操作失败');
+    return result;
   });
 }
 
@@ -85,6 +95,22 @@ function loginWithWechat() {
 
 function getAccountSecurity() {
   return cloudAuth('status');
+}
+
+function resetPasswordByWechat(input) {
+  return cloudAuth('resetPasswordByWechat', input, false);
+}
+
+function resetPasswordByEmail(input) {
+  return cloudAuth('resetPasswordByEmail', input, false);
+}
+
+function bindEmail(input) {
+  return cloudAuth('bindEmail', input, false);
+}
+
+function sendEmailCode(input) {
+  return callCheckedCloud('sendEmailCode', Object.assign({}, input || {}, { action: 'send' }));
 }
 
 function probeAuthCloud() {
@@ -2526,6 +2552,10 @@ module.exports = {
   loginWithPassword,
   loginWithWechat,
   getAccountSecurity,
+  resetPasswordByWechat,
+  resetPasswordByEmail,
+  bindEmail,
+  sendEmailCode,
   probeAuthCloud,
   login,
   loginAdmin,

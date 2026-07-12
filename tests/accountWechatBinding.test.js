@@ -320,6 +320,73 @@ async function testClientAuthPinsPublicMethodActions() {
   ]);
 }
 
+async function testClientRecoveryMethodsPinActionsWithoutChangingSession() {
+  const fixture = loadDataService({
+    globalData: {
+      account: 'SignedInAccount',
+      roles: ['member', 'coach'],
+      currentRole: 'coach'
+    },
+    resultForAction(action, name) {
+      if (name === 'sendEmailCode') return { ok: true, msg: 'accepted' };
+      return { ok: true, account: 'RecoveredAccount', roles: ['shop'], currentRole: 'shop' };
+    }
+  });
+  const sessionBefore = clone(fixture.app.globalData);
+
+  await fixture.data.resetPasswordByWechat({ action: 'register', password: 'newpass1' });
+  await fixture.data.resetPasswordByEmail({
+    action: 'wechatLogin',
+    account: 'MemberA',
+    email: 'member@example.com',
+    code: '123456',
+    password: 'newpass2'
+  });
+  await fixture.data.bindEmail({ action: 'status', email: 'member@example.com', code: '654321' });
+  await fixture.data.sendEmailCode({
+    action: 'probe',
+    purpose: 'reset',
+    account: 'MemberA',
+    email: 'member@example.com'
+  });
+
+  assert.deepStrictEqual(fixture.calls, [
+    { name: 'accountAuth', data: { action: 'resetPasswordByWechat', password: 'newpass1' } },
+    {
+      name: 'accountAuth',
+      data: {
+        action: 'resetPasswordByEmail',
+        account: 'MemberA',
+        email: 'member@example.com',
+        code: '123456',
+        password: 'newpass2'
+      }
+    },
+    {
+      name: 'accountAuth',
+      data: { action: 'bindEmail', email: 'member@example.com', code: '654321' }
+    },
+    {
+      name: 'sendEmailCode',
+      data: { action: 'send', purpose: 'reset', account: 'MemberA', email: 'member@example.com' }
+    }
+  ]);
+  assert.deepStrictEqual(fixture.app.globalData, sessionBefore);
+  assert.deepStrictEqual(fixture.storage, {});
+
+  const unavailable = loadDataService({ cloudReady: false });
+  const calls = [
+    () => unavailable.data.resetPasswordByWechat({ password: 'newpass1' }),
+    () => unavailable.data.resetPasswordByEmail({}),
+    () => unavailable.data.bindEmail({}),
+    () => unavailable.data.sendEmailCode({ purpose: 'reset' })
+  ];
+  for (const call of calls) {
+    await assert.rejects(call, (error) => error.code === 'CLOUD_NOT_READY');
+  }
+  assert.strictEqual(unavailable.calls.length, 0);
+}
+
 async function testClientAuthFailsClosed() {
   const unavailable = loadDataService({ cloudReady: false });
   await assert.rejects(
@@ -749,6 +816,7 @@ async function run() {
 
   await testClientAuthDelegatesAndSynchronizesState();
   await testClientAuthPinsPublicMethodActions();
+  await testClientRecoveryMethodsPinActionsWithoutChangingSession();
   await testClientAuthFailsClosed();
   await testAppUsesSideEffectFreeAuthProbe();
 

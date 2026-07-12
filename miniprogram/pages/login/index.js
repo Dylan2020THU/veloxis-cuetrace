@@ -9,6 +9,7 @@ const ROLES = [
 ];
 
 const PHONE_RE = /^1\d{10}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCOUNT_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;
 const ACCOUNT_RULE_TEXT = '账号需 4-20 位，字母开头，仅支持字母、数字、下划线';
 
@@ -46,7 +47,7 @@ Page({
     roleLabel: '球员',
     // 登录步骤：auth = 账号登录/注册，role = 验证账号后选择身份
     step: 'auth',
-    // 账号页模式：login = 登录，wechatBind = 微信绑定，register = 注册
+    // 账号页模式：login = 登录，wechatBind = 微信绑定，register = 注册，recover = 找回密码
     mode: 'login',
     // 登录方式：password = 账号密码，sms = 手机验证码
     loginType: 'password',
@@ -63,6 +64,16 @@ Page({
     regAccount: '',
     regPassword: '',
     regConfirm: '',
+    // 密码找回表单（独立于手机号验证码登录状态）
+    recoveryType: 'wechat',
+    recoveryAccount: '',
+    recoveryEmail: '',
+    recoveryCode: '',
+    recoveryPassword: '',
+    recoveryConfirm: '',
+    recoveryCounting: false,
+    recoverySending: false,
+    recoveryCountdown: 60,
     pendingAccount: '',
     pendingRoles: [],
     availableRoles: []
@@ -127,6 +138,31 @@ Page({
   handleAuthError(error, fallback) {
     wx.hideLoading();
     wx.showToast({ title: (error && error.message) || fallback, icon: 'none' });
+  },
+
+  handlePasswordLoginError(error) {
+    wx.hideLoading();
+    if (error && error.code === 'ACCOUNT_NOT_FOUND') {
+      wx.showModal({
+        title: '账号未注册',
+        content: '未找到该账号，是否现在注册？',
+        success: (res) => {
+          if (!res.confirm) return;
+          this.setData({
+            mode: 'register',
+            regAccount: this.data.account,
+            regPassword: '',
+            regConfirm: ''
+          });
+        }
+      });
+      return;
+    }
+    if (error && error.code === 'INVALID_PASSWORD') {
+      wx.showToast({ title: '账号密码错误', icon: 'none' });
+      return;
+    }
+    wx.showToast({ title: (error && error.message) || '账号或密码错误', icon: 'none' });
   },
 
   currentSessionRoles() {
@@ -300,12 +336,168 @@ Page({
 
   // 切换到注册态
   goRegister() {
+    this.clearRecoveryCountdown();
     this.setData({ mode: 'register', regAccount: '', regPassword: '', regConfirm: '', agreementChecked: false });
   },
 
   // 注册态 → 返回登录态
   backToLogin() {
+    this.clearRecoveryCountdown();
     this.setData({ mode: 'login', agreementChecked: false });
+  },
+
+  openRecovery() {
+    this.setData({
+      mode: 'recover',
+      recoveryType: 'wechat',
+      recoveryAccount: (this.data.account || '').trim(),
+      recoveryEmail: '',
+      recoveryCode: '',
+      recoveryPassword: '',
+      recoveryConfirm: '',
+      recoveryCounting: false,
+      recoverySending: false,
+      recoveryCountdown: 60
+    });
+  },
+
+  switchRecoveryType(e) {
+    const type = e.currentTarget.dataset.type === 'email' ? 'email' : 'wechat';
+    this.clearRecoveryCountdown();
+    this.setData({
+      recoveryType: type,
+      recoveryCode: '',
+      recoveryCounting: false,
+      recoverySending: false,
+      recoveryCountdown: 60
+    });
+  },
+
+  clearRecoveryCountdown() {
+    if (this._recoveryTimer) {
+      clearInterval(this._recoveryTimer);
+      this._recoveryTimer = null;
+    }
+  },
+
+  startRecoveryCountdown() {
+    this.clearRecoveryCountdown();
+    this.setData({ recoveryCounting: true, recoveryCountdown: 60 });
+    this._recoveryTimer = setInterval(() => {
+      const next = this.data.recoveryCountdown - 1;
+      if (next <= 0) {
+        this.clearRecoveryCountdown();
+        this.setData({ recoveryCounting: false, recoveryCountdown: 60 });
+      } else {
+        this.setData({ recoveryCountdown: next });
+      }
+    }, 1000);
+  },
+
+  sendRecoveryEmailCode() {
+    if (this.data.recoveryCounting || this.data.recoverySending) return;
+    const account = (this.data.recoveryAccount || '').trim();
+    const email = (this.data.recoveryEmail || '').trim();
+    if (!account) {
+      return wx.showToast({ title: '请输入账号', icon: 'none' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return wx.showToast({ title: '请输入正确的邮箱', icon: 'none' });
+    }
+    this.setData({ recoverySending: true });
+    wx.showLoading({ title: '发送中', mask: true });
+    data
+      .sendEmailCode({ purpose: 'reset', account, email })
+      .then((result) => {
+        wx.hideLoading();
+        this.setData({ recoverySending: false });
+        wx.showToast({
+          title: (result && result.msg) || '若信息匹配，验证码将发送至绑定邮箱',
+          icon: 'none'
+        });
+        this.startRecoveryCountdown();
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        this.setData({ recoverySending: false });
+        wx.showToast({ title: (error && error.message) || '验证码发送失败', icon: 'none' });
+      });
+  },
+
+  finishRecovery(result) {
+    this.clearRecoveryCountdown();
+    this.setData({
+      mode: 'login',
+      loginType: 'password',
+      account: (result && result.account) || '',
+      password: '',
+      recoveryCode: '',
+      recoveryPassword: '',
+      recoveryConfirm: '',
+      recoveryCounting: false,
+      recoverySending: false,
+      recoveryCountdown: 60
+    });
+    wx.showToast({ title: '密码已重置，请使用新密码登录', icon: 'none' });
+  },
+
+  submitRecovery() {
+    const password = this.data.recoveryPassword || '';
+    if (password.length < 6) {
+      return wx.showToast({ title: '密码至少 6 位', icon: 'none' });
+    }
+    if (password !== this.data.recoveryConfirm) {
+      return wx.showToast({ title: '两次密码不一致', icon: 'none' });
+    }
+
+    if (this.data.recoveryType === 'wechat') {
+      wx.showLoading({ title: '重置中', mask: true });
+      data
+        .resetPasswordByWechat({ password })
+        .then((result) => {
+          wx.hideLoading();
+          this.finishRecovery(result);
+        })
+        .catch((error) => {
+          wx.hideLoading();
+          if (error && error.code === 'WECHAT_NOT_BOUND') {
+            this.setData({ recoveryType: 'email' });
+            wx.showToast({ title: '当前微信未绑定账号，请使用已绑定邮箱找回', icon: 'none' });
+            return;
+          }
+          wx.showToast({ title: (error && error.message) || '密码重置失败', icon: 'none' });
+        });
+      return;
+    }
+
+    const account = (this.data.recoveryAccount || '').trim();
+    const email = (this.data.recoveryEmail || '').trim();
+    const code = (this.data.recoveryCode || '').trim();
+    if (!account) {
+      return wx.showToast({ title: '请输入账号', icon: 'none' });
+    }
+    if (!EMAIL_RE.test(email)) {
+      return wx.showToast({ title: '请输入正确的邮箱', icon: 'none' });
+    }
+    if (!code) {
+      return wx.showToast({ title: '请输入验证码', icon: 'none' });
+    }
+    wx.showLoading({ title: '重置中', mask: true });
+    data
+      .resetPasswordByEmail({ account, email, code, password })
+      .then((result) => {
+        wx.hideLoading();
+        this.finishRecovery(result);
+      })
+      .catch((error) => {
+        wx.hideLoading();
+        wx.showToast({
+          title: error && error.code === 'EMAIL_NOT_BOUND'
+            ? '该邮箱未绑定账号，请联系管理员'
+            : ((error && error.message) || '密码重置失败'),
+          icon: 'none'
+        });
+      });
   },
 
   toggleAgreement() {
@@ -425,7 +617,7 @@ Page({
           wx.hideLoading();
           this.handleAuthenticated(result);
         })
-        .catch((error) => this.handleAuthError(error, '账号或密码错误'));
+        .catch((error) => this.handlePasswordLoginError(error));
       return;
     } else {
       const phone = (this.data.phone || '').trim();
@@ -459,5 +651,6 @@ Page({
       clearTimeout(this._cloudTimer);
       this._cloudTimer = null;
     }
+    this.clearRecoveryCountdown();
   }
 });

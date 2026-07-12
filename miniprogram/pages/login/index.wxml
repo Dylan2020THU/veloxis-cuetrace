@@ -4,7 +4,7 @@
       <image class="hero-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
       <view class="hero-name">强化杆迹</view>
       <view class="hero-slogan">没有任何一杆是白打的</view>
-      <view class="hero-sub">{{ step === 'role' ? '请选择本次进入的身份' : (mode === 'register' ? '注册账号' : (mode === 'wechatBind' ? '绑定当前微信' : '使用账号或手机号登录')) }}</view>
+      <view class="hero-sub">{{ step === 'role' ? '请选择本次进入的身份' : (mode === 'register' ? '注册账号' : (mode === 'wechatBind' ? '绑定当前微信' : (mode === 'recover' ? '找回密码' : '使用账号或手机号登录'))) }}</view>
     </view>
 
     <!-- 账号验证通过后选择本次进入身份 -->
@@ -82,6 +82,9 @@
             bindinput="onInput"
           />
         </view>
+        <view class="forgot-line">
+          <text class="forgot-link" bindtap="openRecovery">忘记密码</text>
+        </view>
       </block>
 
       <!-- 手机验证码登录 -->
@@ -158,7 +161,7 @@
       </block>
 
       <!-- 注册态 -->
-      <block wx:else>
+      <block wx:elif="{{mode === 'register'}}">
         <view class="field">
           <input
             class="input"
@@ -210,6 +213,94 @@
         <view class="alt-line">
           <text class="alt-text">已有账号？</text>
           <text class="alt-link" bindtap="backToLogin">返回登录</text>
+        </view>
+      </block>
+
+      <!-- 密码找回态 -->
+      <block wx:elif="{{mode === 'recover'}}">
+        <view class="seg recovery-seg">
+          <view
+            class="seg-item {{recoveryType === 'wechat' ? 'active' : ''}}"
+            data-type="wechat"
+            bindtap="switchRecoveryType"
+          >微信找回</view>
+          <view
+            class="seg-item {{recoveryType === 'email' ? 'active' : ''}}"
+            data-type="email"
+            bindtap="switchRecoveryType"
+          >邮箱找回</view>
+        </view>
+
+        <view wx:if="{{recoveryType === 'wechat'}}" class="recovery-tip">
+          使用当前微信验证身份，只会重置该微信已绑定账号的密码
+        </view>
+
+        <block wx:if="{{recoveryType === 'email'}}">
+          <view class="field">
+            <input
+              class="input"
+              placeholder="请输入账号"
+              placeholder-class="placeholder"
+              data-field="recoveryAccount"
+              value="{{recoveryAccount}}"
+              bindinput="onInput"
+            />
+          </view>
+          <view class="field">
+            <input
+              class="input"
+              placeholder="请输入已绑定邮箱"
+              placeholder-class="placeholder"
+              data-field="recoveryEmail"
+              value="{{recoveryEmail}}"
+              bindinput="onInput"
+            />
+          </view>
+          <view class="field field-code">
+            <input
+              class="input"
+              type="number"
+              maxlength="6"
+              placeholder="请输入验证码"
+              placeholder-class="placeholder"
+              data-field="recoveryCode"
+              value="{{recoveryCode}}"
+              bindinput="onInput"
+            />
+            <view
+              class="code-btn {{recoveryCounting || recoverySending ? 'disabled' : ''}}"
+              bindtap="sendRecoveryEmailCode"
+            >{{recoverySending ? '发送中' : (recoveryCounting ? recoveryCountdown + 's' : '获取验证码')}}</view>
+          </view>
+        </block>
+
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请输入新密码（至少 6 位）"
+            placeholder-class="placeholder"
+            data-field="recoveryPassword"
+            value="{{recoveryPassword}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请再次输入新密码"
+            placeholder-class="placeholder"
+            data-field="recoveryConfirm"
+            value="{{recoveryConfirm}}"
+            bindinput="onInput"
+          />
+        </view>
+
+        <button class="btn-primary login-btn" bindtap="submitRecovery">重置密码</button>
+
+        <view class="alt-line">
+          <text class="alt-link alt-link--solo" bindtap="backToLogin">返回登录</text>
         </view>
       </block>
       </view>
