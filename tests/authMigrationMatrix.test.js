@@ -1,5 +1,6 @@
 const assert = require('assert');
 const childProcess = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -8,6 +9,77 @@ const inventoryCollator = new Intl.Collator('en-US', { sensitivity: 'base' });
 const baselinePath = 'tests/fixtures/auth-v2-identity-baseline.json';
 const policyPath = 'scripts/auth-v2-entry-policy.json';
 const matrixPath = 'docs/auth-v2-migration-matrix.md';
+const printProtocolClientPaths = process.argv.includes('--print-protocol-client-paths');
+
+function readCommittedJson(relativePath) {
+  const result = childProcess.spawnSync(
+    'git',
+    ['show', `HEAD:${relativePath}`],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      windowsHide: true,
+      maxBuffer: 4 * 1024 * 1024
+    }
+  );
+  assert.strictEqual(
+    result.status,
+    0,
+    `cannot read committed ${relativePath}:\n${result.stderr}${result.stdout}`
+  );
+  return JSON.parse(result.stdout);
+}
+
+function getProtocolClientPaths(policy) {
+  assert.strictEqual(policy && policy.schemaVersion, 1, 'protocol client CLI requires policy schema 1');
+  assert(policy && Array.isArray(policy.entries), 'protocol client CLI requires policy entries');
+  return policy.entries
+    .map((entry) => {
+      assert(
+        entry && ['client', 'branch', 'none'].includes(entry.protocolGuard),
+        'protocol client CLI encountered an unknown protocolGuard'
+      );
+      if (entry.protocolGuard === 'none') return null;
+      assert.match(entry.name, /^[A-Za-z0-9_]+$/, 'protocol client CLI entry name is invalid');
+      const relativePath = `cloudfunctions/${entry.name}/index.js`;
+      const expectedDestination =
+        `cloudfunctions/${entry.name}/lib/auth/protocol-guard.js`;
+      assert(
+        fs.existsSync(path.join(root, relativePath)),
+        `protocol client CLI entry is missing: ${relativePath}`
+      );
+      assert.deepStrictEqual(
+        entry.copies.filter((copy) => copy.module === 'protocol-guard'),
+        [{ module: 'protocol-guard', destination: expectedDestination }],
+        `${entry.name} protocol client CLI copy destination changed`
+      );
+      return relativePath;
+    })
+    .filter(Boolean)
+    .sort();
+}
+
+if (printProtocolClientPaths) {
+  const cliPolicy = readCommittedJson(policyPath);
+  const paths = getProtocolClientPaths(cliPolicy);
+  assert.strictEqual(paths.length, 97, 'protocol client CLI must emit exactly 97 paths');
+  assert.deepStrictEqual(paths, [...paths].sort(), 'protocol client CLI paths must be sorted');
+  assert.strictEqual(new Set(paths).size, paths.length, 'protocol client CLI paths must be unique');
+  for (const relativePath of paths) {
+    assert.match(
+      relativePath,
+      /^cloudfunctions\/[^/]+\/index\.js$/,
+      `invalid protocol client CLI path: ${relativePath}`
+    );
+  }
+  const sha256 = crypto.createHash('sha256').update(paths.join('\n')).digest('hex');
+  process.stdout.write([
+    ...paths,
+    `PROTOCOL_CLIENT_COUNT=${paths.length}`,
+    `PROTOCOL_CLIENT_SHA256=${sha256}`
+  ].join('\n') + '\n');
+  process.exit(0);
+}
 
 const expectedModules = Object.freeze({
   'protocol-guard': Object.freeze({
@@ -1210,7 +1282,16 @@ for (const row of matrixRows) {
   assert(allowedBoundaries.has(row.boundary), `${row.kind}:${row.name} has invalid boundary`);
   assert(row.foreignKeys.length > 0, `${row.kind}:${row.name} must state foreign-key behavior`);
   assert(row.batch.length > 0, `${row.kind}:${row.name} must state a release batch`);
-  assert.strictEqual(row.status, 'pending', `${row.kind}:${row.name} must begin pending`);
+  const expectedStatus = row.kind === 'entry'
+    && byName[row.name]
+    && byName[row.name].protocolGuard !== 'none'
+    ? 'protocol_guarded'
+    : 'pending';
+  assert.strictEqual(
+    row.status,
+    expectedStatus,
+    `${row.kind}:${row.name} migration status advanced outside Task 2`
+  );
   assert(!/[*?[\]]/.test(row.focusedTests), `${row.kind}:${row.name} focused tests must be explicit`);
   assertFocusedTests(splitFocusedTests(row.focusedTests), `${row.kind}:${row.name} focused tests`);
 }
