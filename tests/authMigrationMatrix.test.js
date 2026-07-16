@@ -218,6 +218,14 @@ const recentAuthActions = Object.freeze([
   'bindWechat',
   'logoutOthers'
 ]);
+const sessionShapeFieldOwners = Object.freeze({
+  anonymousActions: Object.freeze(['accountAuth']),
+  sessionActions: Object.freeze(['accountAuth']),
+  recentAuthActions: Object.freeze(['accountAuth']),
+  anonymousPurposes: Object.freeze(['sendEmailCode', 'sendSmsCode']),
+  sessionPurposes: Object.freeze(['sendEmailCode', 'sendSmsCode']),
+  branches: Object.freeze(['requestTableRefund'])
+});
 const focusedTestGroups = Object.freeze([
   Object.freeze({
     entries: Object.freeze(['accountAuth']),
@@ -654,6 +662,203 @@ function assertExactList(actual, expected, label) {
   assert.deepStrictEqual(actual, expected, `${label} must match the frozen list`);
 }
 
+function canonicalModulePath(value) {
+  const normalized = path.normalize(path.resolve(value));
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+}
+
+function literalLocalRequires(source, sourcePath) {
+  const requests = [];
+  const requirePattern = /\brequire\s*\(\s*(['"])(\.[^'"]*)\1\s*\)/g;
+  for (const match of source.matchAll(requirePattern)) {
+    const request = match[2];
+    assert(
+      request.startsWith('./'),
+      `${sourcePath} local auth require must stay in the same directory: ${request}`
+    );
+    requests.push(request);
+  }
+  return requests;
+}
+
+function collectAuthModuleClosure(moduleName, modules, options = {}) {
+  const baseDirectory = options.baseDirectory || root;
+  const sourceExists = options.sourceExists || fs.existsSync;
+  const readSource = options.readSource || ((sourcePath) => fs.readFileSync(sourcePath, 'utf8'));
+  const sourceByModule = new Map();
+  const moduleBySource = new Map();
+  for (const [name, descriptor] of Object.entries(modules)) {
+    const sourcePath = path.resolve(baseDirectory, descriptor.source);
+    const canonicalSourcePath = canonicalModulePath(sourcePath);
+    assert(!moduleBySource.has(canonicalSourcePath), `duplicate auth module source ${descriptor.source}`);
+    sourceByModule.set(name, sourcePath);
+    moduleBySource.set(canonicalSourcePath, name);
+  }
+
+  const closure = new Set();
+  const visited = new Set();
+  const active = new Set();
+  const stack = [];
+
+  function visit(name) {
+    assert(sourceByModule.has(name), `unknown auth module ${name}`);
+    if (active.has(name)) {
+      assert.fail(`auth module dependency cycle: ${[...stack, name].join(' -> ')}`);
+    }
+    if (visited.has(name)) return;
+
+    const sourcePath = sourceByModule.get(name);
+    closure.add(name);
+    active.add(name);
+    stack.push(name);
+
+    if (sourceExists(sourcePath)) {
+      const sourceDirectory = path.dirname(sourcePath);
+      const source = readSource(sourcePath);
+      for (const request of literalLocalRequires(source, sourcePath)) {
+        const unresolvedDependency = path.resolve(sourceDirectory, request);
+        const dependencyPath = path.extname(unresolvedDependency)
+          ? unresolvedDependency
+          : `${unresolvedDependency}.js`;
+        assert.strictEqual(
+          canonicalModulePath(path.dirname(dependencyPath)),
+          canonicalModulePath(sourceDirectory),
+          `${sourcePath} local auth require must stay in the same directory: ${request}`
+        );
+        const dependencyName = moduleBySource.get(canonicalModulePath(dependencyPath));
+        assert(
+          dependencyName,
+          `${sourcePath} requires an unregistered auth module source: ${request}`
+        );
+        visit(dependencyName);
+      }
+    }
+
+    stack.pop();
+    active.delete(name);
+    visited.add(name);
+  }
+
+  visit(moduleName);
+  return closure;
+}
+
+function assertEntryAuthModuleClosure(entry, modules, options = {}) {
+  const baseDirectory = options.baseDirectory || root;
+  const currentTask = options.currentTask || 1;
+  const sourceExists = options.sourceExists || fs.existsSync;
+  const copyModules = new Set(entry.copies.map((copy) => copy.module));
+  const requiredModules = new Set();
+
+  for (const moduleName of copyModules) {
+    const descriptor = modules[moduleName];
+    assert(descriptor, `${entry.name} references unknown auth module ${moduleName}`);
+    const sourcePath = path.resolve(baseDirectory, descriptor.source);
+    if (!sourceExists(sourcePath)) {
+      assert(
+        descriptor.availableFromTask > currentTask,
+        `${entry.name} ${moduleName} source is missing at or after availableFromTask ${descriptor.availableFromTask}`
+      );
+      continue;
+    }
+    for (const dependencyName of collectAuthModuleClosure(moduleName, modules, options)) {
+      requiredModules.add(dependencyName);
+    }
+  }
+
+  const missingModules = [...requiredModules]
+    .filter((moduleName) => !copyModules.has(moduleName))
+    .sort(inventoryCollator.compare);
+  assert.strictEqual(
+    missingModules.length,
+    0,
+    `${entry.name} missing auth module copies: ${missingModules.join(', ')}`
+  );
+}
+
+function selfTestAuthModuleClosureHelper() {
+  const graphRoot = path.join(root, '__virtual_auth_module_graph__');
+  const modules = {
+    entry: { source: 'auth/entry.js', availableFromTask: 1 },
+    direct: { source: 'auth/direct.js', availableFromTask: 1 },
+    transitive: { source: 'auth/transitive.js', availableFromTask: 1 },
+    future: { source: 'auth/future.js', availableFromTask: 2 },
+    overdue: { source: 'auth/overdue.js', availableFromTask: 1 },
+    escape: { source: 'auth/escape.js', availableFromTask: 1 },
+    'cycle-a': { source: 'auth/cycle-a.js', availableFromTask: 1 },
+    'cycle-b': { source: 'auth/cycle-b.js', availableFromTask: 1 }
+  };
+  const sources = new Map([
+    ['auth/entry.js', "require('./direct');"],
+    ['auth/direct.js', "require('./transitive');"],
+    ['auth/transitive.js', 'module.exports = {};'],
+    ['auth/escape.js', "require('../outside');"],
+    ['auth/cycle-a.js', "require('./cycle-b');"],
+    ['auth/cycle-b.js', "require('./cycle-a');"]
+  ].map(([relativePath, source]) => [
+    canonicalModulePath(path.join(graphRoot, relativePath)),
+    source
+  ]));
+  const options = {
+    baseDirectory: graphRoot,
+    currentTask: 1,
+    sourceExists: (sourcePath) => sources.has(canonicalModulePath(sourcePath)),
+    readSource: (sourcePath) => sources.get(canonicalModulePath(sourcePath))
+  };
+  const entryWithCopies = (name, copyModules) => ({
+    name,
+    copies: copyModules.map((module) => ({ module }))
+  });
+
+  assert.throws(
+    () => assertEntryAuthModuleClosure(entryWithCopies('direct omission', ['entry']), modules, options),
+    /missing auth module copies: direct, transitive/,
+    'dependency closure helper must detect a missing direct dependency'
+  );
+  assert.throws(
+    () => assertEntryAuthModuleClosure(
+      entryWithCopies('transitive omission', ['entry', 'direct']),
+      modules,
+      options
+    ),
+    /missing auth module copies: transitive/,
+    'dependency closure helper must detect a missing transitive dependency'
+  );
+  assert.doesNotThrow(
+    () => assertEntryAuthModuleClosure(
+      entryWithCopies('complete closure', ['entry', 'direct', 'transitive']),
+      modules,
+      options
+    ),
+    'dependency closure helper must accept the complete recursive closure'
+  );
+  assert.doesNotThrow(
+    () => assertEntryAuthModuleClosure(entryWithCopies('future source', ['future']), modules, options),
+    'dependency closure helper must allow a source that is not available yet'
+  );
+  assert.throws(
+    () => assertEntryAuthModuleClosure(entryWithCopies('overdue source', ['overdue']), modules, options),
+    /source is missing at or after availableFromTask/,
+    'dependency closure helper must reject a source missing after its availability task'
+  );
+  assert.throws(
+    () => assertEntryAuthModuleClosure(entryWithCopies('path escape', ['escape']), modules, options),
+    /must stay in the same directory/,
+    'dependency closure helper must reject a local require outside the module directory'
+  );
+  assert.throws(
+    () => assertEntryAuthModuleClosure(
+      entryWithCopies('dependency cycle', ['cycle-a', 'cycle-b']),
+      modules,
+      options
+    ),
+    /auth module dependency cycle/,
+    'dependency closure helper must reject dependency cycles instead of recursing indefinitely'
+  );
+}
+
+selfTestAuthModuleClosureHelper();
+
 const baseline = readJson(baselinePath);
 assertSortedUniqueForwardPaths(baseline.currentEntryPaths, 'currentEntryPaths');
 assertSortedUniqueForwardPaths(baseline.directIdentityEntryPaths, 'directIdentityEntryPaths');
@@ -737,6 +942,31 @@ for (const entry of policy.entries) {
     assert.strictEqual(entry.name, 'requestTableRefund', 'only requestTableRefund may use branch policy');
     assert.strictEqual(entry.boundary, 'mixed', 'branch policy requires a mixed boundary');
   }
+  let expectedSession;
+  if (entry.name === 'accountAuth') {
+    expectedSession = 'action';
+  } else if (entry.name === 'sendEmailCode' || entry.name === 'sendSmsCode') {
+    expectedSession = 'purpose';
+  } else if (entry.name === 'requestTableRefund') {
+    expectedSession = 'branch';
+  } else if (entry.boundary === 'session' || entry.name === 'createTablePayOrder') {
+    expectedSession = 'required';
+  } else {
+    expectedSession = 'none';
+  }
+  assert.strictEqual(
+    entry.session,
+    expectedSession,
+    `${entry.name} session mode must match its exact frozen trust boundary`
+  );
+  for (const [field, owners] of Object.entries(sessionShapeFieldOwners)) {
+    if (!owners.includes(entry.name)) {
+      assert(
+        !Object.prototype.hasOwnProperty.call(entry, field),
+        `${entry.name} must not carry unrelated ${field}`
+      );
+    }
+  }
 
   const copyModules = [];
   for (const copy of entry.copies) {
@@ -757,6 +987,7 @@ for (const entry of policy.entries) {
     copyModules.push(copy.module);
   }
   assert.strictEqual(new Set(copyModules).size, copyModules.length, `${entry.name} copy modules must be unique`);
+  assertEntryAuthModuleClosure(entry, expectedModules);
   if (entry.protocolGuard === 'client' || entry.protocolGuard === 'branch') {
     assert(copyModules.includes('protocol-guard'), `${entry.name} must deploy protocol-guard`);
   } else {
@@ -884,6 +1115,35 @@ for (const entry of policy.entries) {
 
 const byName = Object.fromEntries(policy.entries.map((entry) => [entry.name, entry]));
 assert.strictEqual(byName.login.boundary, 'session', 'login remains a session boundary');
+assert.strictEqual(expectedBoundaryMembers.session.length, 71, 'session boundary must remain exactly 71 entries');
+assert.deepStrictEqual(
+  policy.entries
+    .filter((entry) => entry.session === 'required')
+    .map((entry) => entry.name)
+    .sort(inventoryCollator.compare),
+  [...expectedBoundaryMembers.session, 'createTablePayOrder'].sort(inventoryCollator.compare),
+  'the 71 session entries plus createTablePayOrder must require sessions'
+);
+assert.deepStrictEqual(
+  policy.entries.filter((entry) => entry.session === 'action').map((entry) => entry.name),
+  ['accountAuth'],
+  'only accountAuth may use action-based session policy'
+);
+assert.deepStrictEqual(
+  policy.entries.filter((entry) => entry.session === 'purpose').map((entry) => entry.name),
+  ['sendEmailCode', 'sendSmsCode'],
+  'only sendEmailCode and sendSmsCode may use purpose-based session policy'
+);
+assert.deepStrictEqual(
+  policy.entries.filter((entry) => entry.session === 'branch').map((entry) => entry.name),
+  ['requestTableRefund'],
+  'only requestTableRefund may use branch-based session policy'
+);
+for (const boundary of ['retired', 'admin', 'public', 'callback', 'timer']) {
+  for (const entry of policy.entries.filter((candidate) => candidate.boundary === boundary)) {
+    assert.strictEqual(entry.session, 'none', `${entry.name} ${boundary} boundary must have session:none`);
+  }
+}
 for (const name of ['verifySmsCode', 'reconcilePay']) {
   assert.strictEqual(byName[name].boundary, 'retired', `${name} must be retired`);
   assert.strictEqual(byName[name].session, 'none', `${name} must not require a session`);
@@ -993,6 +1253,7 @@ const fieldMappings = Object.freeze({
   payerOpenid: 'payerOpenid',
   reviewedBy: 'admin principal id'
 });
+const payerOpenidAllowlist = 'allowlist: payerOpenid is platform-only and never authorizes ownership, lookup, refund, or cross-account access';
 const collectionSpecificV2Fields = Object.freeze({
   posts: Object.freeze(['authorAccountId']),
   user_follows: Object.freeze(['followerAccountId', 'targetAccountId']),
@@ -1070,7 +1331,7 @@ const expectedCollectionIdentity = Object.freeze({
     '_openid/openid/memberOpenid; targetOpenid query input',
     'accountId; memberAccountId; targetAccountId'
   ]),
-  orders: Object.freeze(['_openid', 'accountId; payerOpenid']),
+  orders: Object.freeze(['_openid; payerOpenid', 'accountId; payerOpenid']),
   password_rate_limits: Object.freeze([
     'none (new v2 collection)',
     'credentialBindingId; contextHash'
@@ -1085,7 +1346,7 @@ const expectedCollectionIdentity = Object.freeze({
   ]),
   shop_applications: Object.freeze([
     '_openid; reviewedBy as admin OPENID',
-    'applicantAccountId; admin principal id; admin OPENID'
+    'applicantAccountId; admin principal id'
   ]),
   shop_coach_links: Object.freeze([
     'shopOpenid; coachOpenid',
@@ -1111,7 +1372,7 @@ const expectedCollectionIdentity = Object.freeze({
   ]),
   stores: Object.freeze(['_openid', 'ownerAccountId or ownerType=system']),
   subscriptions: Object.freeze([
-    '_openid; userId=wechat-binding document id',
+    '_openid; userId=wechat-binding document id; payerOpenid',
     'accountId; payerOpenid'
   ]),
   table_checkin_slots: Object.freeze(['memberOpenid', 'memberAccountId']),
@@ -1150,7 +1411,7 @@ for (const row of collectionRows) {
   if (
     row.currentIdentityKey.includes('_openid') &&
     row.name !== 'sms_codes' &&
-    !/\badmin OPENID\b/i.test(`${row.currentIdentityKey} ${row.v2IdentityKey}`)
+    !/\badmin OPENID\b/i.test(row.v2IdentityKey)
   ) {
     assert(
       /\b(?:accountId|ownerAccountId|applicantAccountId|authorAccountId|followerAccountId|memberAccountId)\b/.test(row.v2IdentityKey),
@@ -1187,16 +1448,32 @@ for (const row of collectionRows) {
   }
   if (row.v2IdentityKey.includes('payerOpenid')) {
     assert(
-      row.foreignKeys.includes('allowlist: payerOpenid is a platform payment parameter only; never ownership'),
+      row.foreignKeys.includes(payerOpenidAllowlist),
       `collection:${row.name} must explain retained payerOpenid`
     );
   }
-  if (/\badmin OPENID\b/i.test(`${row.currentIdentityKey} ${row.v2IdentityKey}`)) {
+  if (/\badmin OPENID\b/i.test(row.v2IdentityKey)) {
     assert(
       row.foreignKeys.includes('allowlist: admin OPENID remains an independent admin principal'),
       `collection:${row.name} must explain independent admin OPENID`
     );
   }
+}
+assert.deepStrictEqual(
+  collectionRows
+    .filter((row) => row.v2IdentityKey.includes('payerOpenid'))
+    .map((row) => row.name)
+    .sort(inventoryCollator.compare),
+  ['orders', 'shop_orders', 'subscriptions'],
+  'only the three frozen payment collections may retain payerOpenid'
+);
+for (const name of ['orders', 'shop_orders', 'subscriptions']) {
+  const row = collectionRows.find((candidate) => candidate.name === name);
+  assert(row.currentIdentityKey.includes('payerOpenid'), `collection:${name} must inventory legacy payerOpenid`);
+  assert(
+    row.foreignKeys.includes(payerOpenidAllowlist),
+    `collection:${name} must freeze the complete payerOpenid authorization prohibition`
+  );
 }
 
 const sourceCorpus = baseline.currentEntryPaths
