@@ -228,25 +228,263 @@ foreach ($Copy in $CopyAllowlist) {
   }
 }
 
-$Copied = 0
-foreach ($Copy in $ValidatedCopyPlan) {
-  $Source = $Copy.Source
-  $Destination = $Copy.Destination
-  $DestinationDirectory = $Copy.DestinationDirectory
-  if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
-    [void][IO.Directory]::CreateDirectory($DestinationDirectory)
+$InjectedFailureIndex = 0
+$InjectedFailureValue = [Environment]::GetEnvironmentVariable(
+  'AUTH_SYNC_TEST_FAIL_BEFORE_REPLACE_INDEX'
+)
+if ($InjectedFailureValue) {
+  $ParsedFailureIndex = 0
+  if (
+    -not [int]::TryParse(
+      $InjectedFailureValue,
+      [Globalization.NumberStyles]::None,
+      [Globalization.CultureInfo]::InvariantCulture,
+      [ref]$ParsedFailureIndex
+    ) -or
+    $ParsedFailureIndex -lt 1 -or
+    $ParsedFailureIndex -gt $ValidatedCopyPlan.Count
+  ) {
+    throw 'Invalid auth sync test failure index.'
   }
-  $DestinationDirectory = Assert-SafeRepositoryPath `
-    -Path $DestinationDirectory `
-    -ExpectedType Container
-  if (Test-Path -LiteralPath $Destination) {
-    $Destination = Assert-SafeRepositoryPath `
-      -Path $Destination `
-      -ExpectedType File
+  $InjectedFailureIndex = $ParsedFailureIndex
+}
+
+function New-OwnedSiblingFile {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Directory,
+
+    [Parameter(Mandatory = $true)]
+    [string]$DestinationLeaf,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TransactionId,
+
+    [Parameter(Mandatory = $true)]
+    [int]$CopyIndex,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateSet('stage', 'backup', 'rollback')]
+    [string]$Kind
+  )
+
+  for ($Attempt = 0; $Attempt -lt 32; $Attempt += 1) {
+    $Nonce = [Guid]::NewGuid().ToString('N')
+    $Leaf = ".$DestinationLeaf.auth-sync-$TransactionId-$CopyIndex-$Kind-$Nonce"
+    $Candidate = Assert-SafeRepositoryPath `
+      -Path (Join-Path $Directory $Leaf) `
+      -ExpectedType File `
+      -AllowMissing $true
+    try {
+      $Stream = [IO.File]::Open(
+        $Candidate,
+        [IO.FileMode]::CreateNew,
+        [IO.FileAccess]::Write,
+        [IO.FileShare]::None
+      )
+      $Stream.Dispose()
+      return $Candidate
+    } catch [IO.IOException] {
+      if (Test-Path -LiteralPath $Candidate) {
+        continue
+      }
+      throw
+    }
   }
 
-  Copy-Item -LiteralPath $Source -Destination $Destination -Force
-  $Copied += 1
+  throw 'Unable to reserve a unique auth sync sibling file.'
+}
+
+function Remove-OwnedFile {
+  param(
+    [string]$Path,
+    [System.Collections.Generic.List[string]]$Errors
+  )
+
+  if (-not $Path) {
+    return
+  }
+  try {
+    [IO.File]::Delete($Path)
+  } catch {
+    $Errors.Add("$Path`: $($_.Exception.Message)")
+  }
+}
+
+$TransactionId = [Guid]::NewGuid().ToString('N')
+$Transaction = @()
+$CreatedDirectories = @()
+$Copied = 0
+$CommitFailure = $null
+
+try {
+  $CopyIndex = 0
+  foreach ($Copy in $ValidatedCopyPlan) {
+    $Source = $Copy.Source
+    $Destination = $Copy.Destination
+    $DestinationDirectory = $Copy.DestinationDirectory
+
+    if (-not (Test-Path -LiteralPath $DestinationDirectory)) {
+      $MissingDirectories = @()
+      $CandidateDirectory = $DestinationDirectory
+      while (
+        -not (Test-Path -LiteralPath $CandidateDirectory) -and
+        -not [string]::Equals(
+          $CandidateDirectory,
+          $RepositoryRoot,
+          [StringComparison]::OrdinalIgnoreCase
+        )
+      ) {
+        $MissingDirectories += $CandidateDirectory
+        $CandidateDirectory = [IO.Path]::GetDirectoryName($CandidateDirectory)
+      }
+      [void][IO.Directory]::CreateDirectory($DestinationDirectory)
+      $CreatedDirectories += $MissingDirectories
+    }
+    $DestinationDirectory = Assert-SafeRepositoryPath `
+      -Path $DestinationDirectory `
+      -ExpectedType Container
+
+    $OriginalExists = Test-Path -LiteralPath $Destination
+    if ($OriginalExists) {
+      $Destination = Assert-SafeRepositoryPath `
+        -Path $Destination `
+        -ExpectedType File
+    }
+
+    $State = [pscustomobject]@{
+      Destination = $Destination
+      OriginalExists = [bool]$OriginalExists
+      Stage = $null
+      Backup = $null
+      RollbackDiscard = $null
+      Committed = $false
+    }
+    $Transaction += $State
+
+    $State.Stage = New-OwnedSiblingFile `
+      -Directory $DestinationDirectory `
+      -DestinationLeaf ([IO.Path]::GetFileName($Destination)) `
+      -TransactionId $TransactionId `
+      -CopyIndex ($CopyIndex + 1) `
+      -Kind stage
+    if ($OriginalExists) {
+      $State.Backup = New-OwnedSiblingFile `
+        -Directory $DestinationDirectory `
+        -DestinationLeaf ([IO.Path]::GetFileName($Destination)) `
+        -TransactionId $TransactionId `
+        -CopyIndex ($CopyIndex + 1) `
+        -Kind backup
+    }
+
+    Copy-Item -LiteralPath $Source -Destination $State.Stage -Force
+    $CopyIndex += 1
+  }
+
+  for ($CopyIndex = 0; $CopyIndex -lt $Transaction.Count; $CopyIndex += 1) {
+    if ($InjectedFailureIndex -eq ($CopyIndex + 1)) {
+      throw "Injected auth sync commit failure before replacement $InjectedFailureIndex."
+    }
+
+    $State = $Transaction[$CopyIndex]
+    if ($State.OriginalExists) {
+      [IO.File]::Replace(
+        $State.Stage,
+        $State.Destination,
+        $State.Backup,
+        $true
+      )
+    } else {
+      [IO.File]::Move($State.Stage, $State.Destination)
+    }
+    $State.Committed = $true
+    $Copied += 1
+  }
+} catch {
+  $CommitFailure = $_
+}
+
+if ($CommitFailure) {
+  $RollbackErrors = New-Object 'System.Collections.Generic.List[string]'
+  for ($Index = $Transaction.Count - 1; $Index -ge 0; $Index -= 1) {
+    $State = $Transaction[$Index]
+    if (-not $State.Committed) {
+      continue
+    }
+
+    try {
+      if ($State.OriginalExists) {
+        if (-not (Test-Path -LiteralPath $State.Backup)) {
+          throw 'The auth sync rollback backup is missing.'
+        }
+        if (Test-Path -LiteralPath $State.Destination) {
+          $State.RollbackDiscard = New-OwnedSiblingFile `
+            -Directory ([IO.Path]::GetDirectoryName($State.Destination)) `
+            -DestinationLeaf ([IO.Path]::GetFileName($State.Destination)) `
+            -TransactionId $TransactionId `
+            -CopyIndex ($Index + 1) `
+            -Kind rollback
+          [IO.File]::Replace(
+            $State.Backup,
+            $State.Destination,
+            $State.RollbackDiscard,
+            $true
+          )
+        } else {
+          [IO.File]::Move($State.Backup, $State.Destination)
+        }
+      } elseif (Test-Path -LiteralPath $State.Destination) {
+        [IO.File]::Delete($State.Destination)
+      }
+      $State.Committed = $false
+    } catch {
+      $RollbackErrors.Add(
+        "$($State.Destination): $($_.Exception.Message)"
+      )
+    }
+  }
+
+  foreach ($State in $Transaction) {
+    Remove-OwnedFile -Path $State.Stage -Errors $RollbackErrors
+    if (-not $State.Committed) {
+      Remove-OwnedFile -Path $State.Backup -Errors $RollbackErrors
+    }
+    Remove-OwnedFile -Path $State.RollbackDiscard -Errors $RollbackErrors
+  }
+  foreach ($Directory in @(
+    $CreatedDirectories |
+      Sort-Object { $_.Length } -Descending |
+      Select-Object -Unique
+  )) {
+    try {
+      if (Test-Path -LiteralPath $Directory) {
+        [IO.Directory]::Delete($Directory, $false)
+      }
+    } catch {
+      $RollbackErrors.Add("$Directory`: $($_.Exception.Message)")
+    }
+  }
+
+  if ($RollbackErrors.Count -gt 0) {
+    Write-Warning (
+      'Auth sync rollback cleanup encountered errors: ' +
+      ($RollbackErrors -join '; ')
+    )
+  }
+  throw $CommitFailure
+}
+
+$CleanupErrors = New-Object 'System.Collections.Generic.List[string]'
+foreach ($State in $Transaction) {
+  Remove-OwnedFile -Path $State.Stage -Errors $CleanupErrors
+  Remove-OwnedFile -Path $State.Backup -Errors $CleanupErrors
+  Remove-OwnedFile -Path $State.RollbackDiscard -Errors $CleanupErrors
+}
+if ($CleanupErrors.Count -gt 0) {
+  throw (
+    'Auth sync committed but transaction cleanup failed: ' +
+    ($CleanupErrors -join '; ')
+  )
 }
 
 Write-Output "STATUS=PASS MODULES=$($SelectedModules -join ',') COPIED=$Copied"

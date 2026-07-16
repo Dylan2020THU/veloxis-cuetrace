@@ -156,7 +156,8 @@ function createSyncFixture(label, policy, options) {
   return fixtureRoot;
 }
 
-function runFixtureSync(fixtureRoot) {
+function runFixtureSync(fixtureRoot, options) {
+  const settings = options || {};
   return childProcess.spawnSync(
     'powershell.exe',
     [
@@ -172,6 +173,10 @@ function runFixtureSync(fixtureRoot) {
     {
       cwd: fixtureRoot,
       encoding: 'utf8',
+      env: {
+        ...process.env,
+        ...(settings.env || {})
+      },
       windowsHide: true,
       maxBuffer: 4 * 1024 * 1024
     }
@@ -198,6 +203,80 @@ function minimalSyncPolicy(
       }]
     }]
   };
+}
+
+function workingTreeFileSnapshot(fixtureRoot) {
+  const files = [];
+  function visit(directory) {
+    for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (directory === fixtureRoot && item.name === '.git') continue;
+      const absolutePath = path.join(directory, item.name);
+      if (item.isDirectory()) {
+        visit(absolutePath);
+        continue;
+      }
+      const relativePath = path
+        .relative(fixtureRoot, absolutePath)
+        .split(path.sep)
+        .join('/');
+      const bytes = fs.readFileSync(absolutePath);
+      files.push(`${relativePath}\0${bytes.length}\0${sha256(bytes)}`);
+    }
+  }
+  visit(fixtureRoot);
+  return files.sort();
+}
+
+function assertAtomicSyncRollback() {
+  const source = 'cloudfunctions/_shared/auth/protocol-guard.js';
+  const destinations = [
+    'cloudfunctions/fixtureOne/lib/auth/protocol-guard.js',
+    'cloudfunctions/fixtureTwo/lib/auth/protocol-guard.js',
+    'cloudfunctions/fixtureThree/lib/auth/protocol-guard.js'
+  ];
+  const policy = {
+    schemaVersion: 1,
+    modules: {
+      'protocol-guard': {
+        source,
+        availableFromTask: 2
+      }
+    },
+    entries: destinations.map((destination, index) => ({
+      name: `fixture${index + 1}`,
+      copies: [{
+        module: 'protocol-guard',
+        destination
+      }]
+    }))
+  };
+  const fixtureRoot = createSyncFixture('atomic-rollback', policy);
+  writeFixtureFile(fixtureRoot, destinations[0], 'original-one\n');
+  fs.mkdirSync(path.dirname(path.join(fixtureRoot, destinations[1])), {
+    recursive: true
+  });
+  writeFixtureFile(fixtureRoot, destinations[2], 'original-three\n');
+
+  const before = workingTreeFileSnapshot(fixtureRoot);
+  const failed = runFixtureSync(fixtureRoot, {
+    env: {
+      AUTH_SYNC_TEST_FAIL_BEFORE_REPLACE_INDEX: '3'
+    }
+  });
+  assert.notStrictEqual(
+    failed.status,
+    0,
+    'an injected later replacement failure must fail the sync'
+  );
+  assert.match(
+    `${failed.stderr}${failed.stdout}`,
+    /injected auth sync commit failure/i
+  );
+  assert.deepStrictEqual(
+    workingTreeFileSnapshot(fixtureRoot),
+    before,
+    'a failed sync must restore every target byte and leave no transaction files'
+  );
 }
 
 function assertDynamicSyncSafety() {
@@ -589,6 +668,7 @@ async function main() {
   assert.deepStrictEqual(pathSnapshot(keyringDestinations), beforeMissingSource);
   assert.deepStrictEqual(cachedIndexSnapshot(), beforeMissingSourceIndex);
   assertDynamicSyncSafety();
+  assertAtomicSyncRollback();
 
   const canonicalPath = policy.modules['protocol-guard'].source;
   const canonicalAbsolute = path.join(root, canonicalPath);
