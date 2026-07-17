@@ -75,12 +75,13 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
-function discoverProtocolCopies() {
+function discoverAuthCopies(moduleName) {
   const copies = [];
   const cloudfunctions = path.join(root, 'cloudfunctions');
   for (const item of fs.readdirSync(cloudfunctions, { withFileTypes: true })) {
     if (!item.isDirectory() || item.isSymbolicLink()) continue;
-    const relativePath = `cloudfunctions/${item.name}/lib/auth/protocol-guard.js`;
+    const relativePath =
+      `cloudfunctions/${item.name}/lib/auth/${moduleName}.js`;
     if (fs.existsSync(path.join(root, relativePath))) copies.push(relativePath);
   }
   return copies.sort();
@@ -637,36 +638,21 @@ async function main() {
     beforeUnknownDestinations
   );
 
-  const keyringDestinations = policy.entries.flatMap((entry) => (
-    entry.copies
-      .filter((copy) => copy.module === 'keyring')
-      .map((copy) => copy.destination)
-  ));
-  const beforeMissingSource = pathSnapshot(keyringDestinations);
-  const beforeMissingSourceIndex = cachedIndexSnapshot();
-  const missingSource = childProcess.spawnSync(
-    'powershell.exe',
-    [
-      '-NoProfile',
-      '-NonInteractive',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
-      syncScriptPath,
-      '-Modules',
-      'keyring'
-    ],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      windowsHide: true,
-      maxBuffer: 4 * 1024 * 1024
-    }
+  const missingSourceRoot = createSyncFixture(
+    'missing-source',
+    minimalSyncPolicy(
+      'cloudfunctions/fixtureEntry/lib/auth/protocol-guard.js'
+    ),
+    { writeSource: false }
   );
+  const beforeMissingSource = workingTreeFileSnapshot(missingSourceRoot);
+  const missingSource = runFixtureSync(missingSourceRoot);
   assert.notStrictEqual(missingSource.status, 0, 'missing known module sources must fail');
   assert.match(`${missingSource.stderr}${missingSource.stdout}`, /missing auth library path/i);
-  assert.deepStrictEqual(pathSnapshot(keyringDestinations), beforeMissingSource);
-  assert.deepStrictEqual(cachedIndexSnapshot(), beforeMissingSourceIndex);
+  assert.deepStrictEqual(
+    workingTreeFileSnapshot(missingSourceRoot),
+    beforeMissingSource
+  );
   assertDynamicSyncSafety();
   assertAtomicSyncRollback();
 
@@ -685,7 +671,7 @@ async function main() {
       return copies[0].destination;
     })
     .sort();
-  assert.deepStrictEqual(discoverProtocolCopies(), expectedCopies);
+  assert.deepStrictEqual(discoverAuthCopies('protocol-guard'), expectedCopies);
 
   for (const entry of policy.entries) {
     if (entry.protocolGuard === 'none') {
@@ -700,8 +686,43 @@ async function main() {
     }
   }
 
+  const task3CopyCounts = {
+    keyring: 76,
+    identifiers: 2,
+    password: 1,
+    session: 76
+  };
+  for (const [moduleName, expectedCount] of Object.entries(task3CopyCounts)) {
+    const definition = policy.modules[moduleName];
+    assert(definition, `policy must define ${moduleName}`);
+    const canonicalModulePath = path.join(root, definition.source);
+    assert(fs.existsSync(canonicalModulePath), `missing ${definition.source}`);
+    const canonicalModuleBytes = fs.readFileSync(canonicalModulePath);
+    const destinations = policy.entries.flatMap((entry) => (
+      entry.copies
+        .filter((copy) => copy.module === moduleName)
+        .map((copy) => copy.destination)
+    )).sort();
+    assert.strictEqual(destinations.length, expectedCount);
+    assert.deepStrictEqual(discoverAuthCopies(moduleName), destinations);
+    for (const destination of destinations) {
+      const absoluteDestination = path.join(root, destination);
+      assert(fs.existsSync(absoluteDestination), `missing ${destination}`);
+      assert(
+        !fs.lstatSync(absoluteDestination).isSymbolicLink(),
+        `${destination} is a symlink`
+      );
+      assert(
+        fs.readFileSync(absoluteDestination).equals(canonicalModuleBytes),
+        `${destination} differs from ${definition.source}`
+      );
+    }
+  }
+
   console.log(
-    `AUTH_SHARED_PARITY_OK guarded=${protocolEntries.length} copies=${expectedCopies.length}`
+    `AUTH_SHARED_PARITY_OK guarded=${protocolEntries.length}`
+    + ` copies=${expectedCopies.length}`
+    + ' task3=keyring:76,identifiers:2,password:1,session:76'
   );
 }
 
