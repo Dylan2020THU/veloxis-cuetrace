@@ -189,6 +189,33 @@ function issued(sessionToken, overrides) {
   }, overrides || {});
 }
 
+function securityStatus(overrides) {
+  return Object.assign({
+    ok: true,
+    kind: 'security_status',
+    account: 'member_a',
+    accountNameSet: true,
+    passwordSet: true,
+    phoneBound: true,
+    phoneMasked: '138****8000',
+    emailBound: true,
+    emailMasked: 'm***@example.com',
+    wechatBound: true,
+    roles: ['member'],
+    currentRole: 'member',
+    reauthMethods: ['password', 'phone', 'email', 'wechat'],
+    currentSession: {
+      authenticatedAt: 1784253000000,
+      authenticationMethod: 'password',
+      createdAt: 1784250000000,
+      lastSeenAt: 1784253600000,
+      idleExpiresAt: 1786845600000,
+      absoluteExpiresAt: 1792026000000
+    },
+    otherSessionCount: 0
+  }, overrides || {});
+}
+
 function installSession(fixture, sessionToken, overrides) {
   const attempt = fixture.authSession.beginAuthAttempt('fixture');
   assert.strictEqual(
@@ -1029,8 +1056,20 @@ async function testTypedWrapperBoundaries() {
 
 async function testStrictPurposeRouting() {
   const fixture = loadDataFixture({
-    cloudResponder() {
-      return Promise.resolve({ result: { ok: true, accepted: true } });
+    cloudResponder(request) {
+      if (request.name === 'sendSmsCode') {
+        return Promise.resolve({
+          result: {
+            ok: true,
+            challengeId: 'purpose-routing-challenge',
+            expiresIn: 300,
+            resendAfter: 60
+          }
+        });
+      }
+      return Promise.resolve({
+        result: { ok: true, accepted: true, msg: 'sent' }
+      });
     }
   });
   installSession(fixture, token(6));
@@ -1534,14 +1573,11 @@ async function testCentralSessionErrors() {
     cloudResponder(request) {
       if (request.name === 'accountAuth' && request.data.action === 'status') {
         return Promise.resolve({
-          result: {
-            ok: true,
-            kind: 'security_status',
-            account: 'role-account',
-            accountDisplay: 'Role Account',
+          result: securityStatus({
+            account: 'role_account',
             roles: ['member', 'coach'],
             currentRole: 'member'
-          }
+          })
         });
       }
       return Promise.resolve({
@@ -1569,14 +1605,11 @@ async function testCentralSessionErrors() {
     cloudResponder(request) {
       if (request.name === 'accountAuth' && request.data.action === 'status') {
         return Promise.resolve({
-          result: {
-            ok: true,
-            kind: 'security_status',
+          result: securityStatus({
             account: 'refreshed',
-            accountDisplay: 'Refreshed',
             roles: ['member'],
             currentRole: 'member'
-          }
+          })
         });
       }
       return Promise.resolve({

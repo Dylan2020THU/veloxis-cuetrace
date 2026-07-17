@@ -1,0 +1,10 @@
+<view class="page theme-{{theme}}">
+  <view class="card">
+    <view class="title">{{titleText}}</view>
+    <input password maxlength="64" value="{{password}}" placeholder="请输入 6-64 个字符" bindinput="onPasswordInput" />
+    <input password maxlength="64" value="{{confirmPassword}}" placeholder="请再次输入密码" bindinput="onConfirmInput" />
+    <text class="hint">{{passwordSet ? '修改密码后，其他设备将退出登录' : '设置后可使用账号名或手机号配合密码登录'}}</text>
+    <button disabled="{{!statusReady || submitting}}" bindtap="submit">{{submitting ? '提交中' : '确认'}}</button>
+  </view>
+  <recent-auth visible="{{recentAuthVisible}}" methods="{{recentAuthMethods}}" bind:authenticated="onRecentAuthenticated" bind:cancel="onRecentCancel" />
+</view>

@@ -1,0 +1,81 @@
+.auth-mask {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.auth-panel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 36rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
+  border-radius: 28rpx 28rpx 0 0;
+  background: var(--card-bg, #fff);
+}
+
+.auth-title {
+  margin-bottom: 24rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--text, #222);
+}
+
+.method-tabs,
+.actions,
+.code-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.method-tab {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  font-size: 26rpx;
+}
+
+.method-tab.active {
+  color: #067ef9;
+  border-color: #067ef9;
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 88rpx;
+  margin-top: 20rpx;
+  padding: 0 24rpx;
+  border: 1rpx solid var(--border, #ddd);
+  border-radius: 12rpx;
+}
+
+.code-row input {
+  flex: 1;
+}
+
+.code-row button {
+  flex-shrink: 0;
+  margin-top: 20rpx;
+  font-size: 26rpx;
+}
+
+.hint {
+  margin-top: 20rpx;
+  color: var(--text-weak, #777);
+  font-size: 26rpx;
+}
+
+.actions {
+  margin-top: 32rpx;
+}
+
+.actions button {
+  flex: 1;
+}
+
+.confirm {
+  color: #fff;
+  background: #067ef9;
+}

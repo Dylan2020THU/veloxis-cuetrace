@@ -1,0 +1,72 @@
+<view class="page theme-{{theme}}">
+  <view class="security-card">
+    <view class="security-row" bindtap="onAccountName">
+      <text class="row-title">账号</text>
+      <view class="row-right">
+        <text class="row-value">{{accountText}}</text>
+        <text wx:if="{{!accountNameSet}}" class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onPassword">
+      <text class="row-title">登录密码</text>
+      <view class="row-right">
+        <text class="row-value">{{passwordText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="goMyQrcode">
+      <text class="row-title">我的二维码</text>
+      <view class="row-right">
+        <text class="row-value">{{qrText}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onPhone">
+      <text class="row-title">手机号</text>
+      <view class="row-right">
+        <text class="row-value">{{phoneText}}</text>
+        <text wx:if="{{!phoneBound}}" class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onEmail">
+      <text class="row-title">邮箱</text>
+      <view class="row-right">
+        <text class="row-value">{{emailText}}</text>
+        <text wx:if="{{!emailBound}}" class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="security-row" bindtap="onWechat">
+      <text class="row-title">微信账号</text>
+      <view class="row-right">
+        <text class="row-value">{{wechatText}}</text>
+        <text wx:if="{{!wechatBound}}" class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="security-card session-card">
+    <view class="session-title">登录设备</view>
+    <view class="session-summary">
+      <text>{{currentSessionText}}</text>
+      <text>{{otherSessionText}}</text>
+    </view>
+    <button
+      wx:if="{{otherSessionCount > 0}}"
+      class="logout-others"
+      disabled="{{actionPending}}"
+      bindtap="onLogoutOtherSessions"
+    >退出其他设备</button>
+  </view>
+
+  <recent-auth
+    visible="{{recentAuthVisible}}"
+    methods="{{recentAuthMethods}}"
+    bind:authenticated="onRecentAuthenticated"
+    bind:cancel="onRecentCancel"
+  />
+</view>

@@ -234,9 +234,7 @@ function refreshSessionStatus(expectedToken) {
   }
   return callCloudTransport('accountAuth', envelope).then(
     (result) => (
-      result
-      && result.ok === true
-      && result.kind === 'security_status'
+      validSecurityStatus(result)
         ? authSession.applySessionProjection(expectedToken, result)
         : false
     ),
@@ -244,7 +242,7 @@ function refreshSessionStatus(expectedToken) {
   );
 }
 
-function handleServerFailure(boundary, expectedToken, result) {
+function handleServerFailure(boundary, expectedToken, result, strictSession = false) {
   const code = resultCode(result);
   if (code === 'CLIENT_UPDATE_REQUIRED') {
     showUpdateRequired();
@@ -256,8 +254,17 @@ function handleServerFailure(boundary, expectedToken, result) {
   }
   if (boundary !== 'session') return Promise.reject(fixedError(code));
   if (['SESSION_REQUIRED', 'SESSION_EXPIRED', 'ACCOUNT_DISABLED'].indexOf(code) !== -1) {
-    if (authSession.clearSessionIfCurrent(expectedToken)) {
+    const cleared = authSession.clearSessionIfCurrent(expectedToken);
+    if (cleared) {
       reLaunch('/pages/login/index');
+      const error = fixedError(code);
+      if (strictSession) error._task9SessionCleared = true;
+      return Promise.reject(error);
+    }
+    if (strictSession) {
+      return Promise.reject(fixedError(
+        sessionTokenIsCurrent(expectedToken) ? 'AUTH_INTERNAL_ERROR' : 'AUTH_ATTEMPT_STALE'
+      ));
     }
     return Promise.reject(fixedError(code));
   }
@@ -280,17 +287,24 @@ function handleServerFailure(boundary, expectedToken, result) {
 }
 
 function applySessionResult(expectedToken, result) {
-  if (!isPlainObject(result)) return;
+  if (!isPlainObject(result)) return false;
   if (result.kind === 'session_rotated') {
-    authSession.commitSessionRotation(expectedToken, result);
+    return authSession.commitSessionRotation(expectedToken, result);
   } else if (result.kind === 'session_revoked') {
-    authSession.clearSessionIfCurrent(expectedToken);
-  } else {
-    authSession.applySessionProjection(expectedToken, result);
+    return authSession.clearSessionIfCurrent(expectedToken);
   }
+  return authSession.applySessionProjection(expectedToken, result);
 }
 
-function callBoundary(boundary, name, payload, controlledAction, allowBeforeProbe = false) {
+function callBoundary(
+  boundary,
+  name,
+  payload,
+  controlledAction,
+  allowBeforeProbe = false,
+  resultValidator,
+  strictSession = false
+) {
   const clean = validCallerPayload(payload);
   if (!clean || typeof name !== 'string' || name.length === 0) {
     return Promise.reject(fixedError('INVALID_INPUT'));
@@ -317,6 +331,13 @@ function callBoundary(boundary, name, payload, controlledAction, allowBeforeProb
     return Promise.reject(sanitizedThrownError(error));
   }
   return callCloudTransport(name, envelope).then((result) => {
+    if (
+      boundary === 'session'
+      && strictSession
+      && !sessionTokenIsCurrent(expectedToken)
+    ) {
+      throw fixedError('AUTH_ATTEMPT_STALE');
+    }
     if (!isPlainObject(result)) {
       throw fixedError('AUTH_INTERNAL_ERROR');
     }
@@ -326,11 +347,19 @@ function callBoundary(boundary, name, payload, controlledAction, allowBeforeProb
         && controlledAction === 'loginWechat'
       ) ? wechatNotBoundResult(result) : null;
       if (unbound) return unbound;
-      return handleServerFailure(boundary, expectedToken, result);
+      return handleServerFailure(boundary, expectedToken, result, strictSession);
+    }
+    if (typeof resultValidator === 'function' && resultValidator(result) !== true) {
+      throw fixedError('AUTH_INTERNAL_ERROR');
     }
     if (boundary === 'session') {
       if (result.ok !== true) throw fixedError('AUTH_INTERNAL_ERROR');
-      applySessionResult(expectedToken, result);
+      const applied = applySessionResult(expectedToken, result);
+      if (strictSession && applied !== true) {
+        throw fixedError(
+          sessionTokenIsCurrent(expectedToken) ? 'AUTH_INTERNAL_ERROR' : 'AUTH_ATTEMPT_STALE'
+        );
+      }
     }
     return result;
   });
@@ -366,10 +395,226 @@ function callCheckedCloud(name, input) {
   return callCloud(name, input || {});
 }
 
-function accountAction(boundary, action, input, fields) {
+function accountAction(boundary, action, input, fields, resultValidator, strictSession = false) {
   const payload = exactPayload(input, fields);
   if (!payload) return Promise.reject(fixedError('INVALID_INPUT'));
-  return callBoundary(boundary, 'accountAuth', payload, action);
+  return callBoundary(
+    boundary, 'accountAuth', payload, action, false, resultValidator, strictSession
+  );
+}
+
+function hasExactKeys(value, keys) {
+  if (!isPlainObject(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = keys.slice().sort();
+  return actual.length === expected.length
+    && actual.every((key, index) => key === expected[index]);
+}
+
+function validSmsCodeSend(result) {
+  return hasExactKeys(result, ['ok', 'challengeId', 'expiresIn', 'resendAfter'])
+    && result.ok === true
+    && typeof result.challengeId === 'string'
+    && result.challengeId.length > 0
+    && Number.isSafeInteger(result.expiresIn)
+    && result.expiresIn > 0
+    && Number.isSafeInteger(result.resendAfter)
+    && result.resendAfter >= 0;
+}
+
+function validEmailCodeSend(result) {
+  return hasExactKeys(result, ['ok', 'accepted', 'msg'])
+    && result.ok === true
+    && result.accepted === true
+    && typeof result.msg === 'string';
+}
+
+function validEpoch(value) {
+  return Number.isSafeInteger(value)
+    && value > 0
+    && Number.isFinite(new Date(value).getTime());
+}
+
+function validSecurityStatus(result) {
+  const statusKeys = [
+    'ok',
+    'kind',
+    'account',
+    'accountNameSet',
+    'passwordSet',
+    'phoneBound',
+    'phoneMasked',
+    'emailBound',
+    'emailMasked',
+    'wechatBound',
+    'roles',
+    'currentRole',
+    'reauthMethods',
+    'currentSession',
+    'otherSessionCount'
+  ];
+  if (!hasExactKeys(result, statusKeys) || result.ok !== true || result.kind !== 'security_status') {
+    return false;
+  }
+  const booleanFields = [
+    'accountNameSet',
+    'passwordSet',
+    'phoneBound',
+    'emailBound',
+    'wechatBound'
+  ];
+  if (booleanFields.some((field) => typeof result[field] !== 'boolean')) return false;
+  if (typeof result.account !== 'string') return false;
+  if (result.accountNameSet) {
+    if (!/^[A-Za-z][A-Za-z0-9_]{3,19}$/.test(result.account)) return false;
+  } else if (result.account !== '') {
+    return false;
+  }
+  if (typeof result.phoneMasked !== 'string' || typeof result.emailMasked !== 'string') return false;
+  if (result.phoneBound) {
+    if (!/^\d{3}\*+\d{4}$/.test(result.phoneMasked)) return false;
+  } else if (result.phoneMasked !== '') {
+    return false;
+  }
+  if (result.emailBound) {
+    if (!result.emailMasked.includes('*') || !/^[^\s@]+@[^\s@]+$/.test(result.emailMasked)) return false;
+  } else if (result.emailMasked !== '') {
+    return false;
+  }
+  if (
+    !Array.isArray(result.roles)
+    || result.roles.length === 0
+    || result.roles.length > VALID_ROLES.length
+    || new Set(result.roles).size !== result.roles.length
+    || result.roles.some((role) => VALID_ROLES.indexOf(role) === -1)
+    || VALID_ROLES.indexOf(result.currentRole) === -1
+    || result.roles.indexOf(result.currentRole) === -1
+  ) return false;
+  const expectedMethods = [];
+  if (result.passwordSet) expectedMethods.push('password');
+  if (result.phoneBound) expectedMethods.push('phone');
+  if (result.emailBound) expectedMethods.push('email');
+  if (result.wechatBound) expectedMethods.push('wechat');
+  if (
+    !Array.isArray(result.reauthMethods)
+    || result.reauthMethods.length !== expectedMethods.length
+    || result.reauthMethods.some((method, index) => method !== expectedMethods[index])
+  ) return false;
+  if (!Number.isSafeInteger(result.otherSessionCount) || result.otherSessionCount < 0) return false;
+  const sessionKeys = [
+    'authenticatedAt',
+    'authenticationMethod',
+    'createdAt',
+    'lastSeenAt',
+    'idleExpiresAt',
+    'absoluteExpiresAt'
+  ];
+  const currentSession = result.currentSession;
+  if (!hasExactKeys(currentSession, sessionKeys)) return false;
+  if (
+    ['authenticatedAt', 'createdAt', 'lastSeenAt', 'idleExpiresAt', 'absoluteExpiresAt']
+      .some((field) => !validEpoch(currentSession[field]))
+  ) return false;
+  if (
+    typeof currentSession.authenticationMethod !== 'string'
+    || !/^[a-z][a-z_]{1,31}$/.test(currentSession.authenticationMethod)
+  ) return false;
+  if (
+    currentSession.createdAt > currentSession.authenticatedAt
+    || currentSession.createdAt > currentSession.lastSeenAt
+    || currentSession.lastSeenAt >= currentSession.idleExpiresAt
+    || currentSession.authenticatedAt >= currentSession.idleExpiresAt
+    || currentSession.authenticatedAt >= currentSession.absoluteExpiresAt
+    || currentSession.lastSeenAt >= currentSession.absoluteExpiresAt
+    || currentSession.createdAt >= currentSession.absoluteExpiresAt
+  ) return false;
+  return true;
+}
+
+function resultHasKind(kind) {
+  return (result) => !!(result && result.ok === true && result.kind === kind);
+}
+
+function currentSessionToken() {
+  const current = authSession.getSession();
+  return current && typeof current.sessionToken === 'string' ? current.sessionToken : '';
+}
+
+function ensureNonRotatingResult(expectedToken, result) {
+  if (expectedToken && currentSessionToken() === expectedToken) return result;
+  throw fixedError('AUTH_ATTEMPT_STALE');
+}
+
+function ensureRotatedResult(expectedToken, result) {
+  const currentToken = currentSessionToken();
+  if (
+    result
+    && typeof result.sessionToken === 'string'
+    && result.sessionToken
+    && result.sessionToken !== expectedToken
+    && currentToken === result.sessionToken
+  ) return result;
+  if (currentToken === expectedToken) throw fixedError('AUTH_INTERNAL_ERROR');
+  throw fixedError('AUTH_ATTEMPT_STALE');
+}
+
+function ensureRevokedResult(expectedToken, result) {
+  const currentToken = currentSessionToken();
+  if (!currentToken) return result;
+  if (currentToken === expectedToken) throw fixedError('AUTH_INTERNAL_ERROR');
+  throw fixedError('AUTH_ATTEMPT_STALE');
+}
+
+function guardTask9Failure(expectedToken, error) {
+  if (error && error._task9SessionCleared === true) throw fixedError(error.code);
+  if (expectedToken && !sessionTokenIsCurrent(expectedToken)) {
+    throw fixedError('AUTH_ATTEMPT_STALE');
+  }
+  throw error;
+}
+
+function task9NonRotatingCloud(name, payload, validator) {
+  const expectedToken = currentSessionToken();
+  return callBoundary('session', name, payload, undefined, false, validator, true)
+    .then((result) => ensureNonRotatingResult(expectedToken, result))
+    .catch((error) => guardTask9Failure(expectedToken, error));
+}
+
+function task9NonRotatingAction(action, input, fields, kind, validator) {
+  const expectedToken = currentSessionToken();
+  return accountAction(
+    'session', action, input, fields,
+    validator || resultHasKind(kind), true
+  )
+    .then((result) => ensureNonRotatingResult(expectedToken, result))
+    .catch((error) => guardTask9Failure(expectedToken, error));
+}
+
+function task9RotatingAction(action, input, fields) {
+  const expectedToken = currentSessionToken();
+  return accountAction(
+    'session', action, input, fields,
+    (result) => !!(
+      result
+      && result.ok === true
+      && result.kind === 'session_rotated'
+      && typeof result.sessionToken === 'string'
+      && result.sessionToken
+      && result.sessionToken !== expectedToken
+    ),
+    true
+  )
+    .then((result) => ensureRotatedResult(expectedToken, result))
+    .catch((error) => guardTask9Failure(expectedToken, error));
+}
+
+function task9RevokingAction(action) {
+  const expectedToken = currentSessionToken();
+  return accountAction(
+    'session', action, {}, [], resultHasKind('session_revoked'), true
+  )
+    .then((result) => ensureRevokedResult(expectedToken, result))
+    .catch((error) => guardTask9Failure(expectedToken, error));
 }
 
 function sessionIssuingAction(action, input, fields, attempt) {
@@ -444,7 +689,52 @@ function completeWechatEntry(input, attempt) {
 }
 
 function getAccountSecurity() {
-  return accountAction('session', 'status', {}, []);
+  return task9NonRotatingAction('status', {}, [], 'security_status', validSecurityStatus);
+}
+
+function reauthenticate(input) {
+  if (!isPlainObject(input)) return Promise.reject(fixedError('INVALID_INPUT'));
+  if (input.method === 'password') {
+    return task9NonRotatingAction('reauthenticate', input, ['method', 'password'], 'reauthenticated');
+  }
+  if (input.method === 'phone') {
+    return task9NonRotatingAction(
+      'reauthenticate', input, ['method', 'phone', 'challengeId', 'code'], 'reauthenticated'
+    );
+  }
+  if (input.method === 'email') {
+    return task9NonRotatingAction('reauthenticate', input, ['method', 'code'], 'reauthenticated');
+  }
+  if (input.method === 'wechat') {
+    return task9NonRotatingAction('reauthenticate', input, ['method'], 'reauthenticated');
+  }
+  return Promise.reject(fixedError('INVALID_INPUT'));
+}
+
+function setAccountName(input) {
+  return task9NonRotatingAction('setAccountName', input, ['accountName'], 'security_mutation');
+}
+
+function setPassword(input) {
+  return task9RotatingAction('setPassword', input, ['password']);
+}
+
+function bindPhone(input) {
+  return task9NonRotatingAction(
+    'bindPhone', input, ['phone', 'challengeId', 'code'], 'security_mutation'
+  );
+}
+
+function bindWechat() {
+  return task9NonRotatingAction('bindWechat', {}, [], 'security_mutation');
+}
+
+function logoutCurrentSession() {
+  return task9RevokingAction('logoutCurrent');
+}
+
+function logoutOtherSessions() {
+  return task9RotatingAction('logoutOthers', {}, []);
 }
 
 function localAuthSessionToken() {
@@ -477,7 +767,7 @@ function resetPasswordByEmail(input) {
 }
 
 function bindEmail(input) {
-  return accountAction('session', 'bindEmail', input, ['email', 'code']);
+  return task9NonRotatingAction('bindEmail', input, ['email', 'code'], 'security_mutation');
 }
 
 function sendEmailCode(input) {
@@ -488,11 +778,13 @@ function sendEmailCode(input) {
   }
   if (input.purpose === 'bind') {
     const payload = exactPayload(input, ['purpose', 'email']);
-    return payload ? callSessionCloud('sendEmailCode', payload) : Promise.reject(fixedError('INVALID_INPUT'));
+    if (!payload) return Promise.reject(fixedError('INVALID_INPUT'));
+    return task9NonRotatingCloud('sendEmailCode', payload, validEmailCodeSend);
   }
   if (input.purpose === 'reauth') {
     const payload = exactPayload(input, ['purpose']);
-    return payload ? callSessionCloud('sendEmailCode', payload) : Promise.reject(fixedError('INVALID_INPUT'));
+    if (!payload) return Promise.reject(fixedError('INVALID_INPUT'));
+    return task9NonRotatingCloud('sendEmailCode', payload, validEmailCodeSend);
   }
   return Promise.reject(fixedError('INVALID_INPUT'));
 }
@@ -665,7 +957,7 @@ function sendSmsCode(input) {
     return callAnonymousAuth('sendSmsCode', payload);
   }
   if (payload.purpose === 'bind_phone' || payload.purpose === 'reauth') {
-    return callSessionCloud('sendSmsCode', payload);
+    return task9NonRotatingCloud('sendSmsCode', payload, validSmsCodeSend);
   }
   return Promise.reject(fixedError('INVALID_INPUT'));
 }
@@ -2931,6 +3223,13 @@ module.exports = {
   verifyWechatEntryPhone,
   completeWechatEntry,
   getAccountSecurity,
+  reauthenticate,
+  setAccountName,
+  setPassword,
+  bindPhone,
+  bindWechat,
+  logoutCurrentSession,
+  logoutOtherSessions,
   resetPasswordByWechat,
   resetPasswordByEmail,
   bindEmail,

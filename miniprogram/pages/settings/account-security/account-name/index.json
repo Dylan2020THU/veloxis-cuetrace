@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "设置账号名",
+  "usingComponents": {
+    "recent-auth": "/components/recent-auth/index"
+  }
+}

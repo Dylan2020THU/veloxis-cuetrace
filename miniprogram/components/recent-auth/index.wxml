@@ -1,0 +1,39 @@
+<view wx:if="{{visible}}" class="auth-mask">
+  <view class="auth-panel">
+    <view class="auth-title">验证当前账号</view>
+    <view class="method-tabs">
+      <button
+        wx:for="{{availableMethods}}"
+        wx:key="*this"
+        class="method-tab {{selectedMethod === item ? 'active' : ''}}"
+        data-method="{{item}}"
+        bindtap="onMethodSelect"
+      >{{item === 'password' ? '密码' : item === 'phone' ? '手机号' : item === 'email' ? '邮箱' : '微信'}}</button>
+    </view>
+
+    <input wx:if="{{selectedMethod === 'password'}}" password value="{{password}}" placeholder="当前密码" bindinput="onPasswordInput" />
+
+    <block wx:if="{{selectedMethod === 'phone'}}">
+      <input type="number" maxlength="11" value="{{phone}}" placeholder="完整手机号" bindinput="onPhoneInput" />
+      <view class="code-row">
+        <input type="number" maxlength="6" value="{{code}}" placeholder="验证码" bindinput="onCodeInput" />
+        <button disabled="{{sendingSms || counting}}" bindtap="sendPhoneCode">{{counting ? countdown + 's' : sendingSms ? '发送中' : '获取验证码'}}</button>
+      </view>
+    </block>
+
+    <block wx:if="{{selectedMethod === 'email'}}">
+      <view class="hint">验证码将发送至已绑定邮箱</view>
+      <view class="code-row">
+        <input type="number" maxlength="6" value="{{code}}" placeholder="验证码" bindinput="onCodeInput" />
+        <button disabled="{{sendingEmail}}" bindtap="sendBoundEmailCode">{{sendingEmail ? '发送中' : '获取验证码'}}</button>
+      </view>
+    </block>
+
+    <view wx:if="{{selectedMethod === 'wechat'}}" class="hint">将验证当前微信是否已绑定此账号</view>
+
+    <view class="actions">
+      <button class="cancel" bindtap="cancel">取消</button>
+      <button class="confirm" disabled="{{submitting}}" bindtap="submit">{{submitting ? '验证中' : '验证'}}</button>
+    </view>
+  </view>
+</view>

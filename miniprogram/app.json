@@ -1,0 +1,116 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/checkin/index",
+    "pages/training/add",
+    "pages/profile/index",
+    "pages/settings/index",
+    "pages/settings/account-security/index",
+    "pages/settings/account-security/account-name/index",
+    "pages/settings/account-security/password/index",
+    "pages/settings/account-security/phone-binding/index",
+    "pages/settings/email-binding/index",
+    "pages/coach/apply/index",
+    "pages/coach/profile/index",
+    "pages/coach/members/index",
+    "pages/coach/member/index",
+    "pages/coach/bookings/index",
+    "pages/shop/dashboard/index",
+    "pages/shop/brand-add/index",
+    "pages/shop/coaches/index",
+    "pages/shop/coach-students/index",
+    "pages/shop/members/index",
+    "pages/community/index",
+    "pages/community/detail",
+    "pages/community/post",
+    "pages/match/index",
+    "pages/match/detail/index",
+    "pages/match/post",
+    "pages/match/mine",
+    "pages/match/map/index",
+    "pages/table/checkin/index",
+    "pages/table-checkout/index",
+    "pages/shop/hall-status/index",
+    "pages/shop/checkin-qr/index",
+    "pages/shop/table-types/index",
+    "pages/shop/coach-settlement/index",
+    "pages/shop/biz-data/index",
+    "pages/shop/profile/index",
+    "pages/shop/profile/edit/index",
+    "pages/shop/apply/index",
+    "pages/shop/admin/review/index",
+    "pages/admin/stores/index",
+    "pages/admin/coaches/index",
+    "pages/admin/members/index",
+    "pages/admin/profile/index",
+    "pages/player/profile/index",
+    "pages/player/profile/edit/index",
+    "pages/profile/qrcode/index",
+    "pages/legal/index"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#067EF9",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "强化杆迹",
+    "backgroundColor": "#F4F6F8",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#9aa0a6",
+    "selectedColor": "#067EF9",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/checkin/index",
+        "text": "杆迹"
+      },
+      {
+        "pagePath": "pages/community/index",
+        "text": "社区"
+      },
+      {
+        "pagePath": "pages/match/index",
+        "text": "约球"
+      },
+      {
+        "pagePath": "pages/training/add",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/coach/members/index",
+        "text": "我的学员"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      },
+      {
+        "pagePath": "pages/shop/hall-status/index",
+        "text": "球厅"
+      },
+      {
+        "pagePath": "pages/shop/coaches/index",
+        "text": "教练"
+      },
+      {
+        "pagePath": "pages/shop/members/index",
+        "text": "会员"
+      },
+      {
+        "pagePath": "pages/shop/table-types/index",
+        "text": "球桌"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于展示你所在地区的台球动态"
+    }
+  },
+  "requiredPrivateInfos": ["getLocation", "chooseLocation"],
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

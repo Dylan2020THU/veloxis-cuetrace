@@ -1,0 +1,16 @@
+<view class="page theme-{{theme}}">
+  <view class="card">
+    <view wx:if="{{displayOnly}}" class="display-value">
+      <text class="label">账号名</text>
+      <text>{{accountName || '已设置'}}</text>
+      <text class="hint">账号名设置后不可修改</text>
+    </view>
+    <block wx:else>
+      <text class="label">账号名</text>
+      <input value="{{accountName}}" maxlength="20" placeholder="4-20 位，字母开头" bindinput="onAccountNameInput" />
+      <text class="hint">仅可设置一次，可使用字母、数字和下划线</text>
+      <button disabled="{{!statusReady || submitting}}" bindtap="submit">{{submitting ? '提交中' : '确认设置'}}</button>
+    </block>
+  </view>
+  <recent-auth visible="{{recentAuthVisible}}" methods="{{recentAuthMethods}}" bind:authenticated="onRecentAuthenticated" bind:cancel="onRecentCancel" />
+</view>

@@ -1,0 +1,47 @@
+<view class="page theme-{{theme}}">
+  <view class="binding-card">
+    <view class="current-row">
+      <text class="row-title">当前邮箱</text>
+      <text class="current-value">{{currentEmail}}</text>
+    </view>
+
+    <block wx:if="{{statusReady === true && emailBound === false}}">
+    <view class="field-row">
+      <text class="field-label">邮箱</text>
+      <input
+        class="field-input"
+        type="text"
+        value="{{email}}"
+        placeholder="请输入邮箱"
+        bindinput="onEmailInput"
+      />
+    </view>
+
+    <view class="field-row">
+      <text class="field-label">验证码</text>
+      <input
+        class="field-input code-input"
+        type="number"
+        maxlength="6"
+        value="{{code}}"
+        placeholder="请输入验证码"
+        bindinput="onCodeInput"
+      />
+      <button
+        class="code-button"
+        disabled="{{!statusReady || emailBound || sending || counting}}"
+        bindtap="sendCode"
+      >{{sending ? '发送中' : (counting ? countdown + 's' : '发送验证码')}}</button>
+    </view>
+    </block>
+  </view>
+
+  <block wx:if="{{statusReady === true && emailBound === false}}">
+  <button
+    class="submit-button"
+    disabled="{{statusReady !== true || emailBound !== false}}"
+    bindtap="submit"
+  >绑定邮箱</button>
+  </block>
+  <text class="privacy-tip">绑定邮箱仅用于账号安全与密码找回，已绑定邮箱仅脱敏展示。</text>
+</view>
