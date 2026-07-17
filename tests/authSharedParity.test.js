@@ -358,7 +358,7 @@ function assertDynamicSyncSafety() {
   assert(!fs.existsSync(sourceDestination), 'source reparse fixture wrote a destination');
 }
 
-const clientWrapperPattern = /const protocolGuardedMain = exports\.main;\s*exports\.main = async \(event = \{\}, \.\.\.args\) => \{\s*const gate = await guardClientRequest\(\{\s*db,\s*event,\s*supportedSchemaVersions: \[1\]\s*\}\);\s*if \(!gate\.ok\) return gate;\s*let businessEvent = event;\s*if \(Object\.prototype\.hasOwnProperty\.call\(event, 'authProtocol'\)\) \{\s*businessEvent = \{ \.\.\.event \};\s*delete businessEvent\.authProtocol;\s*\}\s*return protocolGuardedMain\(businessEvent, \.\.\.args\);\s*\};\s*$/;
+const clientWrapperPattern = /const protocolGuardedMain = exports\.main;\s*exports\.main = async \(event = \{\}, \.\.\.args\) => \{\s*const gate = await guardClientRequest\(\{\s*db,\s*event,\s*supportedSchemaVersions: \[(1|2)\]\s*\}\);\s*if \(!gate\.ok\) return gate;\s*let businessEvent = event;\s*if \(\s*Object\.prototype\.hasOwnProperty\.call\(\s*event,\s*'authProtocol'\s*\)\s*\) \{\s*businessEvent = \{ \.\.\.event \};\s*delete businessEvent\.authProtocol;\s*\}\s*return protocolGuardedMain\(\s*businessEvent,\s*\.\.\.args\s*\);\s*\};\s*$/;
 
 function assertClientEntry(entry, source, canonicalBytes) {
   const relativePath = `cloudfunctions/${entry.name}/index.js`;
@@ -371,6 +371,13 @@ function assertClientEntry(entry, source, canonicalBytes) {
   assert(
     clientWrapperPattern.test(source),
     `${relativePath} must guard the exported client handler before legacy behavior`
+  );
+  const wrapper = source.match(clientWrapperPattern);
+  assert(wrapper, relativePath + ' must match the guard wrapper');
+  assert.strictEqual(
+    Number(wrapper[1]),
+    entry.name === 'sendSmsCode' ? 2 : 1,
+    relativePath + ' has the wrong supported schema version'
   );
   assert(
     /\b(?:const|let|var)\s+db\s*=/.test(source),
@@ -686,13 +693,14 @@ async function main() {
     }
   }
 
-  const task3CopyCounts = {
+  const task3And4CopyCounts = {
     keyring: 76,
     identifiers: 2,
     password: 1,
-    session: 76
+    session: 76,
+    sms: 2
   };
-  for (const [moduleName, expectedCount] of Object.entries(task3CopyCounts)) {
+  for (const [moduleName, expectedCount] of Object.entries(task3And4CopyCounts)) {
     const definition = policy.modules[moduleName];
     assert(definition, `policy must define ${moduleName}`);
     const canonicalModulePath = path.join(root, definition.source);
@@ -723,6 +731,7 @@ async function main() {
     `AUTH_SHARED_PARITY_OK guarded=${protocolEntries.length}`
     + ` copies=${expectedCopies.length}`
     + ' task3=keyring:76,identifiers:2,password:1,session:76'
+    + ' task4=sms:2'
   );
 }
 
