@@ -28,7 +28,16 @@ const ERROR_MESSAGES = Object.freeze({
   AUTH_INTERNAL_ERROR: '认证服务异常，请稍后重试',
   SMS_CODE_INVALID: '验证码无效，请重新获取',
   SMS_CODE_EXPIRED: '验证码已过期，请重新获取',
-  SMS_CODE_LOCKED: '验证码已锁定，请重新获取验证码'
+  SMS_CODE_LOCKED: '验证码已锁定，请重新获取验证码',
+  EMAIL_INVALID: '邮箱格式不正确',
+  EMAIL_NOT_BOUND: '当前账号尚未绑定邮箱',
+  EMAIL_ALREADY_BOUND: '该邮箱已绑定其他账号',
+  EMAIL_CODE_INVALID: '验证码无效，请重新获取',
+  EMAIL_CODE_EXPIRED: '验证码已过期，请重新获取',
+  EMAIL_CODE_LOCKED: '验证码已锁定，请重新获取验证码',
+  EMAIL_CODE_COOLDOWN: '请稍后重新发送',
+  EMAIL_NOT_CONFIGURED: '邮件服务尚未配置',
+  EMAIL_SEND_FAILED: '邮件发送失败，请稍后重试'
 });
 
 function failure(code, extra) {

@@ -887,6 +887,65 @@ async function testIntegrityAndExpiryFailures(issued) {
   );
 }
 
+async function testPasswordResetVersionInvalidatesEveryOldSession(
+  issued,
+  otherIssued
+) {
+  const oldSessions = [issued, otherIssued];
+  const now = new Date(CREATED_AT.getTime() + HOUR_MS);
+  const seed = validSeed(issued.sessionRecord);
+  seed.auth_sessions[otherIssued.sessionRecord._id] =
+    clone(otherIssued.sessionRecord);
+  const harness = createDatabase(seed);
+
+  for (const oldSession of oldSessions) {
+    const context = await requireSession({
+      db: harness.db,
+      event: { sessionToken: oldSession.sessionToken },
+      now,
+      keyring: issued.keyring
+    });
+    assert.strictEqual(context.accountId, ACCOUNT._id);
+  }
+
+  const versionBeforeReset = harness.get(
+    'accounts',
+    ACCOUNT._id
+  ).authVersion;
+  await harness.transaction
+    .collection('accounts')
+    .doc(ACCOUNT._id)
+    .update({ data: { authVersion: versionBeforeReset + 1 } });
+  assert.strictEqual(
+    harness.get('accounts', ACCOUNT._id).authVersion,
+    versionBeforeReset + 1
+  );
+
+  for (const oldSession of oldSessions) {
+    assertFailure(
+      await requireSession({
+        db: harness.db,
+        event: { sessionToken: oldSession.sessionToken },
+        now,
+        keyring: issued.keyring
+      }),
+      'SESSION_EXPIRED',
+      [oldSession.sessionToken]
+    );
+  }
+
+  assert.deepStrictEqual(
+    harness.calls.filter(
+      (call) => (
+        call.name === 'auth_sessions'
+        && (call.operation === 'set' || call.operation === 'update')
+      )
+    ),
+    [],
+    'authVersion invalidation must not revoke session documents one by one'
+  );
+}
+
 async function testExpiryBoundariesAndActivityThrottle(issued) {
   const idleBoundary = issued.sessionRecord.idleExpiresAt.getTime();
   const absoluteBoundary = issued.sessionRecord.absoluteExpiresAt.getTime();
@@ -1489,6 +1548,10 @@ async function main() {
   await testRequireSessionSuccessAndLiveRoles(issued);
   await testHistoricalSessionVersionReadsDirectly(issued);
   await testMissingMalformedAndInfrastructureFailures(issued);
+  await testPasswordResetVersionInvalidatesEveryOldSession(
+    issued,
+    otherIssued
+  );
   await testIntegrityAndExpiryFailures(issued);
   await testExpiryBoundariesAndActivityThrottle(issued);
   await testCurrentLogoutUsesDocumentId(issued, otherIssued);

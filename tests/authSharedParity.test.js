@@ -366,6 +366,7 @@ const clientWrapperPattern = /const protocolGuardedMain = exports\.main;\s*expor
 const schemaTwoClientEntries = new Set([
   'accountAuth',
   'login',
+  'sendEmailCode',
   'sendSmsCode',
   'verifySmsCode'
 ]);

@@ -3298,51 +3298,48 @@ async function runV2() {
   assert.strictEqual(staleConsent.code, 'INVALID_INPUT');
   assert.deepStrictEqual(snapshot(state), duplicateBefore);
 
-  const maintenanceRequests = [
+  const taskSixRequests = [
     {
       action: 'resetPasswordByWechat',
       clientInstanceId: 'maintenance-client',
-      password: '123456'
+      password: '123456',
+      expectedCode: 'WECHAT_NOT_BOUND'
     },
     {
       action: 'resetPasswordByEmail',
       clientInstanceId: 'maintenance-client',
       email: 'member@example.com',
       code: '123456',
-      password: '123456'
+      password: '123456',
+      expectedCode: 'EMAIL_NOT_CONFIGURED'
     },
     {
       action: 'bindEmail',
       clientInstanceId: 'maintenance-client',
       sessionToken: 'supplied-but-never-read',
       email: 'member@example.com',
-      code: '123456'
+      code: '123456',
+      expectedCode: 'SESSION_EXPIRED'
     },
     {
       action: 'reauthenticate',
       clientInstanceId: 'maintenance-client',
       sessionToken: 'supplied-but-never-read',
       method: 'email',
-      code: '123456'
+      code: '123456',
+      expectedCode: 'SESSION_EXPIRED'
     }
   ];
-  for (const request of maintenanceRequests) {
-    const operationStart = fakeDb.__operations.length;
-    const maintenance = await entry.main({
+  for (const request of taskSixRequests) {
+    const { expectedCode, ...event } = request;
+    const result = await entry.main({
       authProtocol: 2,
-      ...request
+      ...event
     });
-    assert.deepStrictEqual(maintenance, {
-      ok: false,
-      code: 'AUTH_MAINTENANCE',
-      msg: '认证服务维护中，请稍后重试'
-    });
-    assert.deepStrictEqual(
-      fakeDb.__operations.slice(operationStart).map((operation) => (
-        [operation.operation, operation.collection, operation.id]
-      )),
-      [['get', 'auth_control', 'main']],
-      `${request.action} must stop before business reads`
+    assert.strictEqual(
+      result.code,
+      expectedCode,
+      `${request.action} must use its Task 6 v2 handler`
     );
   }
 

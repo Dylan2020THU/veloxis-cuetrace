@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('crypto');
+
 const {
   candidateHmacIds
 } = require('./auth/keyring');
@@ -42,8 +44,10 @@ const {
   authError,
   cancelPendingDeletion,
   failure,
+  isPlainObject,
   optionalDocument,
   validAccount,
+  validAccountCore,
   validAccountNameRelation,
   validDate,
   validUser,
@@ -56,9 +60,505 @@ const REAUTH_RATE_BLOCK_MS = 15 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SESSION_IDLE_TTL_MS = 30 * DAY_MS;
 const SESSION_ABSOLUTE_TTL_MS = 90 * DAY_MS;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_ID_RE = /^[0-9a-f]{64}$/;
+const EMAIL_CODE_RE = /^\d{6}$/;
+const EMAIL_HMAC_RE = /^[0-9a-f]{64}$/;
+const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_CODE_COOLDOWN_MS = 60 * 1000;
+const EMAIL_PURPOSES = new Set(['bind', 'reset', 'reauth']);
+const EMAIL_CHALLENGE_STATES = new Set([
+  'sending',
+  'active',
+  'failed',
+  'locked',
+  'used'
+]);
 
 function copyDate(value) {
   return new Date(value.getTime());
+}
+
+function normalizeEmail(value) {
+  if (typeof value !== 'string') throw authError('EMAIL_INVALID');
+  const normalized = value.trim().toLowerCase();
+  if (
+    !normalized
+    || normalized.length > 254
+    || !EMAIL_RE.test(normalized)
+  ) {
+    throw authError('EMAIL_INVALID');
+  }
+  return normalized;
+}
+
+function emailBindingId(normalizedEmail) {
+  return crypto
+    .createHash('sha256')
+    .update('email:' + normalizedEmail, 'utf8')
+    .digest('hex');
+}
+
+function emailCodeId(purpose, normalizedEmail) {
+  return crypto
+    .createHash('sha256')
+    .update(
+      'email-code:' + purpose + ':' + normalizedEmail,
+      'utf8'
+    )
+    .digest('hex');
+}
+
+function lengthPrefixed(value) {
+  const bytes = Buffer.from(value, 'utf8');
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(bytes.length);
+  return Buffer.concat([length, bytes]);
+}
+
+function emailCodeSecret() {
+  const secret = process.env.CUETRACE_EMAIL_CODE_SECRET;
+  if (typeof secret !== 'string' || !secret) {
+    throw authError('EMAIL_NOT_CONFIGURED');
+  }
+  return secret;
+}
+
+function emailHmac(secret, domain, fields) {
+  try {
+    return crypto
+      .createHmac('sha256', secret)
+      .update(Buffer.concat([
+        lengthPrefixed(domain),
+        ...fields.map(lengthPrefixed)
+      ]))
+      .digest('hex');
+  } catch (_) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+}
+
+function emailScopeHash(secret, {
+  purpose,
+  clientInstanceId,
+  accountId,
+  sessionId,
+  bindingId
+}) {
+  return emailHmac(secret, 'email-scope-v2', [
+    purpose,
+    clientInstanceId,
+    accountId,
+    sessionId,
+    bindingId
+  ]);
+}
+
+function emailCodeHash(secret, challengeId, code) {
+  return emailHmac(secret, 'email-code-v2', [challengeId, code]);
+}
+
+function constantTimeHexEqual(left, right) {
+  if (!EMAIL_HMAC_RE.test(left) || !EMAIL_HMAC_RE.test(right)) {
+    return false;
+  }
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(left, 'hex'),
+      Buffer.from(right, 'hex')
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+function validEmailBinding(binding, expectedId) {
+  if (
+    !isPlainObject(binding)
+    || binding._id !== expectedId
+    || !EMAIL_ID_RE.test(binding._id)
+    || typeof binding.accountId !== 'string'
+    || !/^acct_[A-Za-z0-9_-]{22,}$/.test(binding.accountId)
+    || typeof binding.email !== 'string'
+    || typeof binding.emailNormalized !== 'string'
+    || binding.email !== binding.emailNormalized
+    || !['active', 'revoked'].includes(binding.status)
+    || !validDate(binding.boundAt)
+    || !validDate(binding.updatedAt)
+  ) {
+    return false;
+  }
+  let normalized;
+  try {
+    normalized = normalizeEmail(binding.emailNormalized);
+  } catch (_) {
+    return false;
+  }
+  if (
+    normalized !== binding.emailNormalized
+    || emailBindingId(normalized) !== binding._id
+  ) {
+    return false;
+  }
+  if (
+    binding.status === 'active'
+      ? Object.prototype.hasOwnProperty.call(binding, 'revokedAt')
+      : !validDate(binding.revokedAt)
+  ) {
+    return false;
+  }
+  return [
+    '_openid',
+    'account',
+    'accountNormalized',
+    'emailMasked',
+    'verifiedAt',
+    'createdAt'
+  ].every((field) => (
+    !Object.prototype.hasOwnProperty.call(binding, field)
+  ));
+}
+
+async function readEmailBinding(source, bindingId) {
+  const binding = await optionalDocument(
+    source.collection('email_bindings').doc(bindingId),
+    bindingId
+  );
+  if (binding && !validEmailBinding(binding, bindingId)) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  return binding;
+}
+
+async function readEmailReverseAccounts(source, bindingId) {
+  let result;
+  try {
+    result = await source
+      .collection('accounts')
+      .where({ emailBindingId: bindingId })
+      .limit(2)
+      .get();
+  } catch (_) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  if (
+    !result
+    || !Array.isArray(result.data)
+    || result.data.length > 1
+    || result.data.some((account) => (
+      !validAccountCore(account, account && account._id)
+    ))
+  ) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  return result.data;
+}
+
+async function readEmailProjection(source, account) {
+  if (!account.emailBindingId) return null;
+  if (!EMAIL_ID_RE.test(account.emailBindingId)) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  const binding = await readEmailBinding(
+    source,
+    account.emailBindingId
+  );
+  if (
+    !binding
+    || binding.status !== 'active'
+    || binding.accountId !== account._id
+  ) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  return binding;
+}
+
+function maskEmail(normalizedEmail) {
+  const separator = normalizedEmail.lastIndexOf('@');
+  if (separator <= 0 || separator === normalizedEmail.length - 1) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  const local = normalizedEmail.slice(0, separator);
+  return local.slice(0, 2)
+    + '*'.repeat(Math.max(2, local.length - 2))
+    + normalizedEmail.slice(separator);
+}
+
+function validEmailChallenge(challenge, challengeId) {
+  if (
+    !isPlainObject(challenge)
+    || challenge._id !== challengeId
+    || !EMAIL_ID_RE.test(challenge._id)
+    || !EMAIL_PURPOSES.has(challenge.purpose)
+    || typeof challenge.accountId !== 'string'
+    || !/^acct_[A-Za-z0-9_-]{22,}$/.test(challenge.accountId)
+    || !EMAIL_ID_RE.test(challenge.emailBindingId)
+    || challenge.targetHash !== challenge.emailBindingId
+    || typeof challenge.scopeHash !== 'string'
+    || !EMAIL_HMAC_RE.test(challenge.scopeHash)
+    || typeof challenge.requestId !== 'string'
+    || !challenge.requestId
+    || challenge.requestId.length > 128
+    || !EMAIL_CHALLENGE_STATES.has(challenge.status)
+    || typeof challenge.codeHash !== 'string'
+    || !Number.isSafeInteger(challenge.attemptsLeft)
+    || challenge.attemptsLeft < 0
+    || challenge.attemptsLeft > 5
+    || !validDate(challenge.nextSendAt)
+    || !validDate(challenge.createdAt)
+    || !validDate(challenge.updatedAt)
+    || !(
+      challenge.expiresAt === null
+      || validDate(challenge.expiresAt)
+    )
+    || !(
+      challenge.sentAt === null
+      || validDate(challenge.sentAt)
+    )
+    || !(
+      challenge.usedAt === null
+      || validDate(challenge.usedAt)
+    )
+    || [
+      'email',
+      'emailNormalized',
+      'code',
+      'sessionToken',
+      'clientInstanceId'
+    ].some((field) => (
+      Object.prototype.hasOwnProperty.call(challenge, field)
+    ))
+  ) {
+    return false;
+  }
+  const createdMs = challenge.createdAt.getTime();
+  const updatedMs = challenge.updatedAt.getTime();
+  const nextSendMs = challenge.nextSendAt.getTime();
+  if (
+    updatedMs < createdMs
+    || nextSendMs !== createdMs + EMAIL_CODE_COOLDOWN_MS
+  ) {
+    return false;
+  }
+  if (challenge.status === 'sending') {
+    return challenge.codeHash === ''
+      && challenge.attemptsLeft === 0
+      && challenge.expiresAt === null
+      && challenge.sentAt === null
+      && challenge.usedAt === null
+      && updatedMs === createdMs;
+  }
+  if (challenge.status === 'failed') {
+    return challenge.codeHash === ''
+      && challenge.attemptsLeft === 0
+      && challenge.expiresAt === null
+      && challenge.sentAt === null
+      && challenge.usedAt === null;
+  }
+  if (!EMAIL_HMAC_RE.test(challenge.codeHash)) return false;
+  if (!validDate(challenge.expiresAt) || !validDate(challenge.sentAt)) {
+    return false;
+  }
+  const sentMs = challenge.sentAt.getTime();
+  if (
+    sentMs < createdMs
+    || challenge.expiresAt.getTime() !== sentMs + EMAIL_CODE_TTL_MS
+    || updatedMs < sentMs
+  ) {
+    return false;
+  }
+  if (challenge.status === 'active') {
+    return challenge.attemptsLeft > 0 && challenge.usedAt === null;
+  }
+  if (challenge.status === 'locked') {
+    return challenge.attemptsLeft === 0 && challenge.usedAt === null;
+  }
+  return challenge.attemptsLeft > 0
+    && validDate(challenge.usedAt)
+    && challenge.usedAt.getTime() >= sentMs
+    && challenge.usedAt.getTime() <= updatedMs;
+}
+
+async function consumeEmailChallenge({
+  transaction,
+  challengeId,
+  purpose,
+  clientInstanceId,
+  accountId,
+  sessionId,
+  bindingId,
+  code,
+  secret,
+  now
+}) {
+  const challengeRef = transaction
+    .collection('email_codes')
+    .doc(challengeId);
+  const challenge = await optionalDocument(
+    challengeRef,
+    challengeId
+  );
+  if (!challenge) {
+    return { result: failure('EMAIL_CODE_INVALID') };
+  }
+  if (!validEmailChallenge(challenge, challengeId)) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  if (challenge.status === 'locked') {
+    return { result: failure('EMAIL_CODE_LOCKED') };
+  }
+  if (challenge.status !== 'active') {
+    return { result: failure('EMAIL_CODE_INVALID') };
+  }
+  if (now.getTime() < challenge.sentAt.getTime()) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  if (now.getTime() >= challenge.expiresAt.getTime()) {
+    return { result: failure('EMAIL_CODE_EXPIRED') };
+  }
+  const expectedScopeHash = emailScopeHash(secret, {
+    purpose,
+    clientInstanceId,
+    accountId,
+    sessionId,
+    bindingId
+  });
+  if (
+    challenge.purpose !== purpose
+    || challenge.accountId !== accountId
+    || challenge.emailBindingId !== bindingId
+    || challenge.targetHash !== bindingId
+    || !constantTimeHexEqual(
+      challenge.scopeHash,
+      expectedScopeHash
+    )
+  ) {
+    return { result: failure('EMAIL_CODE_INVALID') };
+  }
+  const suppliedHash = emailCodeHash(
+    secret,
+    challengeId,
+    code
+  );
+  if (!constantTimeHexEqual(challenge.codeHash, suppliedHash)) {
+    const attemptsLeft = challenge.attemptsLeft - 1;
+    await challengeRef.update({
+      data: {
+        attemptsLeft,
+        status: attemptsLeft === 0 ? 'locked' : 'active',
+        updatedAt: copyDate(now)
+      }
+    });
+    return {
+      result: failure(
+        attemptsLeft === 0
+          ? 'EMAIL_CODE_LOCKED'
+          : 'EMAIL_CODE_INVALID'
+      )
+    };
+  }
+  return { challengeRef };
+}
+
+async function markEmailChallengeUsed(challengeRef, now) {
+  await challengeRef.update({
+    data: {
+      status: 'used',
+      usedAt: copyDate(now),
+      updatedAt: copyDate(now)
+    }
+  });
+}
+
+function requireEmailCode(code) {
+  if (typeof code !== 'string' || !EMAIL_CODE_RE.test(code)) {
+    return failure('EMAIL_CODE_INVALID');
+  }
+  return null;
+}
+
+function requireNotPurging(user) {
+  const status = Object.prototype.hasOwnProperty.call(
+    user,
+    'deletionStatus'
+  ) ? user.deletionStatus : '';
+  if (status === 'purging') {
+    throw authError('ACCOUNT_DELETION_LOCKED');
+  }
+  if (status && status !== 'pending') {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+}
+
+function validDeletionTimes(request) {
+  return Number.isFinite(request.deletionRequestedAt)
+    && Number.isFinite(request.deletionScheduledAt)
+    && request.deletionRequestedAt <= request.deletionScheduledAt;
+}
+
+function deletionTimesMatch(user, request) {
+  return Number.isFinite(user.deletionRequestedAt)
+    && Number.isFinite(user.deletionScheduledAt)
+    && validDeletionTimes(request)
+    && user.deletionRequestedAt === request.deletionRequestedAt
+    && user.deletionScheduledAt === request.deletionScheduledAt;
+}
+
+async function requirePasswordResetDeletionState({
+  transaction,
+  account,
+  user,
+  now
+}) {
+  const request = await optionalDocument(
+    transaction
+      .collection('account_deletion_requests')
+      .doc(account._id),
+    account._id
+  );
+  const status = Object.prototype.hasOwnProperty.call(
+    user,
+    'deletionStatus'
+  ) ? user.deletionStatus : '';
+  if (!status) {
+    if (!request) return;
+    if (
+      request._id !== account._id
+      || request.accountId !== account._id
+      || request.deletionStatus !== 'canceled'
+      || !validDeletionTimes(request)
+      || !validDate(request.deletionCanceledAt)
+      || !validDate(request.createdAt)
+      || !validDate(request.updatedAt)
+    ) {
+      if (request.deletionStatus === 'purging') {
+        throw authError('ACCOUNT_DELETION_LOCKED');
+      }
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    return;
+  }
+  if (
+    status === 'purging'
+    || (request && request.deletionStatus === 'purging')
+  ) {
+    throw authError('ACCOUNT_DELETION_LOCKED');
+  }
+  if (
+    status !== 'pending'
+    || !request
+    || request._id !== account._id
+    || request.accountId !== account._id
+    || request.deletionStatus !== 'pending'
+    || !deletionTimesMatch(user, request)
+    || !validDate(request.createdAt)
+    || !validDate(request.updatedAt)
+  ) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  if (now.getTime() >= user.deletionScheduledAt) {
+    throw authError('ACCOUNT_DELETION_LOCKED');
+  }
 }
 
 function configuredPassword(account) {
@@ -242,10 +742,12 @@ async function securityProjection(source, account) {
     account
   );
   const phoneBinding = await readPhoneProjection(source, account);
+  const emailBinding = await readEmailProjection(source, account);
   const wechatBinding = await readWechatProjection(source, account);
   return {
     accountNameRelation,
     phoneBinding,
+    emailBinding,
     wechatBinding,
     account: accountNameRelation ? accountNameRelation.account : '',
     accountDisplay: accountDisplay(accountNameRelation, phoneBinding),
@@ -253,8 +755,10 @@ async function securityProjection(source, account) {
     passwordSet: configuredPassword(account),
     phoneBound: Boolean(phoneBinding),
     phoneMasked: phoneBinding ? phoneBinding.phoneMasked : '',
-    emailBound: false,
-    emailMasked: '',
+    emailBound: Boolean(emailBinding),
+    emailMasked: emailBinding
+      ? maskEmail(emailBinding.emailNormalized)
+      : '',
     wechatBound: Boolean(wechatBinding)
   };
 }
@@ -270,8 +774,8 @@ function mutationResponse(operation, projection) {
     passwordSet: projection.passwordSet,
     phoneBound: projection.phoneBound,
     phoneMasked: projection.phoneMasked,
-    emailBound: false,
-    emailMasked: '',
+    emailBound: projection.emailBound,
+    emailMasked: projection.emailMasked,
     wechatBound: projection.wechatBound
   };
 }
@@ -406,8 +910,8 @@ async function status({
     passwordSet: projection.passwordSet,
     phoneBound: projection.phoneBound,
     phoneMasked: projection.phoneMasked,
-    emailBound: false,
-    emailMasked: '',
+    emailBound: projection.emailBound,
+    emailMasked: projection.emailMasked,
     wechatBound: projection.wechatBound,
     roles: [...authenticated.user.roles],
     currentRole: authenticated.user.currentRole,
@@ -743,6 +1247,48 @@ async function reauthenticateWechat({
   });
 }
 
+async function reauthenticateEmail({
+  db,
+  event,
+  authenticated,
+  now
+}) {
+  const invalidCode = requireEmailCode(event.code);
+  if (invalidCode) return invalidCode;
+  const secret = emailCodeSecret();
+  return db.runTransaction(async (transaction) => {
+    const live = await loadLiveSecurityGraph(
+      transaction,
+      authenticated,
+      now
+    );
+    requireNotPurging(live.user);
+    const binding = await readEmailProjection(
+      transaction,
+      live.account
+    );
+    if (!binding) return failure('EMAIL_NOT_BOUND');
+    const consumed = await consumeEmailChallenge({
+      transaction,
+      challengeId: emailCodeId(
+        'reauth',
+        binding.emailNormalized
+      ),
+      purpose: 'reauth',
+      clientInstanceId: event.clientInstanceId,
+      accountId: live.account._id,
+      sessionId: live.session._id,
+      bindingId: binding._id,
+      code: event.code,
+      secret,
+      now
+    });
+    if (consumed.result) return consumed.result;
+    await markEmailChallengeUsed(consumed.challengeRef, now);
+    return markReauthenticated(live, now, 'email');
+  });
+}
+
 async function reauthenticate(options) {
   if (options.event.method === 'password') {
     return reauthenticatePassword(options);
@@ -753,7 +1299,128 @@ async function reauthenticate(options) {
   if (options.event.method === 'wechat') {
     return reauthenticateWechat(options);
   }
-  return failure('AUTH_MAINTENANCE');
+  if (options.event.method === 'email') {
+    return reauthenticateEmail(options);
+  }
+  return failure('INVALID_INPUT');
+}
+
+async function bindEmail({
+  db,
+  event,
+  authenticated,
+  now
+}) {
+  const normalizedEmail = normalizeEmail(event.email);
+  const invalidCode = requireEmailCode(event.code);
+  if (invalidCode) return invalidCode;
+  const secret = emailCodeSecret();
+  const bindingId = emailBindingId(normalizedEmail);
+  const challengeId = emailCodeId('bind', normalizedEmail);
+  return db.runTransaction(async (transaction) => {
+    const live = await loadLiveSecurityGraph(
+      transaction,
+      authenticated,
+      now
+    );
+    requireNotPurging(live.user);
+    const consumed = await consumeEmailChallenge({
+      transaction,
+      challengeId,
+      purpose: 'bind',
+      clientInstanceId: event.clientInstanceId,
+      accountId: live.account._id,
+      sessionId: '',
+      bindingId,
+      code: event.code,
+      secret,
+      now
+    });
+    if (consumed.result) return consumed.result;
+
+    const currentBinding = await readEmailProjection(
+      transaction,
+      live.account
+    );
+    const targetRef = transaction
+      .collection('email_bindings')
+      .doc(bindingId);
+    const targetBinding = await readEmailBinding(
+      transaction,
+      bindingId
+    );
+    const reverseAccounts = await readEmailReverseAccounts(
+      transaction,
+      bindingId
+    );
+    if (
+      targetBinding
+      && targetBinding.status === 'active'
+    ) {
+      if (
+        reverseAccounts.length !== 1
+        || reverseAccounts[0]._id !== targetBinding.accountId
+      ) {
+        throw authError('AUTH_INTERNAL_ERROR');
+      }
+    } else if (reverseAccounts.length !== 0) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    if (
+      targetBinding
+      && targetBinding.status === 'active'
+      && targetBinding.accountId !== live.account._id
+    ) {
+      throw authError('EMAIL_ALREADY_BOUND');
+    }
+    if (
+      targetBinding
+      && targetBinding.status === 'active'
+      && (
+        !currentBinding
+        || currentBinding._id !== targetBinding._id
+      )
+    ) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    if (currentBinding && currentBinding._id !== bindingId) {
+      await transaction
+        .collection('email_bindings')
+        .doc(currentBinding._id)
+        .update({
+          data: {
+            status: 'revoked',
+            revokedAt: copyDate(now),
+            updatedAt: copyDate(now)
+          }
+        });
+    }
+    const binding = {
+      _id: bindingId,
+      accountId: live.account._id,
+      email: normalizedEmail,
+      emailNormalized: normalizedEmail,
+      status: 'active',
+      boundAt: copyDate(now),
+      updatedAt: copyDate(now)
+    };
+    await targetRef.set({ data: withoutDocumentId(binding) });
+    const updatedAt = copyDate(now);
+    await live.accountRef.update({
+      data: {
+        emailBindingId: bindingId,
+        updatedAt
+      }
+    });
+    await markEmailChallengeUsed(consumed.challengeRef, now);
+    const account = {
+      ...live.account,
+      emailBindingId: bindingId,
+      updatedAt
+    };
+    const projection = await securityProjection(transaction, account);
+    return mutationResponse('bind_email', projection);
+  });
 }
 
 async function bindPhone({
@@ -942,6 +1609,209 @@ async function bindWechat({
   });
 }
 
+async function resetPasswordByEmail({
+  db,
+  event,
+  now
+}) {
+  const normalizedEmail = normalizeEmail(event.email);
+  const invalidCode = requireEmailCode(event.code);
+  if (invalidCode) return invalidCode;
+  const secret = emailCodeSecret();
+  const passwordRecord = hashPassword(event.password);
+  const bindingId = emailBindingId(normalizedEmail);
+  const challengeId = emailCodeId('reset', normalizedEmail);
+  return db.runTransaction(async (transaction) => {
+    const binding = await readEmailBinding(transaction, bindingId);
+    if (!binding || binding.status !== 'active') {
+      return failure('EMAIL_CODE_INVALID');
+    }
+    const reverseAccounts = await readEmailReverseAccounts(
+      transaction,
+      bindingId
+    );
+    if (
+      reverseAccounts.length !== 1
+      || reverseAccounts[0]._id !== binding.accountId
+    ) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    const graph = await readAccountGraph(
+      transaction,
+      binding.accountId,
+      true
+    );
+    if (graph.account.status !== 'active') {
+      return failure('EMAIL_CODE_INVALID');
+    }
+    if (graph.account.emailBindingId !== binding._id) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    await requirePasswordResetDeletionState({
+      transaction,
+      account: graph.account,
+      user: graph.user,
+      now
+    });
+    const consumed = await consumeEmailChallenge({
+      transaction,
+      challengeId,
+      purpose: 'reset',
+      clientInstanceId: event.clientInstanceId,
+      accountId: graph.account._id,
+      sessionId: '',
+      bindingId,
+      code: event.code,
+      secret,
+      now
+    });
+    if (consumed.result) return consumed.result;
+    if (graph.account.authVersion >= Number.MAX_SAFE_INTEGER) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    await transaction
+      .collection('accounts')
+      .doc(graph.account._id)
+      .update({
+        data: {
+          ...passwordRecord,
+          authVersion: graph.account.authVersion + 1,
+          updatedAt: copyDate(now)
+        }
+      });
+    await markEmailChallengeUsed(consumed.challengeRef, now);
+    return {
+      ok: true,
+      kind: 'password_reset',
+      next: 'login'
+    };
+  });
+}
+
+async function readWechatReverseAccounts(source, material) {
+  const accounts = [];
+  for (const candidate of material.candidates) {
+    let result;
+    try {
+      result = await source
+        .collection('accounts')
+        .where({ wechatBindingId: candidate.id })
+        .limit(2)
+        .get();
+    } catch (_) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    if (
+      !result
+      || !Array.isArray(result.data)
+      || result.data.length > 1
+      || result.data.some((account) => (
+        !validAccountCore(account, account && account._id)
+      ))
+    ) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    accounts.push(...result.data);
+    if (accounts.length > 1) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+  }
+  return accounts;
+}
+
+function remapWechatRecoveryError(error) {
+  if (
+    error
+    && error.name === 'AccountAuthAbort'
+    && error.code === 'WECHAT_IDENTITY_CONFLICT'
+  ) {
+    throw authError('AUTH_INTERNAL_ERROR');
+  }
+  throw error;
+}
+
+async function resetPasswordByWechat({
+  db,
+  event,
+  now,
+  keyring,
+  trustedWechat
+}) {
+  const passwordRecord = hashPassword(event.password);
+  const material = wechatMaterial(keyring, trustedWechat);
+  return db.runTransaction(async (transaction) => {
+    let items;
+    let selected;
+    try {
+      items = await readWechatCandidateItems(transaction, material);
+      selected = selectWechatBinding(items);
+    } catch (error) {
+      remapWechatRecoveryError(error);
+    }
+    const reverseAccounts = await readWechatReverseAccounts(
+      transaction,
+      material
+    );
+    if (!selected) {
+      if (reverseAccounts.length) {
+        throw authError('AUTH_INTERNAL_ERROR');
+      }
+      return failure('WECHAT_NOT_BOUND');
+    }
+    if (
+      reverseAccounts.length !== 1
+      || reverseAccounts[0]._id !== selected.binding.accountId
+      || reverseAccounts[0].wechatBindingId !== selected.binding._id
+    ) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    const graph = await readAccountGraph(
+      transaction,
+      selected.binding.accountId,
+      true
+    );
+    if (graph.account.status !== 'active') {
+      throw authError('ACCOUNT_DISABLED');
+    }
+    await requirePasswordResetDeletionState({
+      transaction,
+      account: graph.account,
+      user: graph.user,
+      now
+    });
+    const accountRef = transaction
+      .collection('accounts')
+      .doc(graph.account._id);
+    let migrated;
+    try {
+      migrated = await migrateWechatBinding({
+        items,
+        selected,
+        account: graph.account,
+        accountRef,
+        now
+      });
+    } catch (error) {
+      remapWechatRecoveryError(error);
+    }
+    if (migrated.account.authVersion >= Number.MAX_SAFE_INTEGER) {
+      throw authError('AUTH_INTERNAL_ERROR');
+    }
+    await accountRef.update({
+      data: {
+        ...passwordRecord,
+        authVersion: migrated.account.authVersion + 1,
+        updatedAt: copyDate(now)
+      }
+    });
+    return {
+      ok: true,
+      kind: 'password_reset',
+      next: 'login'
+    };
+  });
+}
+
 async function setPassword({
   db,
   event,
@@ -1048,11 +1918,14 @@ async function logoutCurrent({
 }
 
 module.exports = {
+  bindEmail,
   bindPhone,
   bindWechat,
   logoutCurrent,
   logoutOthers,
   reauthenticate,
+  resetPasswordByEmail,
+  resetPasswordByWechat,
   setAccountName,
   setPassword,
   status

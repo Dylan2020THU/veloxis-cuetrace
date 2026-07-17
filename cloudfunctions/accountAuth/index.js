@@ -21,10 +21,13 @@ const {
 } = require('./lib/wechat-actions');
 const {
   bindPhone,
+  bindEmail,
   bindWechat,
   logoutCurrent,
   logoutOthers,
   reauthenticate,
+  resetPasswordByEmail,
+  resetPasswordByWechat,
   setAccountName,
   setPassword,
   status
@@ -112,18 +115,13 @@ const CONSENT_ACTIONS = new Set([
   'completeWechatEntry'
 ]);
 
-const MAINTENANCE_ACTIONS = new Set([
-  'resetPasswordByWechat',
-  'resetPasswordByEmail',
-  'bindEmail'
-]);
-
 const WECHAT_CONTEXT_ACTIONS = new Set([
   'loginPassword',
   'loginSms',
   'loginWechat',
   'verifyWechatEntryPhone',
   'completeWechatEntry',
+  'resetPasswordByWechat',
   'bindPhone',
   'bindWechat'
 ]);
@@ -208,14 +206,6 @@ function validateRequest(event) {
   return null;
 }
 
-function maintenanceAction(event) {
-  return MAINTENANCE_ACTIONS.has(event.action)
-    || (
-      event.action === 'reauthenticate'
-      && event.method === 'email'
-    );
-}
-
 function normalizedErrorCode(error) {
   if (!error || typeof error !== 'object') return 'AUTH_INTERNAL_ERROR';
   if (error.name === 'AccountAuthAbort') return error.code;
@@ -251,10 +241,44 @@ function normalizedErrorCode(error) {
   return 'AUTH_INTERNAL_ERROR';
 }
 
+function withoutSessionActivityTouch(database) {
+  return {
+    collection(name) {
+      const collection = database.collection(name);
+      if (name !== 'auth_sessions') return collection;
+      return {
+        doc(id) {
+          const ref = collection.doc(id);
+          return {
+            get(...args) {
+              return ref.get(...args);
+            },
+            update(options) {
+              const data = options && options.data;
+              const fields = isPlainObject(data)
+                ? Object.keys(data).sort()
+                : [];
+              if (
+                fields.length === 2
+                && fields[0] === 'idleExpiresAt'
+                && fields[1] === 'lastSeenAt'
+                && data.idleExpiresAt instanceof Date
+                && data.lastSeenAt instanceof Date
+              ) {
+                return Promise.resolve({ stats: { updated: 0 } });
+              }
+              return ref.update(options);
+            }
+          };
+        }
+      };
+    }
+  };
+}
+
 async function accountAuthMain(event = {}) {
   const invalid = validateRequest(event);
   if (invalid) return invalid;
-  if (maintenanceAction(event)) return failure('AUTH_MAINTENANCE');
   if (event.action === 'probe') {
     return { ok: true, kind: 'probe' };
   }
@@ -264,8 +288,12 @@ async function accountAuthMain(event = {}) {
     const now = new Date(Date.now());
     let authenticated = null;
     if (SESSION_ACTIONS.has(event.action)) {
+      const sessionDatabase = (
+        event.action === 'reauthenticate'
+        && event.method === 'email'
+      ) ? withoutSessionActivityTouch(db) : db;
       authenticated = await requireSession({
-        db,
+        db: sessionDatabase,
         event,
         now,
         keyring
@@ -340,6 +368,22 @@ async function accountAuthMain(event = {}) {
     if (event.action === 'status') {
       return await status({ db, authenticated, now, keyring });
     }
+    if (event.action === 'resetPasswordByEmail') {
+      return await resetPasswordByEmail({
+        db,
+        event,
+        now
+      });
+    }
+    if (event.action === 'resetPasswordByWechat') {
+      return await resetPasswordByWechat({
+        db,
+        event,
+        now,
+        keyring,
+        trustedWechat
+      });
+    }
     if (event.action === 'reauthenticate') {
       return await reauthenticate({
         db,
@@ -358,6 +402,14 @@ async function accountAuthMain(event = {}) {
         now,
         keyring,
         trustedWechat
+      });
+    }
+    if (event.action === 'bindEmail') {
+      return await bindEmail({
+        db,
+        event,
+        authenticated,
+        now
       });
     }
     if (event.action === 'setAccountName') {
