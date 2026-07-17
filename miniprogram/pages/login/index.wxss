@@ -1,0 +1,460 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  /* 登录页专属强调色：黄铜(库边瞄准点) + 深川(渐变深端) */
+  --brass: #C9A24B;
+  --deep: #0B3C82;
+}
+
+.login-wrap {
+  padding: 56rpx 48rpx 120rpx;
+}
+
+.icp-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  z-index: 10;
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--text-weak);
+}
+
+/* 品牌信息 */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 40rpx 26rpx;
+  margin-bottom: 28rpx;
+}
+.hero-logo {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 24rpx;
+  background: var(--card-bg);
+  border: 1rpx solid var(--border);
+}
+.hero-name {
+  margin-top: 18rpx;
+  font-size: 40rpx;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.hero-slogan {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-sub);
+}
+.hero-sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+
+/* 选身份小标题 */
+.picker-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 0 8rpx 24rpx;
+}
+
+.account-display {
+  margin: -12rpx 8rpx 24rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+
+/* 身份选择：库边瞄准点选择器 */
+.roles {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  margin-bottom: 32rpx;
+}
+.role-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 24rpx 28rpx;
+  background: var(--card-bg);
+  border: 2rpx solid var(--border);
+  border-radius: 20rpx;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+/* 库边菱形瞄准点：描边=未选，铜色实心=选中 */
+.sight {
+  width: 22rpx;
+  height: 22rpx;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+  transform: rotate(45deg);
+  border: 3rpx solid var(--brass);
+  border-radius: 4rpx;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+.role-thumb {
+  width: 92rpx;
+  height: 92rpx;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+  border-radius: 16rpx;
+  background: var(--bg-elev);
+}
+.role-info {
+  flex: 1;
+}
+.role-label {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 2rpx;
+}
+.role-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+.role-arrow {
+  font-size: 36rpx;
+  color: var(--text-weak);
+  margin-left: 12rpx;
+}
+/* 选中态：铜色瞄准锁定 */
+.role-row.active {
+  border-color: var(--brass);
+  box-shadow: 0 6rpx 24rpx rgba(201, 162, 75, 0.2);
+}
+.role-row.active .sight {
+  background: var(--brass);
+  box-shadow: 0 0 0 6rpx rgba(201, 162, 75, 0.18);
+}
+.role-row.locked {
+  border-color: var(--border);
+  box-shadow: none;
+}
+.role-row.locked .role-thumb,
+.role-row.locked .role-info,
+.role-row.locked .role-arrow,
+.role-row.locked .sight {
+  filter: grayscale(1);
+  opacity: 0.58;
+}
+.role-lock {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 28rpx;
+  background: rgba(0, 0, 0, 0.24);
+}
+.role-lock-text {
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+/* 第一步：下一步按钮 */
+.next-btn {
+  margin-top: 8rpx;
+  height: 92rpx;
+  border-radius: 36rpx 0 36rpx 0;
+}
+.role-enter-btn {
+  margin-top: 10rpx;
+}
+
+/* 店主身份：登录按钮下方的资质核验提示 */
+.shop-tip {
+  margin: 24rpx 16rpx 0;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: #e54545;
+  text-align: center;
+}
+
+/* 第二步：顶部返回 + 当前身份 */
+.step2-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
+}
+.back {
+  font-size: 30rpx;
+  color: var(--brand);
+  font-weight: 500;
+}
+.cur-role {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+
+/* 登录表单卡片：玻璃拟态 + 电光蓝顶部光晕 */
+.login-card {
+  position: relative;
+  background: var(--card-bg);
+  border: 2rpx solid var(--border);
+  border-radius: 28rpx;
+  padding: 44rpx 32rpx 48rpx;
+  box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6rpx;
+  background: linear-gradient(90deg, rgba(6, 126, 249, 0) 0%, var(--brand-3) 50%, rgba(6, 126, 249, 0) 100%);
+}
+
+.seg {
+  display: flex;
+  background: var(--bg-elev);
+  border-radius: 16rpx;
+  padding: 6rpx;
+  margin-bottom: 36rpx;
+}
+.seg-item {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 26rpx;
+  color: var(--text-sub);
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+.seg-item.active {
+  background: var(--card-bg);
+  color: var(--brand);
+  font-weight: 600;
+  box-shadow: 0 2rpx 10rpx rgba(6, 126, 249, 0.18);
+}
+
+.bind-head {
+  margin-bottom: 28rpx;
+}
+
+.bind-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.bind-sub {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+
+/* 圆角填充式输入框 */
+.field {
+  display: flex;
+  align-items: center;
+  height: 92rpx;
+  margin-bottom: 24rpx;
+  padding: 0 28rpx;
+  background: var(--bg-elev);
+  border: 2rpx solid var(--border);
+  border-radius: 18rpx;
+}
+.input {
+  flex: 1;
+  font-size: 30rpx;
+  color: var(--text);
+}
+.placeholder {
+  color: var(--text-weak);
+}
+
+.account-rule {
+  margin: -12rpx 6rpx 22rpx;
+  font-size: 22rpx;
+  line-height: 1.45;
+  color: var(--text-weak);
+}
+
+.login-notice,
+.password-hint {
+  margin: -4rpx 4rpx 24rpx;
+  font-size: 23rpx;
+  line-height: 1.55;
+  color: var(--text-weak);
+}
+
+.password-hint {
+  margin-top: -12rpx;
+  margin-bottom: 18rpx;
+}
+
+.forgot-line {
+  margin: -12rpx 4rpx 20rpx;
+  text-align: right;
+}
+
+.forgot-link {
+  font-size: 25rpx;
+  color: var(--brand);
+}
+
+.recovery-tip {
+  margin: -4rpx 4rpx 24rpx;
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--text-weak);
+}
+
+.field-code .input {
+  margin-right: 24rpx;
+}
+.code-btn {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: var(--brand);
+  padding: 12rpx 24rpx;
+  border: 2rpx solid var(--brand);
+  border-radius: 36rpx 0 36rpx 0;
+}
+.code-btn.disabled {
+  color: var(--text-weak);
+  border-color: var(--border);
+}
+
+.login-btn {
+  margin-top: 22rpx;
+  height: 92rpx;
+  border-radius: 36rpx 0 36rpx 0;
+  box-shadow: 0 10rpx 28rpx rgba(6, 126, 249, 0.35);
+}
+
+.login-btn--disabled {
+  background: #b7c7f0;
+  box-shadow: none;
+}
+
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 10rpx;
+  color: var(--text-weak);
+}
+
+.agreement-row--register {
+  margin-top: 4rpx;
+}
+
+.agree-circle {
+  flex: 0 0 34rpx;
+  width: 34rpx;
+  height: 34rpx;
+  margin-top: 2rpx;
+  margin-right: 14rpx;
+  border: 3rpx solid #d9dde4;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.agree-circle.checked {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.agree-check {
+  color: #fff;
+  font-size: 22rpx;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.agree-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 23rpx;
+  line-height: 1.55;
+  color: var(--text-weak);
+}
+
+.agree-link {
+  color: #003eb3;
+}
+
+/* 登录 / 注册 切换链接 */
+.alt-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28rpx;
+}
+.alt-text {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+.alt-link {
+  font-size: 26rpx;
+  color: var(--brand);
+  font-weight: 600;
+  margin-left: 6rpx;
+}
+
+.alt-link--solo {
+  margin-left: 0;
+}
+
+.other-login {
+  margin-top: 36rpx;
+  padding-top: 30rpx;
+  border-top: 1rpx solid var(--border);
+  text-align: center;
+}
+
+.other-title {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  margin-bottom: 18rpx;
+}
+
+.wechat-icon-btn {
+  width: 74rpx;
+  min-width: 74rpx;
+  max-width: 74rpx;
+  height: 74rpx;
+  min-height: 74rpx;
+  max-height: 74rpx;
+  border-radius: 50%;
+  background: transparent;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8rpx 20rpx rgba(7, 193, 96, 0.24);
+}
+
+.wechat-icon-btn::after {
+  border: none;
+}
+
+.wechat-logo-img {
+  width: 74rpx;
+  height: 74rpx;
+  display: block;
+}

@@ -19,9 +19,22 @@ function loadRegisterPage(fakeData) {
 
   let page;
   const calls = { storageReads: [], storageWrites: [], storageRemovals: [], toasts: [], navigations: [] };
+  const attempts = { begun: [], cancelled: [] };
+  let attemptSequence = 0;
+  const service = Object.assign({
+    beginAuthAttempt(kind) {
+      const attempt = { id: ++attemptSequence, kind };
+      attempts.begun.push(attempt);
+      return attempt;
+    },
+    cancelAuthAttempt(attempt) {
+      attempts.cancelled.push(attempt);
+      return true;
+    }
+  }, fakeData || {});
   const originalLoad = Module._load;
   Module._load = function patchedLoad(request, parent, isMain) {
-    if (request === '../../services/data') return fakeData;
+    if (request === '../../services/data') return service;
     return originalLoad.call(this, request, parent, isMain);
   };
   global.Page = (definition) => {
@@ -61,7 +74,7 @@ function loadRegisterPage(fakeData) {
   page.setData = function setData(next) {
     this.data = Object.assign({}, this.data, next);
   };
-  return { page, calls };
+  return { page, calls, attempts, service };
 }
 
 const loginJs = read('miniprogram/pages/login/index.js');
@@ -69,6 +82,7 @@ const loginWxml = read('miniprogram/pages/login/index.wxml');
 const loginWxss = read('miniprogram/pages/login/index.wxss');
 const accountAuthJs = read('cloudfunctions/accountAuth/index.js');
 
+function testRegistrationSourceContract() {
 assert(
   loginJs.includes('const ACCOUNT_RE = /^[A-Za-z][A-Za-z0-9_]{3,19}$/;'),
   'Register account names should start with a letter and allow only letters, digits, and underscore.'
@@ -89,6 +103,14 @@ assert(
     loginJs.includes('!this.isValidRegisterAccount(account)') &&
     loginJs.includes('ACCOUNT_RULE_TEXT'),
   'Register submit should reject accounts that do not match the account rule.'
+);
+
+assert(
+  loginJs.includes('registerAccountName') &&
+    !loginJs.includes('registerAccount(') &&
+    !loginJs.includes('dc_accounts') &&
+    !loginJs.includes('dc_wechat_bindings'),
+  'Registration must use only the Auth v2 facade and never local auth registries.'
 );
 
 assert(
@@ -126,13 +148,25 @@ assert(
     ),
   'accountAuth must not accept legacy or client-supplied WeChat authority fields.'
 );
+}
 
 async function testRegisterUsesCloudResultAndOpensRolePicker() {
   const registerCalls = [];
+  let legacyCalls = 0;
+  const result = {
+    account: 'internal-server-id',
+    accountDisplay: 'serverMember',
+    roles: ['member'],
+    currentRole: 'member'
+  };
   const fixture = loadRegisterPage({
-    registerAccount(input) {
-      registerCalls.push(input);
-      return Promise.resolve({ account: 'serverMember', roles: ['member'], currentRole: 'member' });
+    registerAccountName(input, attempt) {
+      registerCalls.push([input, attempt]);
+      return Promise.resolve(result);
+    },
+    registerAccount() {
+      legacyCalls += 1;
+      return Promise.resolve(result);
     }
   });
   fixture.page.setData({
@@ -146,18 +180,27 @@ async function testRegisterUsesCloudResultAndOpensRolePicker() {
   fixture.page.register();
   await flushPromises();
 
-  assert.deepStrictEqual(registerCalls, [{ account: 'memberA', password: '123456' }]);
-  assert.strictEqual(fixture.page.data.step, 'role');
-  assert.strictEqual(fixture.page.data.pendingAccount, 'serverMember');
+  assert.strictEqual(legacyCalls, 0, 'Auth v2 registration must not call the legacy alias.');
+  assert.strictEqual(fixture.attempts.begun.length, 1);
+  assert.strictEqual(fixture.attempts.begun[0].kind, 'registerAccountName');
+  assert.deepStrictEqual(registerCalls, [[{
+    accountName: 'memberA',
+    password: '123456',
+    termsVersion: '2026-07-15',
+    privacyVersion: '2026-07-15'
+  }, fixture.attempts.begun[0]]]);
+  assert.strictEqual(fixture.page.data.mode, 'rolePicker');
+  assert.strictEqual(fixture.page.data.pendingAccount, 'internal-server-id');
+  assert.strictEqual(fixture.page.data.pendingAccountDisplay, 'serverMember');
   assert.deepStrictEqual(fixture.page.data.pendingRoles, ['member']);
   assert(!fixture.calls.storageReads.includes('dc_accounts'), 'Registration must not read local account records.');
   assert(!fixture.calls.storageWrites.some(([key]) => key === 'dc_accounts' || key === 'dc_wechat_bindings'), 'Registration must not persist local auth records.');
 }
 
 async function testRegisterServerConflictStaysOnForm() {
-  const error = Object.assign(new Error('该账号已注册'), { code: 'ACCOUNT_EXISTS' });
+  const error = Object.assign(new Error('该账号已注册'), { code: 'ACCOUNT_NAME_EXISTS' });
   const fixture = loadRegisterPage({
-    registerAccount() {
+    registerAccountName() {
       return Promise.reject(error);
     }
   });
@@ -172,13 +215,38 @@ async function testRegisterServerConflictStaysOnForm() {
   fixture.page.register();
   await flushPromises();
 
-  assert.strictEqual(fixture.page.data.step, 'auth');
   assert.strictEqual(fixture.page.data.mode, 'register');
   assert(fixture.calls.toasts.some((item) => item.title === '该账号已注册'));
   assert.strictEqual(fixture.calls.navigations.length, 0);
 }
 
+async function testRegisterConsentAndSingleFlight() {
+  const request = {};
+  request.promise = new Promise((resolve) => { request.resolve = resolve; });
+  let calls = 0;
+  const fixture = loadRegisterPage({
+    registerAccountName() {
+      calls += 1;
+      return request.promise;
+    }
+  });
+  fixture.page.goRegister();
+  fixture.page.setData({ regAccount: 'memberA', regPassword: '123456', regConfirm: '123456' });
+  fixture.page.register();
+  assert.strictEqual(calls, 0, 'Unchecked registration must not send a request.');
+  assert.strictEqual(fixture.attempts.begun.length, 0);
+
+  fixture.page.setData({ agreementChecked: true });
+  fixture.page.register();
+  fixture.page.register();
+  assert.strictEqual(calls, 1, 'Registration should be single-flight.');
+  request.resolve({ account: 'internal', accountDisplay: 'memberA', roles: ['member'] });
+  await flushPromises();
+}
+
 (async () => {
   await testRegisterUsesCloudResultAndOpensRolePicker();
   await testRegisterServerConflictStaysOnForm();
+  await testRegisterConsentAndSingleFlight();
+  testRegistrationSourceContract();
 })();

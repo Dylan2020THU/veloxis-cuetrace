@@ -447,15 +447,33 @@ function getAccountSecurity() {
   return accountAction('session', 'status', {}, []);
 }
 
+function localAuthSessionToken() {
+  const current = authSession.getSession();
+  return current ? current.sessionToken : '';
+}
+
+function clearLocalAuthSessionAfterReset(expectedToken, result) {
+  if (!expectedToken) return result;
+  const current = authSession.getSession();
+  if (!current || current.sessionToken !== expectedToken) return result;
+  if (!authSession.clearSessionIfCurrent(expectedToken)) {
+    throw fixedError('AUTH_INTERNAL_ERROR');
+  }
+  return result;
+}
+
 function resetPasswordByWechat(input) {
-  return accountAction('anonymous', 'resetPasswordByWechat', input, ['password']);
+  const expectedToken = localAuthSessionToken();
+  return accountAction('anonymous', 'resetPasswordByWechat', input, ['password'])
+    .then((result) => clearLocalAuthSessionAfterReset(expectedToken, result));
 }
 
 function resetPasswordByEmail(input) {
+  const expectedToken = localAuthSessionToken();
   return accountAction(
     'anonymous', 'resetPasswordByEmail', input,
     ['email', 'code', 'password']
-  );
+  ).then((result) => clearLocalAuthSessionAfterReset(expectedToken, result));
 }
 
 function bindEmail(input) {
