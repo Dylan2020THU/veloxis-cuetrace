@@ -54,10 +54,22 @@ function validRequest(event) {
   if (!isPlainObject(event)) return false;
   const keys = Object.keys(event);
   return Boolean(
-    keys.every((key) => key === 'role' || key === 'sessionToken')
+    keys.every((key) => (
+      key === 'role'
+      || key === 'sessionToken'
+      || key === 'clientInstanceId'
+    ))
     && Object.prototype.hasOwnProperty.call(event, 'role')
     && typeof event.role === 'string'
     && event.role.length > 0
+    && (
+      !Object.prototype.hasOwnProperty.call(event, 'clientInstanceId')
+      || (
+        typeof event.clientInstanceId === 'string'
+        && event.clientInstanceId.length > 0
+        && event.clientInstanceId.length <= 256
+      )
+    )
   );
 }
 
