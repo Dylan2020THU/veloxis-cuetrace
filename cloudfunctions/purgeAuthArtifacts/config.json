@@ -1,0 +1,9 @@
+{
+  "triggers": [
+    {
+      "name": "purgeAuthArtifactsTimer",
+      "type": "timer",
+      "config": "0 0 * * * * *"
+    }
+  ]
+}

@@ -566,7 +566,7 @@
 - 明确列出准备清理的认证集合，以及所有引用旧用户 ID 的业务测试集合与影响范围，再由用户确认执行；
 - 新客户端首次启动时清除旧本地认证缓存，但保留无关业务设置。
 
-必要索引至少包括：`auth_sessions(accountId, authVersion, revokedAt)`、`auth_sessions(idleExpiresAt)`、`auth_sessions(absoluteExpiresAt)`、`sms_codes(expiresAt, status)`、`auth_proofs(expiresAt, used)`。手机号、账号名和微信唯一性由带版本命名空间的确定性文档 ID、账号反向引用和事务共同保证。过期短信、证明和会话由定时清理任务处理；清理任务不得改变其在到期瞬间已经失效的授权语义。
+必要索引至少包括：`auth_sessions(accountId, authVersion, revokedAt, _id)`、`auth_sessions(idleExpiresAt)`、`auth_sessions(absoluteExpiresAt)`、`sms_codes(expiresAt, status)`、`auth_proofs(expiresAt, used)`。四字段会话索引支持安全状态查询按 `_id` 游标稳定遍历有效会话。手机号、账号名和微信唯一性由带版本命名空间的确定性文档 ID、账号反向引用和事务共同保证。过期短信、证明和会话由定时清理任务处理；清理任务不得改变其在到期瞬间已经失效的授权语义。
 
 ## 测试策略
 

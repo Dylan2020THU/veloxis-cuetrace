@@ -20,6 +20,18 @@ const sendPath = path.join(
   'sendSmsCode',
   'index.js'
 );
+const verifySmsPath = path.join(
+  root,
+  'cloudfunctions',
+  'verifySmsCode',
+  'index.js'
+);
+const purgeAuthArtifactsPath = path.join(
+  root,
+  'cloudfunctions',
+  'purgeAuthArtifacts',
+  'index.js'
+);
 const {
   loadKeyring,
   candidateHmacIds
@@ -65,8 +77,6 @@ const RAW_PHONE = '13800138000';
 const E164_PHONE = '+8613800138000';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BASE_MS = Date.UTC(2026, 6, 16, 12, 0, 0);
-const VERIFY_SMS_SHA256 =
-  'c98f51d92b2260962698fa084a596cf6cca464b6b54ff546d985db3c34f2f80d';
 const DATA_SERVICE_SHA256 =
   'aad0677eb4082faddab25d1c7ee5bac23f07f66e40f18e7a461f50f461b0e241';
 const LOGIN_PAGE_SHA256 =
@@ -886,6 +896,196 @@ function createEntryHarness(options) {
     randomIntCalls,
     randomBytesCalls,
     counters
+  };
+}
+
+function loadCloudEntry(entryPath, fakeCloud) {
+  const entryDirectory = path.dirname(entryPath);
+  for (const cachePath of Object.keys(require.cache)) {
+    if (cachePath.startsWith(entryDirectory)) {
+      delete require.cache[cachePath];
+    }
+  }
+  const originalLoad = Module._load;
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === 'wx-server-sdk') return fakeCloud;
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    return require(entryPath);
+  } finally {
+    Module._load = originalLoad;
+  }
+}
+
+function createRetiredVerifyHarness(controlOverrides) {
+  const calls = [];
+  const control = {
+    _id: 'main',
+    maintenance: false,
+    schemaVersion: 2,
+    minClientProtocol: 2,
+    ...(controlOverrides || {})
+  };
+  let getWXContextCalls = 0;
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'test-env',
+    init() {},
+    database() {
+      return {
+        collection(name) {
+          if (name !== 'auth_control') {
+            throw new Error(`retired verifySmsCode read ${name}`);
+          }
+          return {
+            doc(id) {
+              return {
+                async get() {
+                  calls.push({ operation: 'get', collection: name, id });
+                  assert.strictEqual(id, 'main');
+                  return { data: clone(control) };
+                }
+              };
+            }
+          };
+        }
+      };
+    },
+    getWXContext() {
+      getWXContextCalls += 1;
+      throw new Error('retired verifySmsCode must not read WXContext');
+    }
+  };
+  return {
+    entry: loadCloudEntry(verifySmsPath, fakeCloud),
+    calls,
+    getWXContextCalls: () => getWXContextCalls
+  };
+}
+
+function createPurgeDatabase(seed, behavior) {
+  const settings = behavior || {};
+  const collections = seedCollections(seed);
+  const calls = [];
+  const allowedCollections = new Set([
+    'sms_codes',
+    'auth_proofs',
+    'auth_sessions'
+  ]);
+
+  function storeFor(name) {
+    if (!collections.has(name)) collections.set(name, new Map());
+    return collections.get(name);
+  }
+
+  const command = {
+    lte(value) {
+      assert(value instanceof Date, 'cleanup boundary must be a Date');
+      return { operator: 'lte', value: new Date(value.getTime()) };
+    }
+  };
+  const db = {
+    command,
+    collection(name) {
+      calls.push({ operation: 'collection', collection: name });
+      if (!allowedCollections.has(name)) {
+        throw new Error(`purgeAuthArtifacts accessed forbidden collection ${name}`);
+      }
+      return {
+        where(query) {
+          const fields = Object.keys(query || {});
+          assert.strictEqual(fields.length, 1, 'cleanup query must have one expiry criterion');
+          const field = fields[0];
+          const condition = query[field];
+          assert.strictEqual(condition && condition.operator, 'lte');
+          return {
+            limit(value) {
+              assert(
+                Number.isSafeInteger(value) && value > 0 && value <= 100,
+                'cleanup query limit must be at most 100'
+              );
+              return {
+                async get() {
+                  const call = {
+                    operation: 'query',
+                    collection: name,
+                    field,
+                    limit: value
+                  };
+                  calls.push(call);
+                  if (
+                    settings.failQuery
+                    && settings.failQuery.collection === name
+                    && settings.failQuery.field === field
+                  ) {
+                    throw new Error('private cleanup query failure');
+                  }
+                  const boundary = condition.value.getTime();
+                  const data = [...storeFor(name).values()]
+                    .filter((document) => (
+                      document[field] instanceof Date
+                      && document[field].getTime() <= boundary
+                    ))
+                    .slice(0, value)
+                    .map(clone);
+                  return { data };
+                }
+              };
+            }
+          };
+        },
+        doc(id) {
+          return {
+            async remove() {
+              const call = {
+                operation: 'remove',
+                collection: name,
+                id
+              };
+              calls.push(call);
+              if (
+                settings.failRemove
+                && settings.failRemove.collection === name
+                && settings.failRemove.id === id
+              ) {
+                throw new Error('private cleanup delete failure');
+              }
+              const removed = storeFor(name).delete(id) ? 1 : 0;
+              return { stats: { removed } };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  return {
+    db,
+    calls,
+    all(name) {
+      return [...storeFor(name).values()].map(clone);
+    }
+  };
+}
+
+function createPurgeHarness(seed, behavior) {
+  const database = createPurgeDatabase(seed, behavior);
+  let getWXContextCalls = 0;
+  const fakeCloud = {
+    DYNAMIC_CURRENT_ENV: 'test-env',
+    init() {},
+    database() {
+      return database.db;
+    },
+    getWXContext() {
+      getWXContextCalls += 1;
+      throw new Error('timer cleanup must not read WXContext');
+    }
+  };
+  return {
+    entry: loadCloudEntry(purgeAuthArtifactsPath, fakeCloud),
+    database,
+    getWXContextCalls: () => getWXContextCalls
   };
 }
 
@@ -1927,6 +2127,211 @@ async function testProtocolGuardIsFirstEffect() {
     assert.deepStrictEqual(maintenance.randomIntCalls, []);
     assert.strictEqual(maintenance.httpsRequests.length, 0);
   });
+}
+
+async function testVerifySmsCodeIsAProtocolTwoRetiredShim() {
+  const source = read('cloudfunctions/verifySmsCode/index.js');
+  assert(
+    source.includes('supportedSchemaVersions: [2]'),
+    'verifySmsCode must accept only auth protocol schema 2'
+  );
+  const harness = createRetiredVerifyHarness();
+  const result = await harness.entry.main({
+    authProtocol: 2,
+    phone: RAW_PHONE,
+    code: '123456',
+    accountId: 'forbidden-client-authority'
+  });
+  assert.deepStrictEqual(result, {
+    ok: false,
+    code: 'CLIENT_UPDATE_REQUIRED',
+    msg: '客户端版本过低，请更新后重试'
+  });
+  assert.deepStrictEqual(harness.calls, [
+    { operation: 'get', collection: 'auth_control', id: 'main' }
+  ]);
+  assert.strictEqual(harness.getWXContextCalls(), 0);
+  for (const forbidden of [
+    'sms_codes',
+    'accounts',
+    'account_names',
+    'phone_bindings',
+    'wechat_bindings',
+    'users',
+    'auth_sessions'
+  ]) {
+    assert(
+      !source.includes(`collection('${forbidden}')`),
+      `retired verifySmsCode must not access ${forbidden}`
+    );
+  }
+}
+
+async function testPurgeAuthArtifactsBoundaryAndBounds() {
+  const invalid = createPurgeHarness({});
+  for (const event of [
+    {},
+    { Type: 'Timer' },
+    { TriggerName: 'purgeAuthArtifactsTimer' },
+    { Type: 'timer', TriggerName: 'purgeAuthArtifactsTimer' },
+    { Type: 'Timer', TriggerName: 'wrongTimer' },
+    { Type: 'Timer', TriggerName: 'purgeAuthArtifactsTimer ' }
+  ]) {
+    const result = await invalid.entry.main(event);
+    assert.deepStrictEqual(result, { ok: false, code: 'FORBIDDEN' });
+  }
+  assert.deepStrictEqual(
+    invalid.database.calls,
+    [],
+    'untrusted timer events must perform zero database reads or writes'
+  );
+  assert.strictEqual(invalid.getWXContextCalls(), 0);
+
+  const expired = new Date(BASE_MS);
+  const future = new Date(BASE_MS + 1);
+  const smsCodes = [];
+  for (let index = 0; index < 101; index += 1) {
+    smsCodes.push({ _id: `sms-expired-${index}`, expiresAt: expired });
+  }
+  smsCodes.push({ _id: 'sms-live', expiresAt: future });
+  const authProofs = [
+    { _id: 'proof-expired-a', expiresAt: expired },
+    { _id: 'proof-expired-b', expiresAt: expired },
+    { _id: 'proof-live', expiresAt: future }
+  ];
+  const authSessions = [{
+    _id: 'session-both-expired',
+    idleExpiresAt: expired,
+    absoluteExpiresAt: expired
+  }];
+  for (let index = 0; index < 100; index += 1) {
+    authSessions.push({
+      _id: `session-idle-${index}`,
+      idleExpiresAt: expired,
+      absoluteExpiresAt: future
+    });
+  }
+  for (let index = 0; index < 100; index += 1) {
+    authSessions.push({
+      _id: `session-absolute-${index}`,
+      idleExpiresAt: future,
+      absoluteExpiresAt: expired
+    });
+  }
+  authSessions.push({
+    _id: 'session-live',
+    idleExpiresAt: future,
+    absoluteExpiresAt: future
+  });
+
+  const harness = createPurgeHarness({
+    sms_codes: smsCodes,
+    auth_proofs: authProofs,
+    auth_sessions: authSessions,
+    accounts: [{ _id: 'account-must-survive', status: 'active' }],
+    users: [{ _id: 'user-must-survive', roles: ['member'] }],
+    phone_bindings: [{ _id: 'phone-must-survive' }]
+  });
+  const result = await withNow(BASE_MS, () => harness.entry.main({
+    Type: 'Timer',
+    TriggerName: 'purgeAuthArtifactsTimer',
+    Time: '2026-07-16T12:00:00.000Z',
+    Message: 'platform metadata is allowed'
+  }));
+  assert.deepStrictEqual(result, {
+    ok: true,
+    smsCodesDeleted: 100,
+    authProofsDeleted: 2,
+    authSessionsDeleted: 100
+  });
+  assert.strictEqual(harness.getWXContextCalls(), 0);
+  assert.deepStrictEqual(
+    harness.database.calls
+      .filter((call) => call.operation === 'query')
+      .map(({ collection, field, limit }) => ({ collection, field, limit })),
+    [
+      { collection: 'sms_codes', field: 'expiresAt', limit: 100 },
+      { collection: 'auth_proofs', field: 'expiresAt', limit: 100 },
+      { collection: 'auth_sessions', field: 'idleExpiresAt', limit: 100 }
+    ]
+  );
+  assert.deepStrictEqual(
+    [...new Set(harness.database.calls.map((call) => call.collection))],
+    ['sms_codes', 'auth_proofs', 'auth_sessions']
+  );
+  assert.strictEqual(
+    harness.database.calls.filter((call) => (
+      call.operation === 'remove'
+      && call.collection === 'auth_sessions'
+      && call.id === 'session-both-expired'
+    )).length,
+    1,
+    'a session matching both expiry criteria must be deleted once'
+  );
+  assert.strictEqual(harness.database.all('sms_codes').length, 2);
+  assert.strictEqual(harness.database.all('auth_proofs').length, 1);
+  assert.strictEqual(harness.database.all('auth_sessions').length, 102);
+  assert.strictEqual(harness.database.all('accounts').length, 1);
+  assert.strictEqual(harness.database.all('users').length, 1);
+  assert.strictEqual(harness.database.all('phone_bindings').length, 1);
+}
+
+async function testPurgeAuthArtifactsFailuresAndDeploymentConfig() {
+  const queryFailure = createPurgeHarness(
+    { sms_codes: [{ _id: 'sms-expired', expiresAt: new Date(BASE_MS) }] },
+    { failQuery: { collection: 'sms_codes', field: 'expiresAt' } }
+  );
+  const queryResult = await withNow(BASE_MS, () => queryFailure.entry.main({
+    Type: 'Timer',
+    TriggerName: 'purgeAuthArtifactsTimer'
+  }));
+  assert.deepStrictEqual(queryResult, {
+    ok: false,
+    code: 'AUTH_INTERNAL_ERROR'
+  });
+  assert.strictEqual(
+    queryFailure.database.calls.some((call) => call.operation === 'remove'),
+    false
+  );
+  assert(!JSON.stringify(queryResult).includes('private cleanup query failure'));
+
+  const deleteFailure = createPurgeHarness(
+    { sms_codes: [{ _id: 'sms-expired', expiresAt: new Date(BASE_MS) }] },
+    { failRemove: { collection: 'sms_codes', id: 'sms-expired' } }
+  );
+  const deleteResult = await withNow(BASE_MS, () => deleteFailure.entry.main({
+    Type: 'Timer',
+    TriggerName: 'purgeAuthArtifactsTimer'
+  }));
+  assert.deepStrictEqual(deleteResult, {
+    ok: false,
+    code: 'AUTH_INTERNAL_ERROR'
+  });
+  assert(!JSON.stringify(deleteResult).includes('private cleanup delete failure'));
+
+  assert.deepStrictEqual(
+    JSON.parse(read('cloudfunctions/purgeAuthArtifacts/config.json')),
+    {
+      triggers: [{
+        name: 'purgeAuthArtifactsTimer',
+        type: 'timer',
+        config: '0 0 * * * * *'
+      }]
+    }
+  );
+  const packageJson = JSON.parse(
+    read('cloudfunctions/purgeAuthArtifacts/package.json')
+  );
+  assert.strictEqual(packageJson.name, 'purgeAuthArtifacts');
+  assert.strictEqual(packageJson.main, 'index.js');
+  assert.strictEqual(packageJson.dependencies['wx-server-sdk'], '~2.6.3');
+  assert.strictEqual(
+    fs.existsSync(file('cloudfunctions/purgeAuthArtifacts/package-lock.json')),
+    false,
+    'purgeAuthArtifacts must not add a package lock'
+  );
+  const source = read('cloudfunctions/purgeAuthArtifacts/index.js');
+  assert(!/authProtocol|guardClientRequest|protocol-guard/.test(source));
 }
 
 async function testFirstMissingDocumentsCreateAndSendLeadingZero() {
@@ -3822,11 +4227,6 @@ async function testNoSensitiveLogsOrSourceFallbacks() {
   assert(!smsSource.includes("collection('wechat_bindings')"));
 
   assert.strictEqual(
-    fileSha256('cloudfunctions/verifySmsCode/index.js'),
-    VERIFY_SMS_SHA256,
-    'verifySmsCode must remain unchanged'
-  );
-  assert.strictEqual(
     fileSha256('miniprogram/services/data.js'),
     DATA_SERVICE_SHA256,
     'mini-program data service must remain unchanged'
@@ -3845,6 +4245,9 @@ async function main() {
   await testConsumeRejectsCorruptedRateAndTimeReversal();
   await testScopeVectorAndCanonicalChallenge();
   await testProtocolGuardIsFirstEffect();
+  await testVerifySmsCodeIsAProtocolTwoRetiredShim();
+  await testPurgeAuthArtifactsBoundaryAndBounds();
+  await testPurgeAuthArtifactsFailuresAndDeploymentConfig();
   await testFirstMissingDocumentsCreateAndSendLeadingZero();
   await testMissingDiscriminationAndConfigurationFailure();
   await testAnonymousPurposeAuthorization();

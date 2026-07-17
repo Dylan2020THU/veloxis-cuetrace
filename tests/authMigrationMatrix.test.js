@@ -932,6 +932,11 @@ function selfTestAuthModuleClosureHelper() {
 selfTestAuthModuleClosureHelper();
 
 const baseline = readJson(baselinePath);
+assert.deepStrictEqual(
+  baseline,
+  readCommittedJson(baselinePath),
+  'the immutable auth v2 identity baseline must match HEAD'
+);
 assertSortedUniqueForwardPaths(baseline.currentEntryPaths, 'currentEntryPaths');
 assertSortedUniqueForwardPaths(baseline.directIdentityEntryPaths, 'directIdentityEntryPaths');
 assertSortedUniqueForwardPaths(baseline.allIdentityJsPaths, 'allIdentityJsPaths');
@@ -953,20 +958,38 @@ for (const paymentCopy of baseline.paymentIdentityCopies) {
 }
 
 const scanned = scanIdentityBoundary();
+const finalCurrentEntryPaths = [
+  ...baseline.currentEntryPaths,
+  'cloudfunctions/purgeAuthArtifacts/index.js'
+].sort(inventoryCollator.compare);
+const task5RemovedIdentityEntries = new Set([
+  'cloudfunctions/login/index.js',
+  'cloudfunctions/verifySmsCode/index.js'
+]);
+const finalDirectIdentityEntryPaths = baseline.directIdentityEntryPaths.filter(
+  (relativePath) => !task5RemovedIdentityEntries.has(relativePath)
+);
+const finalAllIdentityJsPaths = [
+  ...baseline.allIdentityJsPaths.filter(
+    (relativePath) => !task5RemovedIdentityEntries.has(relativePath)
+  ),
+  'cloudfunctions/accountAuth/lib/security-actions.js',
+  'cloudfunctions/accountAuth/lib/wechat-actions.js'
+].sort(inventoryCollator.compare);
 assert.deepStrictEqual(
   scanned.currentEntryPaths,
-  baseline.currentEntryPaths,
-  'current entry paths changed; update the migration inventory deliberately'
+  finalCurrentEntryPaths,
+  'the final entry inventory must add only purgeAuthArtifacts to the immutable baseline'
 );
 assert.deepStrictEqual(
   scanned.directIdentityEntryPaths,
-  baseline.directIdentityEntryPaths,
-  'direct identity entry paths changed; update the migration inventory deliberately'
+  finalDirectIdentityEntryPaths,
+  'Task 5 must retain explicit accountAuth WeChat credential use and remove only login/verifySmsCode'
 );
 assert.deepStrictEqual(
   scanned.allIdentityJsPaths,
-  baseline.allIdentityJsPaths,
-  'all identity JavaScript paths changed; update the migration inventory deliberately'
+  finalAllIdentityJsPaths,
+  'Task 5 must isolate explicit WeChat credential use in the two accountAuth action modules'
 );
 
 const policy = readJson(policyPath);
@@ -975,8 +998,8 @@ assert.deepStrictEqual(policy.modules, expectedModules, 'auth module manifest ch
 assert(Array.isArray(policy.entries), 'policy entries must be an array');
 assert.strictEqual(policy.entries.length, 108, 'target policy must contain 108 entries');
 
-const currentNames = baseline.currentEntryPaths.map(entryNameFromPath);
-const targetNames = [...currentNames, 'purgeAuthArtifacts'].sort(inventoryCollator.compare);
+const currentNames = scanned.currentEntryPaths.map(entryNameFromPath);
+const targetNames = [...currentNames].sort(inventoryCollator.compare);
 const policyNames = policy.entries.map((entry) => entry.name);
 assert.strictEqual(new Set(policyNames).size, policyNames.length, 'policy entry names must be unique');
 assert.deepStrictEqual(
@@ -997,11 +1020,7 @@ for (const entry of policy.entries) {
   assertFocusedTests(entry.focusedTests, `${entry.name}.focusedTests`);
   assert(Array.isArray(entry.copies), `${entry.name}.copies must be an array`);
 
-  if (entry.name === 'purgeAuthArtifacts') {
-    assert.strictEqual(entry.planned, true, 'purgeAuthArtifacts must be planned');
-  } else {
-    assert.strictEqual(entry.planned, false, `${entry.name} is a current entry`);
-  }
+  assert.strictEqual(entry.planned, false, `${entry.name} must be a current entry`);
 
   if (entry.boundary === 'callback' || entry.boundary === 'timer') {
     assert.strictEqual(entry.protocolGuard, 'none', `${entry.name} must not trust a client protocol`);
@@ -1100,8 +1119,8 @@ for (const entry of policy.entries) {
 const plannedEntries = policy.entries.filter((entry) => entry.planned);
 assert.deepStrictEqual(
   plannedEntries.map((entry) => entry.name),
-  ['purgeAuthArtifacts'],
-  'only purgeAuthArtifacts may be absent from the current entry scan'
+  [],
+  'the final policy must not contain a planned missing entry'
 );
 assert.deepStrictEqual(
   policy.entries.reduce((counts, entry) => {
@@ -1271,10 +1290,33 @@ assert.deepStrictEqual(
 );
 
 const matrix = fs.readFileSync(path.join(root, matrixPath), 'utf8');
+assert(
+  matrix.includes('auth_sessions(accountId, authVersion, revokedAt, _id)'),
+  'matrix must document the session status cursor index'
+);
 assert(!/\b(?:TODO|TBD|FIXME|XXX)\b|\?\?\?|待补|待定/i.test(matrix), 'matrix has unfinished markers');
 const matrixRows = parseMatrix(matrix);
 const matrixKeys = matrixRows.map((row) => `${row.kind}:${row.name}`);
 assert.strictEqual(new Set(matrixKeys).size, matrixKeys.length, 'matrix rows must be unique');
+
+const task5EntryStatuses = Object.freeze({
+  accountAuth: 'implemented',
+  login: 'implemented',
+  purgeAuthArtifacts: 'implemented',
+  sendSmsCode: 'implemented',
+  verifySmsCode: 'retired'
+});
+const task5ImplementedCollections = new Set([
+  'account_names',
+  'accounts',
+  'auth_proofs',
+  'auth_sessions',
+  'password_rate_limits',
+  'phone_bindings',
+  'sms_codes',
+  'sms_rate_limits',
+  'wechat_bindings'
+]);
 
 for (const row of matrixRows) {
   assert(row.currentIdentityKey.length > 0, `${row.kind}:${row.name} must state current identity keys`);
@@ -1282,15 +1324,28 @@ for (const row of matrixRows) {
   assert(allowedBoundaries.has(row.boundary), `${row.kind}:${row.name} has invalid boundary`);
   assert(row.foreignKeys.length > 0, `${row.kind}:${row.name} must state foreign-key behavior`);
   assert(row.batch.length > 0, `${row.kind}:${row.name} must state a release batch`);
-  const expectedStatus = row.kind === 'entry'
+  let expectedStatus = 'pending';
+  if (
+    row.kind === 'entry'
+    && Object.prototype.hasOwnProperty.call(task5EntryStatuses, row.name)
+  ) {
+    expectedStatus = task5EntryStatuses[row.name];
+  } else if (
+    row.kind === 'collection'
+    && task5ImplementedCollections.has(row.name)
+  ) {
+    expectedStatus = 'implemented';
+  } else if (
+    row.kind === 'entry'
     && byName[row.name]
     && byName[row.name].protocolGuard !== 'none'
-    ? 'protocol_guarded'
-    : 'pending';
+  ) {
+    expectedStatus = 'protocol_guarded';
+  }
   assert.strictEqual(
     row.status,
     expectedStatus,
-    `${row.kind}:${row.name} migration status advanced outside Task 2`
+    `${row.kind}:${row.name} has the wrong Task 5 migration status`
   );
   assert(!/[*?[\]]/.test(row.focusedTests), `${row.kind}:${row.name} focused tests must be explicit`);
   assertFocusedTests(splitFocusedTests(row.focusedTests), `${row.kind}:${row.name} focused tests`);
@@ -1578,7 +1633,7 @@ const unclassified = unclassifiedEntries.length + unclassifiedCollections.length
 assert.strictEqual(unclassified, 0, 'all entries and collections must be classified');
 
 console.log([
-  `CURRENT_ENTRY_TOTAL=${baseline.currentEntryPaths.length}`,
+  `CURRENT_ENTRY_TOTAL=${scanned.currentEntryPaths.length}`,
   `TARGET_POLICY_TOTAL=${policy.entries.length}`,
   `PLANNED_MISSING=${plannedEntries.length}`,
   `BASELINE_DIRECT_IDENTITY_ENTRIES=${baseline.directIdentityEntryPaths.length}`,

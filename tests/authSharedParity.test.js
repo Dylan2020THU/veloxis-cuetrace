@@ -31,6 +31,10 @@ function committedPolicy() {
   return JSON.parse(gitOutput(['show', `HEAD:${policyPath}`], 'utf8'));
 }
 
+function workingPolicy() {
+  return JSON.parse(read(policyPath));
+}
+
 function protocolCli() {
   const result = childProcess.spawnSync(
     process.execPath,
@@ -359,6 +363,12 @@ function assertDynamicSyncSafety() {
 }
 
 const clientWrapperPattern = /const protocolGuardedMain = exports\.main;\s*exports\.main = async \(event = \{\}, \.\.\.args\) => \{\s*const gate = await guardClientRequest\(\{\s*db,\s*event,\s*supportedSchemaVersions: \[(1|2)\]\s*\}\);\s*if \(!gate\.ok\) return gate;\s*let businessEvent = event;\s*if \(\s*Object\.prototype\.hasOwnProperty\.call\(\s*event,\s*'authProtocol'\s*\)\s*\) \{\s*businessEvent = \{ \.\.\.event \};\s*delete businessEvent\.authProtocol;\s*\}\s*return protocolGuardedMain\(\s*businessEvent,\s*\.\.\.args\s*\);\s*\};\s*$/;
+const schemaTwoClientEntries = new Set([
+  'accountAuth',
+  'login',
+  'sendSmsCode',
+  'verifySmsCode'
+]);
 
 function assertClientEntry(entry, source, canonicalBytes) {
   const relativePath = `cloudfunctions/${entry.name}/index.js`;
@@ -376,7 +386,7 @@ function assertClientEntry(entry, source, canonicalBytes) {
   assert(wrapper, relativePath + ' must match the guard wrapper');
   assert.strictEqual(
     Number(wrapper[1]),
-    entry.name === 'sendSmsCode' ? 2 : 1,
+    schemaTwoClientEntries.has(entry.name) ? 2 : 1,
     relativePath + ' has the wrong supported schema version'
   );
   assert(
@@ -567,9 +577,10 @@ async function assertRefundBranch(entry, source, canonicalBytes) {
 }
 
 async function main() {
-  const policy = committedPolicy();
+  const committed = committedPolicy();
+  const policy = workingPolicy();
   const paths = protocolCli();
-  const expectedPaths = policy.entries
+  const expectedPaths = committed.entries
     .filter((entry) => entry.protocolGuard !== 'none')
     .map((entry) => `cloudfunctions/${entry.name}/index.js`)
     .sort();
