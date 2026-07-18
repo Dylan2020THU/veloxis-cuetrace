@@ -1,0 +1,9 @@
+{
+  "name": "applyCoachShopBinding",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 教练申请绑定球厅",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

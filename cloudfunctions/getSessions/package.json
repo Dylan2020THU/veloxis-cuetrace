@@ -1,0 +1,9 @@
+{
+  "name": "getSessions",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 获取本店使用记录",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

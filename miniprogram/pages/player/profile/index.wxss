@@ -1,0 +1,245 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 40rpx;
+}
+
+.nav-bar {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 32rpx;
+  background: var(--card-bg);
+  border-bottom: 1rpx solid var(--border);
+}
+
+.nav-back {
+  display: flex;
+  align-items: center;
+  padding: 8rpx 0;
+}
+
+.back-icon {
+  font-size: 48rpx;
+  color: #067ef9;
+  line-height: 1;
+  margin-right: 4rpx;
+  font-weight: 300;
+}
+
+.back-text {
+  font-size: 30rpx;
+  color: #067ef9;
+}
+
+.hero {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(6, 126, 249, 0.06) 100%);
+  padding: 48rpx 40rpx 56rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text);
+}
+
+.avatar-wrap {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 6rpx solid rgba(255, 255, 255, 0.5);
+  margin-bottom: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+}
+
+.avatar {
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.avatar-ph {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64rpx;
+  font-weight: 700;
+  color: #067ef9;
+}
+
+.hero-name {
+  font-size: 40rpx;
+  font-weight: 700;
+  margin-bottom: 12rpx;
+  color: #1f2329;
+  line-height: 1.2;
+}
+
+.hero-badge {
+  font-size: 22rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.25);
+  border: 2rpx solid rgba(255, 255, 255, 0.4);
+}
+
+.hero-badge.coach {
+  background: rgba(230, 126, 34, 0.3);
+  border-color: rgba(230, 126, 34, 0.5);
+}
+
+.hero-badge.member {
+  background: rgba(6, 126, 249, 0.3);
+  border-color: rgba(6, 126, 249, 0.5);
+}
+
+.content {
+  padding: 32rpx 32rpx 0;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 24rpx;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.info-row:last-of-type {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 28rpx;
+  color: var(--text-weak);
+}
+
+.info-value {
+  font-size: 28rpx;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.info-value.accent {
+  color: #067ef9;
+  font-weight: 600;
+}
+
+.intro-text {
+  font-size: 28rpx;
+  color: var(--text);
+  line-height: 1.6;
+  margin-top: 16rpx;
+}
+
+.cert-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.cert-img {
+  width: 200rpx;
+  height: 150rpx;
+  border-radius: 12rpx;
+}
+
+.stats-row {
+  display: flex;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+}
+
+.stat-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #067ef9;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 6rpx;
+}
+
+.loading {
+  padding: 40rpx 0;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+/* 会员中心卡片 */
+.member-card {
+  background: linear-gradient(180deg, #ffffff 0%, #F0F7FF 100%);
+  border: 2rpx solid #DBEAFE;
+}
+.member-status {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin: 16rpx 0 24rpx;
+}
+.member-status__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 28rpx;
+}
+.member-status__label {
+  color: var(--text-sub);
+}
+.member-status__value {
+  font-weight: 600;
+  color: var(--text);
+}
+.member-status__value.is-free { color: var(--text-weak); }
+.member-status__value.is-pro {
+  color: #067EF9;
+}
+.member-status__value.is-trial {
+  color: #F59E0B;
+}
+.member-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+.member-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 16rpx;
+  background: var(--bg-elev);
+  color: var(--text-sub);
+  font-size: 28rpx;
+  font-weight: 500;
+}
+.member-btn--primary {
+  background: linear-gradient(135deg, #067EF9 0%, #4DA3FF 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4rpx 12rpx rgba(6, 126, 249, 0.25);
+}

@@ -1,0 +1,57 @@
+.page {
+  min-height: 100vh;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+/* 列表行 */
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.entry:last-child {
+  border-bottom: none;
+}
+.entry-title {
+  font-size: 30rpx;
+  color: var(--text);
+}
+.entry-right {
+  display: flex;
+  align-items: center;
+}
+.entry-val {
+  font-size: 26rpx;
+  color: var(--text-weak);
+  margin-right: 10rpx;
+}
+.arrow {
+  color: var(--text-weak);
+  font-size: 36rpx;
+  line-height: 1;
+}
+.entry-danger .entry-title {
+  color: #e54545;
+}
+
+/* 退出账号 */
+.logout-wrap {
+  padding: 24rpx;
+}
+.logout-btn {
+  background: var(--card-bg);
+  color: #e54545;
+  font-size: 30rpx;
+  font-weight: 500;
+  height: 92rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+.logout-btn::after {
+  border: none;
+}

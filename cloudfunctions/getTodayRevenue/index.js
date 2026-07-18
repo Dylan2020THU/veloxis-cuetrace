@@ -156,7 +156,8 @@ function summarizeOrders(orders) {
     ) return;
 
     platformPaidFen += retained;
-    shopNetTargetFen += retained - targetCostFen(retained);
+    shopNetTargetFen += retained - targetCostFen(retained)
+      + fen(order.retainedCouponSubsidyFen);
     totalCostFen += fen(order.totalCostFen);
     channelFeeFen += fen(order.channelFeeFen);
     platformNetFen += fen(order.platformNetFen);

@@ -1,0 +1,9 @@
+{
+  "name": "createPost",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 发布社区帖子",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

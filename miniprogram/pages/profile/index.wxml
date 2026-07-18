@@ -1,0 +1,161 @@
+<view class="page theme-{{theme}}">
+  <!-- 1. 身份头部 -->
+  <view class="profile-head">
+    <view class="head-gear" catchtap="goSettings"><view class="gear-ic"></view></view>
+    <view class="head-avatar-wrap" bindtap="chooseAvatar">
+      <image wx:if="{{avatar}}" class="head-avatar" src="{{avatar}}" mode="aspectFill"></image>
+      <view wx:else class="head-avatar head-avatar--ph">{{nickname[0]}}</view>
+      <view class="head-avatar-edit">
+        <view class="head-avatar-edit-ic"></view>
+      </view>
+    </view>
+    <view class="head-name">{{nickname}}</view>
+    <view class="head-role">{{roleLabel}}</view>
+    <view class="head-code" wx:if="{{accountCode}}">
+      <text class="head-code-text" catchtap="copyCode">编码 {{accountCode}}</text>
+      <text class="head-code-div">|</text>
+      <text class="head-code-qr" catchtap="goMyQrcode">二维码</text>
+    </view>
+  </view>
+
+  <!-- ============ 店主：商家中心 ============ -->
+  <block wx:if="{{isShop}}">
+    <!-- 经营数据 -->
+    <view class="card shop-hero">
+      <view class="card-head">
+        <text class="card-title">经营数据</text>
+        <text class="card-more" bindtap="goBizData">今日 ›</text>
+      </view>
+      <view class="metrics">
+        <view class="metric">
+          <view class="metric-num"><text class="cur">¥</text>{{shop.todayRevenue}}</view>
+          <view class="metric-label">今日营业额</view>
+        </view>
+        <view class="metric">
+          <view class="metric-num">{{shop.todayOpens}}</view>
+          <view class="metric-label">今日开台</view>
+        </view>
+        <view class="metric">
+          <view class="metric-num">{{shop.occupied}}</view>
+          <view class="metric-label">当前在台</view>
+        </view>
+        <view class="metric">
+          <view class="metric-num">{{shop.memberCount}}</view>
+          <view class="metric-label">会员数</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 资金 · 结算（二期） -->
+    <view class="card" bindtap="comingSoon">
+      <view class="card-head">
+        <view><text class="card-title">资金 · 结算</text><text class="tag-soon">二期</text></view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="fund">
+        <view class="fund-col">
+          <view class="fund-num"><text class="cur">¥</text>{{shop.withdrawable}}</view>
+          <view class="fund-label">可提现余额</view>
+        </view>
+        <view class="fund-col">
+          <view class="fund-num"><text class="cur">¥</text>{{shop.pending}}</view>
+          <view class="fund-label">待结算</view>
+        </view>
+        <view class="fund-btns">
+          <view class="fund-btn fund-btn--primary" catchtap="comingSoon">提现</view>
+          <view class="fund-btn" catchtap="comingSoon">账单</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 经营工具九宫格 -->
+    <view class="card">
+      <view class="card-title">经营工具</view>
+      <view class="tools">
+        <view class="tool" wx:for="{{shopTools}}" wx:key="label" data-act="{{item.act}}" bindtap="onTool">
+          <view class="tool-ic-wrap">
+            <view class="tool-ic" style="-webkit-mask-image:url('{{item.icon}}');mask-image:url('{{item.icon}}');"></view>
+            <view wx:if="{{item.dot}}" class="tool-dot"></view>
+          </view>
+          <view class="tool-label">{{item.label}}</view>
+        </view>
+      </view>
+    </view>
+
+  </block>
+
+  <!-- ============ 球员 / 教练 ============ -->
+  <block wx:else>
+    <!-- 训练统计 -->
+    <view class="card">
+      <view class="card-title">训练统计</view>
+      <view class="rank-stats">
+        <view class="rank-stat">
+          <view class="rank-stat__num">{{summary.totalDays}}</view>
+          <view class="rank-stat__label">累计打卡天</view>
+        </view>
+        <view class="rank-stat">
+          <view class="rank-stat__num">{{summary.totalHoursText}}</view>
+          <view class="rank-stat__label">累计时长(h)</view>
+        </view>
+        <view class="rank-stat">
+          <view class="rank-stat__num">{{summary.streak}}</view>
+          <view class="rank-stat__label">连续打卡天</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 我的约球 -->
+    <view class="card">
+      <view class="card-title">我的约球</view>
+      <view class="grid4">
+        <view class="grid4-item" bindtap="goMatchMine">
+          <view class="grid4-num">{{matchCounts.posted}}</view>
+          <view class="grid4-label">我发起的</view>
+        </view>
+        <view class="grid4-item" bindtap="goMatchMine">
+          <view class="grid4-num">{{matchCounts.joined}}</view>
+          <view class="grid4-label">我参与的</view>
+        </view>
+        <view class="grid4-item" bindtap="goMatchMine">
+          <view class="grid4-num">{{matchCounts.coach}}</view>
+          <view class="grid4-label">约教练</view>
+        </view>
+        <view class="grid4-item" bindtap="goMatchMine">
+          <view class="grid4-num">{{matchCounts.table}}</view>
+          <view class="grid4-label">约球桌</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 快捷功能 -->
+    <view class="card">
+      <view class="card-title">快捷功能</view>
+      <view class="grid4">
+        <view class="grid4-item" bindtap="goCheckin">
+          <view class="quick-ic quick-ic--train"></view>
+          <view class="grid4-label">训练记录</view>
+        </view>
+        <view class="grid4-item" bindtap="goCommunity">
+          <view class="quick-ic quick-ic--community"></view>
+          <view class="grid4-label">社区</view>
+        </view>
+        <view class="grid4-item" bindtap="goMatchMine">
+          <view class="quick-ic quick-ic--ball"></view>
+          <view class="grid4-label">我的约球</view>
+        </view>
+        <view class="grid4-item" bindtap="goEditProfile">
+          <view class="quick-ic quick-ic--edit"></view>
+          <view class="grid4-label">编辑资料</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 教练工作台 -->
+    <view wx:if="{{isCoach}}" class="card">
+      <view class="card-title">教练工作台</view>
+      <view class="entry" bindtap="goCoachMembers"><text class="entry-title">我的学员</text><text class="arrow">›</text></view>
+      <view class="entry" bindtap="goCoachBookings"><text class="entry-title">谁约了我</text><text class="arrow">›</text></view>
+    </view>
+  </block>
+</view>

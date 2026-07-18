@@ -1,0 +1,9 @@
+{
+  "name": "settleTableProfitSharing",
+  "version": "1.0.0",
+  "description": "Settle verified T+1 table profit sharing",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

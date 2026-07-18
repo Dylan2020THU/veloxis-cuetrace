@@ -1,0 +1,273 @@
+<view class="page theme-{{theme}}">
+  <view class="page-header">
+    <text class="page-title">球厅态势</text>
+    <view class="header-actions">
+      <text class="header-link" bindtap="goCheckinQr">到店码</text>
+      <text class="refresh-btn" bindtap="loadInit">刷新</text>
+    </view>
+  </view>
+
+  <view class="store-bar" wx:if="{{stores.length > 0}}">
+    <picker mode="selector" range="{{stores}}" range-key="name" value="{{storesIndex}}" bindchange="onStoreChange">
+      <view class="store-picker">
+        <text>{{currentStoreName || '选择门店'}}</text>
+        <text class="arrow-icon">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-group">
+      <text class="filter-label">品牌</text>
+      <view class="filter-chips">
+        <view
+          class="filter-chip {{filters.brand === '' ? 'active' : ''}}"
+          data-type="brand"
+          data-value=""
+          bindtap="filterByBrand"
+        >全部</view>
+        <view
+          class="filter-chip {{filters.brand === item ? 'active' : ''}}"
+          wx:for="{{brandOptions}}"
+          wx:key="item"
+          data-type="brand"
+          data-value="{{item}}"
+          bindtap="filterByBrand"
+        >{{item}}</view>
+      </view>
+    </view>
+    <view class="filter-group">
+      <text class="filter-label">状态</text>
+      <view class="filter-chips">
+        <view
+          class="filter-chip {{filters.status === '' ? 'active' : ''}}"
+          data-type="status"
+          data-value=""
+          bindtap="filterByStatus"
+        >全部</view>
+        <view
+          class="filter-chip {{filters.status === 'idle' ? 'active' : ''}}"
+          data-type="status"
+          data-value="idle"
+          bindtap="filterByStatus"
+        >空闲</view>
+        <view
+          class="filter-chip {{filters.status === 'occupied' ? 'active' : ''}}"
+          data-type="status"
+          data-value="occupied"
+          bindtap="filterByStatus"
+        >使用中</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 统计栏 -->
+  <view class="stats-bar">
+    <text class="stats-text">共 {{filteredTables.length}} 张桌</text>
+    <text class="stats-text occupied-count">使用中 {{occupiedCount}} 张</text>
+  </view>
+
+  <!-- 到店待确认横幅 -->
+  <view wx:if="{{pendingCount > 0}}" class="pending-banner">
+    <text class="pending-dot"></text>
+    <text class="pending-text">{{pendingCount}} 位球员已到店待确认 · 点击空闲球台「使用」为其开台</text>
+  </view>
+
+  <view wx:if="{{filteredTables.length === 0}}" class="empty-state">
+    <text class="empty-text">暂无球台信息\n请先在「桌型管理」中添加桌型</text>
+  </view>
+
+  <view wx:else class="table-grid">
+    <view
+      class="table-card {{item.status === 'occupied' ? 'occupied' : ''}}"
+      wx:for="{{filteredTables}}"
+      wx:key="tableId"
+      style="--card-color:{{item.bgColor}}"
+    >
+      <!-- 书签式品牌色顶条 -->
+      <view class="bookmark-strip" style="background:{{item.bgColor}}"></view>
+
+      <!-- 卡片内容区 -->
+      <view class="table-card-inner">
+        <!-- 球台名称 + 桌型品牌 + 空闲/使用中状态 -->
+        <view class="card-header">
+          <view class="table-info">
+            <text class="table-name">{{item.tableName}}</text>
+            <text class="table-brand">{{item.tableTypeName}}</text>
+          </view>
+          <view class="status-badge {{item.status}}">
+            <view class="status-dot"></view>
+            <text class="status-text" wx:if="{{item.status === 'occupied'}}">使用中</text>
+            <text class="status-text" wx:else>空闲</text>
+          </view>
+        </view>
+
+        <!-- 球员区域 -->
+        <view class="players-zone">
+          <block wx:if="{{item.status === 'occupied'}}">
+            <!-- 匿名占用：无绑定球员，仅显示"有人" -->
+            <view wx:if="{{!item.players.length}}" class="player-row anon-row">
+              <view class="player-avatar-wrap">
+                <view class="player-avatar-placeholder anon">人</view>
+              </view>
+              <view class="player-info">
+                <text class="player-name">有人 · 未绑定球员</text>
+                <text class="coach-time anon-tip">球员扫码到店后显示头像</text>
+              </view>
+            </view>
+            <view class="player-row"
+              wx:for="{{item.players}}"
+              wx:for-item="player"
+              wx:key="openid"
+              data-openid="{{player.openid}}"
+              data-nickname="{{player.nickname}}"
+              data-iscoach="{{player.isCoach ? 1 : 0}}"
+              bindtap="goPlayerProfile"
+            >
+              <view class="player-avatar-wrap">
+                <image wx:if="{{player.avatar}}" class="player-avatar" src="{{player.avatar}}" mode="aspectFill" />
+                <view wx:else class="player-avatar-placeholder">{{player.nickname ? player.nickname[0] : '?'}}</view>
+              </view>
+              <view class="player-info">
+                <text class="player-name">{{player.nickname || (player.isCoach ? '教练' : '球员')}}{{player.isCoach ? '（教练）' : ''}}</text>
+                <text wx:if="{{player.isCoach && player.joinedAt}}" class="coach-time">{{player.teachText || ''}}</text>
+              </view>
+            </view>
+            <view wx:if="{{item.players.length && item.players.length < 2}}" class="waiting-hint">等待另一人加入...</view>
+          </block>
+          <view wx:else class="idle-hint">空闲中</view>
+        </view>
+
+        <!-- 收费标准栏 -->
+        <view class="table-price-bar">
+          <text class="price-bar-text">{{item.pricePerHour}}元/小时</text>
+        </view>
+
+        <!-- 已开桌时长 -->
+        <view class="table-elapsed" wx:if="{{item.status === 'occupied'}}">
+          <text class="elapsed-text">{{item.elapsedText}}</text>
+        </view>
+
+        <!-- 超时提醒 -->
+        <view class="table-overtime" wx:if="{{item.overtime}}">
+          <text class="overtime-text">⚠ 已超时，请及时结账</text>
+        </view>
+
+        <view class="checkout-pending" wx:if="{{item.checkoutPending}}">待支付，球桌仍占用</view>
+
+        <!-- 操作按钮 -->
+        <view class="card-action">
+          <view
+            class="action-btn secondary btn-qr"
+            data-idx="{{index}}"
+            bindtap="goTableQr"
+          >桌码</view>
+          <view
+            wx:if="{{item.pendingVerify}}"
+            class="action-btn btn-end"
+            data-idx="{{index}}"
+            bindtap="verifyTableCheckin"
+          >确认开台</view>
+          <view
+            wx:else
+            class="action-btn {{item.status === 'occupied' ? 'btn-end' : 'btn-use'}}"
+            data-idx="{{index}}"
+            bindtap="toggleTable"
+          >
+            {{item.checkoutPending ? '查看账单' : (item.status === 'occupied' ? '结束使用' : '使用')}}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 店主可信结账：服务端计价、首响应 token 收款码、服务端状态轮询。 -->
+<view wx:if="{{checkoutSheet}}" class="use-mask checkout-mask" catchtap="closeCheckoutSheet">
+  <view class="use-sheet checkout-sheet theme-{{theme}}" catchtap="noop">
+    <view class="use-title">服务端计价 · {{checkoutSheet.tableName}}</view>
+    <view wx:if="{{checkoutSheet.loading}}" class="checkout-loading">正在生成可信账单…</view>
+    <block wx:else>
+      <view class="checkout-amount">¥{{checkoutSheet.quoteAmountYuan}}</view>
+      <view class="checkout-meta">服务端计费时长 {{checkoutSheet.quoteDurationText}}</view>
+      <view class="checkout-meta">{{checkoutSheet.status === 'complete' ? '服务端已确认到账' : (checkoutSheet.status === 'external_paid' ? '已记录外部结账' : '等待服务端确认支付')}}</view>
+      <view wx:if="{{checkoutSheet.qrLoading}}" class="checkout-loading">正在生成顾客收款码…</view>
+      <image wx:if="{{checkoutSheet.qrSrc}}" class="checkout-qr" src="{{checkoutSheet.qrSrc}}" mode="aspectFit" show-menu-by-longpress="{{false}}" />
+      <view wx:if="{{checkoutSheet.error}}" class="checkout-error">{{checkoutSheet.error}}</view>
+      <view wx:if="{{checkoutSheet.canRotate}}" class="checkout-rotate" bindtap="rotateCheckoutCode">明确重新生成收款码</view>
+      <view class="checkout-note">待支付期间球桌保持占用；只有服务端确认后才结束本场。</view>
+    </block>
+    <view class="use-actions">
+      <view class="use-btn ghost" bindtap="closeCheckoutSheet">稍后处理</view>
+      <view wx:if="{{checkoutSheet.orderId && checkoutSheet.status !== 'complete' && checkoutSheet.status !== 'external_paid'}}" class="use-btn external" bindtap="openExternalCheckout">外部结账</view>
+    </view>
+  </view>
+</view>
+
+<!-- 外部结账是店主专用的独立确认层，不复用微信支付成功语义。 -->
+<view wx:if="{{externalSheet}}" class="use-mask external-mask" catchtap="closeExternalCheckout">
+  <view class="use-sheet external-sheet theme-{{theme}}" catchtap="noop">
+    <view class="use-title">记录外部结账</view>
+    <view class="external-warning">该操作不是微信支付成功，不收取平台抽成，也不会自动获得已核验训练权益。</view>
+    <textarea class="external-reason" maxlength="200" value="{{externalSheet.reason}}" placeholder="填写现金、其他渠道等收款原因（必填）" bindinput="onExternalReasonInput" />
+    <view class="use-actions">
+      <view class="use-btn ghost" bindtap="closeExternalCheckout">取消</view>
+      <view class="use-btn external" bindtap="confirmExternalCheckout">{{externalSheet.submitting ? '提交中…' : '确认外部结账'}}</view>
+    </view>
+  </view>
+</view>
+
+<!-- 开台确认弹窗：绑定到店球员 + 教学局教练 -->
+<view wx:if="{{openSheet}}" class="use-mask" catchtap="closeUseSheet">
+  <view class="use-sheet theme-{{theme}}" catchtap="noop">
+    <view class="use-title">开台 · {{openSheet.tableName}}</view>
+
+    <view class="use-scroll">
+      <view class="use-section-label">到店球员</view>
+      <view class="use-opt {{openSheet.selectedMember === '' ? 'sel' : ''}}" data-openid="" bindtap="selectMember">
+        <view class="use-avatar ph">匿</view>
+        <view class="use-opt-main">
+          <text class="use-opt-name">匿名开台（不绑定球员）</text>
+          <text class="use-opt-sub">无球员到店或散客自助</text>
+        </view>
+        <view class="use-radio"></view>
+      </view>
+      <view class="use-opt {{openSheet.selectedMember === item.memberOpenid ? 'sel' : ''}}"
+        wx:for="{{openSheet.requests}}" wx:key="_id"
+        hidden="{{item.role === 'coach'}}"
+        data-openid="{{item.memberOpenid}}" bindtap="selectMember">
+        <text class="use-reject" data-request-id="{{item._id}}" catchtap="rejectPendingCheckin">拒绝</text>
+        <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
+        <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '球'}}</view>
+        <view class="use-opt-main">
+          <text class="use-opt-name">{{item.nickname || '球员'}}</text>
+          <text wx:if="{{item.dist != null}}" class="use-opt-sub">距门店 {{item.dist}}km</text>
+        </view>
+        <view class="use-radio"></view>
+      </view>
+      <view wx:if="{{!openSheet.requests.length}}" class="use-empty">暂无到店待确认球员，可匿名开台</view>
+
+      <view class="use-row">
+        <text class="use-section-label nomargin">教学局（绑定教练课时）</text>
+        <switch checked="{{openSheet.isCoaching}}" bindchange="toggleCoaching" color="#067ef9" />
+      </view>
+      <block wx:if="{{openSheet.isCoaching}}">
+        <view class="use-opt {{openSheet.coachOpenid === item._cid ? 'sel' : ''}}"
+          wx:for="{{coaches}}" wx:key="_cid"
+          data-openid="{{item._cid}}" bindtap="selectCoach">
+          <image wx:if="{{item.avatar}}" class="use-avatar" src="{{item.avatar}}" mode="aspectFill" />
+          <view wx:else class="use-avatar ph">{{item.nickname ? item.nickname[0] : '教'}}</view>
+          <view class="use-opt-main"><text class="use-opt-name">{{item.nickname}}</text></view>
+          <view class="use-radio"></view>
+        </view>
+        <view wx:if="{{!coaches.length}}" class="use-empty">本店暂无教练，请先在「教练」中添加</view>
+      </block>
+    </view>
+
+    <view class="use-actions">
+      <view class="use-btn ghost" bindtap="closeUseSheet">取消</view>
+      <view class="use-btn primary" bindtap="confirmUse">确认开台</view>
+    </view>
+  </view>
+</view>

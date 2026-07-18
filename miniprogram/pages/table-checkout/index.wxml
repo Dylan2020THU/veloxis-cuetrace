@@ -1,0 +1,79 @@
+<view class="page theme-{{theme}}">
+  <view wx:if="{{loading}}" class="state-card">
+    <view class="state-title">正在加载结账信息</view>
+    <view class="state-copy">请稍候…</view>
+  </view>
+
+  <view wx:elif="{{error}}" class="state-card error-card">
+    <view class="state-title">暂时无法结账</view>
+    <view class="state-copy">{{error}}</view>
+    <button class="secondary-button" bindtap="retryLoad">重新加载</button>
+  </view>
+
+  <block wx:elif="{{order}}">
+    <view class="hero-card">
+      <view class="store-name">{{order.storeName || '球厅'}}</view>
+      <view class="table-name">{{order.tableName || '球桌'}}</view>
+      <view class="status-pill {{order.paymentStatus === 'paid' ? 'paid' : ''}}">
+        {{display.paymentStatusText}}
+      </view>
+    </view>
+
+    <view class="detail-card">
+      <view class="section-title">本次消费</view>
+      <view class="detail-row">
+        <text class="detail-label">开始时间</text>
+        <text class="detail-value">{{display.startedAtText}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">结账时间</text>
+        <text class="detail-value">{{display.checkoutAtText}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">计费时长</text>
+        <text class="detail-value">{{display.billedDurationText}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">小时单价</text>
+        <text class="detail-value">¥{{display.pricePerHourText}}</text>
+      </view>
+      <view class="divider"></view>
+      <view class="detail-row">
+        <text class="detail-label">球桌费用</text>
+        <text class="detail-value">¥{{display.tableGrossText}}</text>
+      </view>
+      <view wx:if="{{order.tableDiscountFen > 0}}" class="detail-row discount-row">
+        <text class="detail-label">优惠</text>
+        <text class="detail-value">-¥{{display.tableDiscountText}}</text>
+      </view>
+      <view class="amount-row">
+        <text class="amount-label">应付金额</text>
+        <view class="amount-value"><text class="currency">¥</text>{{display.quotedTableFeeText}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{paymentHint}}" class="payment-hint">{{paymentHint}}</view>
+
+    <button
+      wx:if="{{order.canPay}}"
+      class="pay-button"
+      loading="{{paying}}"
+      disabled="{{paying || polling}}"
+      bindtap="pay"
+    >{{polling ? '正在核验支付结果' : '微信支付'}}</button>
+
+    <view wx:elif="{{order.paymentStatus === 'paid'}}" class="paid-card">
+      <view class="paid-mark">✓</view>
+      <view>
+        <view class="paid-title">支付已确认</view>
+        <view class="paid-copy">球桌状态将由服务器自动更新</view>
+      </view>
+    </view>
+
+    <view wx:else class="state-card compact-card">
+      <view class="state-copy">该订单当前不可支付，请联系球厅工作人员</view>
+    </view>
+
+    <view class="safety-copy">支付结果以服务器核验为准，请勿重复支付</view>
+  </block>
+</view>

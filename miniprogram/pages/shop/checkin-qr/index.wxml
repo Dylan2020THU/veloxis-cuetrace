@@ -1,0 +1,24 @@
+<view class="page theme-{{theme}}">
+  <view wx:if="{{loading}}" class="loading">加载中…</view>
+
+  <block wx:elif="{{store}}">
+    <view class="qr-card">
+      <view class="store-name">{{store.name}}</view>
+      <view class="store-addr">{{store.address}}</view>
+      <view wx:if="{{tableId}}" class="store-addr">球桌：{{tableName || tableId}}</view>
+
+      <image wx:if="{{qr}}" class="qr-img" src="{{qr}}" mode="aspectFit" />
+      <view wx:else class="qr-ph">
+        <view class="qr-ph-mark">{{tableId ? '球桌码' : '到店码'}}</view>
+        <view wx:if="{{qrLoading}}" class="qr-ph-tip">桌码生成中...</view>
+        <view wx:else class="qr-ph-tip {{qrError ? 'qr-ph-error' : ''}}">{{qrError || '可扫码图需部署 genCheckinCode 云函数后生成'}}</view>
+        <view class="qr-ph-payload">{{payload}}</view>
+      </view>
+
+      <view class="qr-hint">{{tableId ? '打印后贴在对应球桌上，球员/教练扫码加入并开打，店主在球厅核验有效。' : '球员到店扫此码 → 前台「球厅态势」确认开台 → 结账后实测时长自动记入其训练数据'}}</view>
+      <view class="qr-copy" bindtap="copyPayload">复制识别码</view>
+    </view>
+  </block>
+
+  <view wx:else class="loading">未找到门店，请先在「球桌 / 门店管理」创建</view>
+</view>

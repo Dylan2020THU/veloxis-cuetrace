@@ -1,0 +1,9 @@
+{
+  "name": "settleCoach",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 店主结清某教练当前周期待结算课时（写结算流水）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

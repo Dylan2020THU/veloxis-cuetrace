@@ -1,0 +1,53 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 24rpx;
+}
+.form {
+  background: var(--card-bg);
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 0;
+  border-bottom: 1rpx solid var(--border);
+  font-size: 30rpx;
+}
+.row .lbl {
+  color: var(--text-sub);
+  min-width: 140rpx;
+  flex-shrink: 0;
+}
+.row .val {
+  color: var(--text);
+}
+.note-box {
+  padding: 24rpx 0;
+}
+.note-box .lbl {
+  color: var(--text-sub);
+  font-size: 30rpx;
+}
+.note-input {
+  margin-top: 16rpx;
+  width: 100%;
+  min-height: 140rpx;
+  font-size: 28rpx;
+  color: var(--text);
+}
+.submit {
+  margin-top: 60rpx;
+  margin-bottom: 80rpx;
+  text-align: center;
+  background: #067ef9;
+  color: #fff;
+  font-size: 32rpx;
+  padding: 26rpx 0;
+  border-radius: 36rpx 0 36rpx 0;
+}
+.submit.disabled {
+  opacity: 0.6;
+}

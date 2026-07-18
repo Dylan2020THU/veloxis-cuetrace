@@ -1,0 +1,9 @@
+{
+  "name": "genTableCheckoutCode",
+  "version": "1.0.0",
+  "description": "Owner-only bounded checkout mini-program code generation",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

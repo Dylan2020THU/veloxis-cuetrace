@@ -1,0 +1,64 @@
+<view class="page theme-{{theme}}">
+  <view class="card">
+    <view class="section-title">补记一次训练</view>
+    <view class="muted form-tip">保存后将显示为未核验训练</view>
+
+    <view class="field">
+      <view class="field-label">台球厅</view>
+      <picker mode="selector" range="{{hallNames}}" value="{{hallIndex}}" bindchange="onHallChange">
+        <view class="field-value">
+          {{ hallNames.length ? hallNames[hallIndex] : '其他球厅' }}
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <view class="field-label">日期</view>
+      <picker mode="date" value="{{date}}" bindchange="onDateChange">
+        <view class="field-value">{{date}} <text class="arrow">›</text></view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <view class="field-label">开始时间</view>
+      <picker mode="time" value="{{startTime}}" bindchange="onTimeChange">
+        <view class="field-value">{{startTime}} <text class="arrow">›</text></view>
+      </picker>
+    </view>
+
+    <view class="field">
+      <view class="field-label">训练时长</view>
+      <view class="duration-input">
+        <input
+          class="num-input"
+          type="number"
+          value="{{hours}}"
+          bindinput="onHoursInput"
+        />
+        <text class="unit">小时</text>
+        <input
+          class="num-input"
+          type="number"
+          value="{{minutes}}"
+          bindinput="onMinutesInput"
+        />
+        <text class="unit">分钟</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card tips-card">
+    <view class="muted">颜色深度说明</view>
+    <view class="tip-row"><view class="tip-cell manual"></view><text>未核验补记</text></view>
+    <view class="tip-row"><view class="tip-cell l1"></view><text>0-3 小时</text></view>
+    <view class="tip-row"><view class="tip-cell l2"></view><text>3-8 小时</text></view>
+    <view class="tip-row"><view class="tip-cell l3"></view><text>8 小时以上</text></view>
+  </view>
+
+  <view class="submit-bar">
+    <button class="btn-primary submit-btn" disabled="{{submitting}}" bindtap="submit">
+      {{ submitting ? '添加中...' : '添加训练数据' }}
+    </button>
+  </view>
+</view>

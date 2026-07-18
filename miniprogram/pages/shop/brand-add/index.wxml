@@ -1,0 +1,130 @@
+<view class="page theme-{{theme}}">
+  <view class="progress">
+    <view class="prog-dot {{step >= 1 ? 'active' : ''}}"></view>
+    <view class="prog-line {{step >= 2 ? 'active' : ''}}"></view>
+    <view class="prog-dot {{step >= 2 ? 'active' : ''}}"></view>
+  </view>
+  <view class="step-label">步骤 {{step}} / 2</view>
+
+  <!-- 步骤1：品牌信息 -->
+  <view wx:if="{{step === 1}}" class="section">
+    <view class="section-title">填写品牌信息</view>
+    <view class="card">
+      <view class="field">
+        <text class="field-label">品牌名称</text>
+        <input class="field-input" placeholder="请输入品牌名称" value="{{brandName}}" bindinput="onBrandNameInput" />
+      </view>
+      <view class="field">
+        <text class="field-label">品牌 Logo（选填）</text>
+        <view class="img-upload" bindtap="onBrandLogoTap">
+          <image wx:if="{{brandLogo}}" class="upload-img" src="{{brandLogo}}" mode="aspectFill" />
+          <view wx:else class="upload-placeholder">
+            <text class="upload-icon">+</text>
+            <text class="upload-tip">点击上传 Logo</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view class="btn-wrap">
+      <button class="btn-primary" bindtap="nextStep">下一步</button>
+    </view>
+  </view>
+
+  <!-- 步骤2：添加首个门店 -->
+  <view wx:if="{{step === 2}}" class="section">
+    <view class="section-title">添加首个门店</view>
+    <view class="card">
+      <view class="field">
+        <text class="field-label">门店名称</text>
+        <input class="field-input" placeholder="请输入门店名称" value="{{storeName}}" bindinput="onStoreNameInput" />
+      </view>
+      <view class="field">
+        <text class="field-label">门店地址（选填）</text>
+        <input class="field-input" placeholder="请输入门店地址" value="{{storeAddress}}" bindinput="onStoreAddressInput" />
+      </view>
+      <view class="field">
+        <text class="field-label">门店定位（到店打卡 / 距离用）</text>
+        <view class="loc-row" bindtap="chooseLocation">
+          <text class="loc-text {{storeLat ? '' : 'placeholder'}}">{{storeLat ? ('已定位：' + (storeAddress || '已选点')) : '点击在地图上选择门店位置'}}</text>
+          <text class="loc-arrow">›</text>
+        </view>
+      </view>
+      <view class="field switch-field">
+        <view class="switch-label">
+          <text class="field-label">开启到店打卡核验</text>
+          <text class="switch-tip">球员到店扫码/打卡，结账后实测时长自动记入其训练数据</text>
+        </view>
+        <switch checked="{{checkinEnabled}}" bindchange="onCheckinToggle" color="#067ef9" />
+      </view>
+    </view>
+
+    <!-- 桌型列表 -->
+    <view class="card" wx:if="{{tableTypes.length > 0}}">
+      <view class="section-title">已添加桌型</view>
+      <view class="type-item" wx:for="{{tableTypes}}" wx:key="index">
+        <view class="type-left">
+          <image wx:if="{{item.image}}" class="type-img" src="{{item.image}}" mode="aspectFill" />
+          <view wx:else class="type-img placeholder" style="background:{{item.bgColor}}">{{item.name[0]}}</view>
+          <view class="type-info">
+            <text class="type-name">{{item.name}}</text>
+            <text class="type-price">{{item.pricePerHour}} 元/小时</text>
+          </view>
+        </view>
+        <view class="type-actions">
+          <text class="edit-btn" data-idx="{{index}}" bindtap="editType">编辑</text>
+          <text class="del-btn" data-idx="{{index}}" bindtap="removeType">删除</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加桌型表单 -->
+    <view class="card form-card">
+      <view class="section-title">{{editingIdx >= 0 ? '编辑桌型' : '添加桌型（选填）'}}</view>
+      <view class="field">
+        <text class="field-label">桌型名称</text>
+        <input class="field-input" placeholder="如：乔氏金腿" value="{{formName}}" bindinput="onNameInput" />
+      </view>
+      <view class="field">
+        <text class="field-label">每小时价格</text>
+        <view class="price-row">
+          <input class="field-input price-input" type="number" placeholder="价格" value="{{formPrice}}" bindinput="onPriceInput" />
+          <text class="price-unit">元/小时</text>
+        </view>
+      </view>
+      <view class="field">
+        <text class="field-label">卡片颜色</text>
+        <view class="color-palette">
+          <view
+            wx:for="{{colorPalette}}"
+            wx:key="index"
+            class="color-swatch {{formBgColor === item ? 'selected' : ''}}"
+            style="background:{{item}}"
+            data-color="{{item}}"
+            bindtap="chooseBgColor"
+          ></view>
+        </view>
+      </view>
+      <view class="field">
+        <text class="field-label">桌型图片（选填）</text>
+        <view class="img-upload" bindtap="chooseImage">
+          <image wx:if="{{formImage}}" class="upload-img" src="{{formImage}}" mode="aspectFill" />
+          <view wx:else class="upload-placeholder">
+            <text class="upload-icon">+</text>
+            <text class="upload-tip">拍照 / 从相册选择</text>
+          </view>
+        </view>
+      </view>
+      <view class="form-btns">
+        <view wx:if="{{editingIdx >= 0}}" class="btn cancel-btn" bindtap="cancelEdit">取消</view>
+        <view class="btn add-btn" bindtap="addOrUpdateType">{{editingIdx >= 0 ? '保存修改' : '添加桌型'}}</view>
+      </view>
+    </view>
+
+    <view class="btn-wrap">
+      <button class="btn-ghost" bindtap="prevStep">上一步</button>
+      <button class="btn-primary ml" bindtap="submit" disabled="{{submitting}}">
+        {{ submitting ? '保存中...' : '完成' }}
+      </button>
+    </view>
+  </view>
+</view>

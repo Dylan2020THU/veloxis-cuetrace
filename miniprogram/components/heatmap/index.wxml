@@ -1,0 +1,78 @@
+<view class="hm theme-{{theme}}">
+  <view class="hm-tooltip {{tooltip ? 'show' : ''}}">
+    {{ tooltip || '点击任意格子查看当日训练总时长' }}
+  </view>
+
+  <scroll-view scroll-x="true" class="hm-scroll" enable-flex="true">
+    <view class="hm-body">
+      <view class="hm-row hm-months-row">
+        <view class="hm-left-spacer"></view>
+        <view class="hm-months" style="width:{{monthsWidth}}rpx">
+          <text
+            wx:for="{{months}}"
+            wx:key="col"
+            class="hm-month"
+            style="left:{{item.col * stride}}rpx"
+          >{{item.label}}</text>
+        </view>
+      </view>
+
+      <view class="hm-row">
+        <view class="hm-weekdays">
+          <text class="wd"></text>
+          <text class="wd">一</text>
+          <text class="wd"></text>
+          <text class="wd">三</text>
+          <text class="wd"></text>
+          <text class="wd">五</text>
+          <text class="wd"></text>
+        </view>
+
+        <view class="hm-grid">
+          <view class="hm-col" wx:for="{{columns}}" wx:for-item="col" wx:key="index">
+            <view
+              wx:for="{{col}}"
+              wx:for-item="cell"
+              wx:key="key"
+              class="hm-cell {{cell.key === selectedKey ? 'sel' : ''}}"
+              style="background:{{cell.color}}"
+              data-key="{{cell.key}}"
+              data-total="{{cell.totalMinutes}}"
+              data-count="{{cell.sessionCount}}"
+              data-level="{{cell.level}}"
+              data-kind="{{cell.kind}}"
+              data-verified="{{cell.hasVerified}}"
+              data-range="{{cell.inRange}}"
+              bindtap="onCellTap"
+            ></view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="hm-legend" wx:if="{{!hasGold}}">
+    <text class="lg-text">少</text>
+    <view class="lg-cell" style="background:{{c0}}"></view>
+    <view class="lg-cell" style="background:{{c1}}"></view>
+    <view class="lg-cell" style="background:{{c2}}"></view>
+    <view class="lg-cell" style="background:{{c3}}"></view>
+    <text class="lg-text">多</text>
+  </view>
+
+  <!-- 教练双图例：金=教练身份计时，蓝=自主练球/客场打球 -->
+  <view class="hm-legend2" wx:else>
+    <view class="lg-group">
+      <text class="lg-name">教练计时</text>
+      <view class="lg-cell" style="background:{{g1}}"></view>
+      <view class="lg-cell" style="background:{{g2}}"></view>
+      <view class="lg-cell" style="background:{{g3}}"></view>
+    </view>
+    <view class="lg-group">
+      <text class="lg-name">自主练球</text>
+      <view class="lg-cell" style="background:{{c1}}"></view>
+      <view class="lg-cell" style="background:{{c2}}"></view>
+      <view class="lg-cell" style="background:{{c3}}"></view>
+    </view>
+  </view>
+</view>

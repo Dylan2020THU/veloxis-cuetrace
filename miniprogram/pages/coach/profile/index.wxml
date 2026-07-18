@@ -1,0 +1,108 @@
+<view class="page theme-{{theme}}">
+  <view class="card">
+    <view class="avatar-row">
+      <view class="avatar-wrap" bindtap="chooseAvatar">
+        <image wx:if="{{avatar}}" class="avatar-img" src="{{avatar}}" mode="aspectFill"></image>
+        <view wx:else class="avatar-ph">+<text class="ph-text">上传照片</text></view>
+      </view>
+      <view class="muted">点击上传个人照片</view>
+    </view>
+
+    <view class="field">
+      <text class="field-label">所属球厅</text>
+      <picker mode="selector" range="{{hallList}}" range-key="name" value="{{selectedHallIndex}}" bindchange="onHallChange">
+        <view class="field-pick {{selectedHallName ? '' : 'muted'}}">
+          {{selectedHallName || '请选择球厅'}}
+        </view>
+      </picker>
+    </view>
+    <view wx:if="{{bindingStatus !== 'none' || selectedHallName}}" class="binding-status status-{{bindingStatus}}">
+      <view class="binding-status-text">
+        <text>{{bindingLabel}}</text>
+        <text wx:if="{{bindingStoreName}}"> · {{bindingStoreName}}</text>
+        <text wx:if="{{bindingReason}}"> · {{bindingReason}}</text>
+      </view>
+      <button
+        wx:if="{{selectedHallId && selectedHallId !== approvedStoreId}}"
+        class="binding-apply-btn"
+        disabled="{{bindingSubmitting || (bindingStatus === 'pending' && selectedHallId === bindingStoreId)}}"
+        bindtap="applyBinding"
+      >
+        {{ bindingSubmitting ? '申请中...' : ((bindingStatus === 'pending' && selectedHallId === bindingStoreId) ? '已申请' : '申请绑定') }}
+      </button>
+    </view>
+    <view wx:if="{{coachId}}" class="field">
+      <text class="field-label">教练ID</text>
+      <text class="coach-id">{{coachId}}</text>
+    </view>
+
+    <view class="field">
+      <text class="field-label">昵称</text>
+      <input class="field-input" placeholder="教练昵称" value="{{nickname}}" data-field="nickname" bindinput="onInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">球龄</text>
+      <input class="field-input" type="number" placeholder="年" value="{{playYears}}" data-field="playYears" bindinput="onInput" />
+      <text class="unit">年</text>
+    </view>
+    <view class="field">
+      <text class="field-label">教龄</text>
+      <input class="field-input" type="number" placeholder="年" value="{{coachYears}}" data-field="coachYears" bindinput="onInput" />
+      <text class="unit">年</text>
+    </view>
+    <view class="field">
+      <text class="field-label">收费标准</text>
+      <input class="field-input" type="digit" placeholder="元/分钟" value="{{pricePerMinute}}" data-field="pricePerMinute" bindinput="onInput" />
+      <text class="unit">元/分钟</text>
+    </view>
+    <view class="field column">
+      <text class="field-label">一句话介绍</text>
+      <textarea class="field-textarea" placeholder="用一句话介绍自己" value="{{intro}}" data-field="intro" bindinput="onInput" maxlength="60"></textarea>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">资格证书</view>
+    <view class="muted cert-tip">上传资质证书图片（最多 6 张）</view>
+    <view class="cert-grid">
+      <view class="cert-item" wx:for="{{certificates}}" wx:key="*this">
+        <image class="cert-img" src="{{item}}" mode="aspectFill" data-index="{{index}}" bindtap="previewCertificate"></image>
+        <view class="cert-del" data-index="{{index}}" catchtap="removeCertificate">×</view>
+      </view>
+      <view wx:if="{{certificates.length < 6}}" class="cert-add" bindtap="chooseCertificate">+</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">可预约时段</view>
+    <view class="slot-list">
+      <view class="slot-item" wx:for="{{availability}}" wx:key="index">
+        <text class="slot-text">{{item.weekdayLabel}} {{item.start}} - {{item.end}}</text>
+        <view class="slot-del" data-index="{{index}}" bindtap="removeSlot">删除</view>
+      </view>
+      <view wx:if="{{availability.length === 0}}" class="muted">尚未添加可预约时段</view>
+    </view>
+
+    <view class="slot-form">
+      <picker mode="selector" range="{{weekdays}}" value="{{slotWeekday}}" bindchange="onSlotWeekday">
+        <view class="slot-pick">{{weekdays[slotWeekday]}}</view>
+      </picker>
+      <picker mode="time" value="{{slotStart}}" bindchange="onSlotStart">
+        <view class="slot-pick">{{slotStart}}</view>
+      </picker>
+      <text class="to">至</text>
+      <picker mode="time" value="{{slotEnd}}" bindchange="onSlotEnd">
+        <view class="slot-pick">{{slotEnd}}</view>
+      </picker>
+      <view class="slot-add" bindtap="addSlot">添加</view>
+    </view>
+  </view>
+
+  <view class="submit-bar">
+    <button class="btn-primary submit-btn" disabled="{{submitting}}" bindtap="submit">
+      {{ submitting ? '保存中...' : '保存资料' }}
+    </button>
+  </view>
+
+  <paywall id="paywall"></paywall>
+</view>

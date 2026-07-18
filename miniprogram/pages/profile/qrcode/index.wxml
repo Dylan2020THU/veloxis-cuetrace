@@ -1,0 +1,17 @@
+<view class="page theme-{{theme}}">
+  <view class="qr-card">
+    <view class="qr-user">
+      <image wx:if="{{avatar}}" class="qr-avatar" src="{{avatar}}" mode="aspectFill"></image>
+      <view wx:else class="qr-avatar qr-avatar--ph">{{nickname[0]}}</view>
+      <view class="qr-name">{{nickname}}</view>
+      <view class="qr-role">强化杆迹 · {{roleLabel}}</view>
+    </view>
+
+    <view class="qr-box">
+      <canvas type="2d" id="qrcanvas" class="qr-canvas"></canvas>
+    </view>
+
+    <view class="qr-code" catchtap="copyCode">编码 {{accountCode}}　·　点击复制</view>
+    <view class="qr-tip">向教练 / 店主 / 球员出示此码，对方在「扫码添加」即可识别你的账号</view>
+  </view>
+</view>

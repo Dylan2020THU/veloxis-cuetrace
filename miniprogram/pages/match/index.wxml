@@ -1,0 +1,248 @@
+<view class="page theme-{{theme}}">
+  <!-- 顶部：标题 + 我的预约入口 -->
+  <view class="topbar">
+    <text class="topbar-title">约球</text>
+    <view class="mine-entry" bindtap="goMine">我的预约 ›</view>
+  </view>
+
+  <!-- 顶部三板块 -->
+  <view class="tabs">
+    <view
+      wx:for="{{tabs}}"
+      wx:key="key"
+      class="tab {{active === item.key ? 'active' : ''}}"
+      data-key="{{item.key}}"
+      bindtap="switchTab"
+    >
+      <view class="tab-label">
+        <view class="tab-ic" style="-webkit-mask-image:url('{{item.icon}}');mask-image:url('{{item.icon}}')"></view>
+        <text>{{item.text}}</text>
+      </view>
+      <view class="bar" wx:if="{{active === item.key}}"></view>
+    </view>
+  </view>
+
+  <!-- 工具区：城市 + 搜索（三页共用） + 筛选 chip（按子页变化） -->
+  <view class="toolbar">
+    <view class="tool-row">
+      <picker class="city-btn" mode="selector" range="{{cityOptions}}" bindchange="onCityChange">
+        <view class="city-inner">
+          <text class="city-name">{{city}}</text>
+          <text class="city-arrow">▾</text>
+        </view>
+      </picker>
+      <view class="search-box">
+        <text class="search-ic">搜</text>
+        <input
+          class="search-input"
+          placeholder="{{active === 'coach' ? '搜索教练 / 介绍' : (active === 'table' ? '搜索门店 / 地址' : '搜索球友 / 球厅 / 备注')}}"
+          value="{{searchText}}"
+          bindinput="onSearchInput"
+          confirm-type="search"
+        />
+        <text wx:if="{{searchText}}" class="search-clear" bindtap="clearSearch">×</text>
+      </view>
+    </view>
+
+    <view class="chip-row">
+      <block wx:if="{{active === 'friend'}}">
+        <view class="chip {{filters.friend.gameType ? 'on' : ''}}" bindtap="openFilter">{{filters.friend.gameType || '类型'}} ▾</view>
+        <view class="chip {{filters.friend.targetLevel ? 'on' : ''}}" bindtap="openFilter">{{filters.friend.targetLevel || '对手段位'}} ▾</view>
+        <view class="chip more" bindtap="openFilter">更多筛选 ▾</view>
+      </block>
+      <block wx:elif="{{active === 'coach'}}">
+        <view class="chip {{filters.coach.sort !== 'new' ? 'on' : ''}}" bindtap="openFilter">{{filters.coach.sort === 'new' ? '排序' : sortLabels[filters.coach.sort]}} ▾</view>
+        <view class="chip more" bindtap="openFilter">更多筛选 ▾</view>
+      </block>
+      <block wx:else>
+        <view class="chip {{filters.table.tableType ? 'on' : ''}}" bindtap="openFilter">{{filters.table.tableType || '桌型'}} ▾</view>
+        <view class="chip {{filters.table.sort !== 'distance' ? 'on' : ''}}" bindtap="openFilter">{{sortLabels[filters.table.sort]}} ▾</view>
+        <view class="chip more" bindtap="openFilter">更多筛选 ▾</view>
+      </block>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+
+  <!-- 约球友 -->
+  <view wx:if="{{active === 'friend'}}" class="list">
+    <view wx:if="{{!loading && !matches.length}}" class="empty">还没有约球邀约，快来发布一条吧～</view>
+    <view wx:for="{{matches}}" wx:key="_id" class="card match">
+      <view class="match-head">
+        <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+        <view wx:else class="avatar">{{item.authorName[0]}}</view>
+        <view class="match-meta">
+          <text class="name">{{item.authorName}}</text>
+          <text class="tag red" wx:if="{{item.myLevel}}">{{item.myLevel}}</text>
+          <text class="tag">{{item.gameType}}</text>
+          <text class="tag blue" wx:if="{{item.targetLevel}}">{{item.targetLevel}}</text>
+        </view>
+        <view class="join-num">{{item.joinCount}} 人已报名</view>
+      </view>
+      <view class="row"><text class="lbl">球厅</text><text class="val">{{item.hallName}}</text></view>
+      <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
+      <view class="badges" wx:if="{{item.gender || item.age}}">
+        <text class="badge" wx:if="{{item.gender}}">{{item.gender}}</text>
+        <text class="badge" wx:if="{{item.age}}">{{item.age}}</text>
+      </view>
+      <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
+      <view class="join-btn" data-id="{{item._id}}" data-idx="{{index}}" bindtap="openDetail">进入查看</view>
+    </view>
+  </view>
+
+  <!-- 约教练 -->
+  <view wx:if="{{active === 'coach'}}" class="list">
+    <view wx:if="{{!loading && !coaches.length}}" class="empty">暂无可预约教练</view>
+    <view wx:for="{{coaches}}" wx:key="openid" class="card coach">
+      <image wx:if="{{item.avatar}}" class="avatar big" src="{{item.avatar}}" mode="aspectFill"></image>
+      <view wx:else class="avatar big">{{item.nickname[0]}}</view>
+      <view class="coach-info">
+        <view class="name-line">
+          <text class="name">{{item.nickname}}</text>
+          <text class="price">{{item.pricePerMinute ? item.pricePerMinute + ' 元/分钟' : '面议'}}</text>
+        </view>
+        <view class="sub">球龄 {{item.playYears}} 年 · 教龄 {{item.coachYears}} 年</view>
+        <view class="intro">{{item.intro}}</view>
+      </view>
+      <view class="book-btn" data-index="{{index}}" bindtap="openCoachBooking">预约</view>
+    </view>
+  </view>
+
+  <!-- 约球桌 -->
+  <view wx:if="{{active === 'table'}}" class="list">
+    <view class="table-actions-bar">
+      <view class="ta-btn" bindtap="onScanCheckin">
+        <view class="ta-ic" style="-webkit-mask-image:url('{{scanIcon}}');mask-image:url('{{scanIcon}}')"></view>
+        <text>扫码到店</text>
+      </view>
+      <view class="ta-btn" bindtap="goMap">
+        <view class="ta-ic" style="-webkit-mask-image:url('{{mapIcon}}');mask-image:url('{{mapIcon}}')"></view>
+        <text>地图找店</text>
+      </view>
+    </view>
+    <view wx:if="{{!loading && !tables.length}}" class="empty">暂无开通到店打卡的合作门店</view>
+    <view wx:for="{{tables}}" wx:key="_id" class="card table">
+      <image wx:if="{{item.cover}}" class="table-avatar" src="{{item.cover}}" mode="aspectFill"></image>
+      <view wx:else class="table-avatar placeholder">{{item.name[0]}}</view>
+      <view class="table-info">
+        <view class="name-line">
+          <text class="name">{{item.name}}</text>
+          <text class="price red" wx:if="{{item.minPricePerHour > 0}}">{{item.minPricePerHour}}元/小时起</text>
+          <text class="price" wx:else>暂无报价</text>
+        </view>
+        <view class="sub">{{item.address}}</view>
+        <view class="sub-line">
+          <text class="sub light">共 {{item.tableCount}} 张球桌可预约</text>
+          <text wx:if="{{item.distanceText}}" class="dist">距您 {{item.distanceText}}</text>
+        </view>
+      </view>
+      <view class="table-btns">
+        <view class="book-btn" data-index="{{index}}" bindtap="checkinHere">到店打卡</view>
+        <view class="book-btn ghost" data-index="{{index}}" bindtap="openTableBooking">预约</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 发布约球友按钮 -->
+  <view wx:if="{{active === 'friend'}}" class="fab" bindtap="goPost">+</view>
+</view>
+
+<!-- 预约弹窗 -->
+<view wx:if="{{booking}}" class="mask" bindtap="closeBooking">
+  <view class="sheet" catchtap="noop">
+    <view class="sheet-title">选择{{booking.type === 'coach' ? '教练' : '球桌'}}</view>
+    <view class="sheet-row"><text class="lbl">球厅：</text><text class="val">{{booking.targetName}}</text></view>
+    <picker wx:if="{{booking.tableTypeOptions && booking.tableTypeOptions.length}}" class="sheet-row pick" mode="selector" range="{{booking.tableTypeOptions}}" range-key="name" value="{{booking.tableTypeIndex || 0}}" bindchange="onTableTypeChange">
+      <text class="lbl">桌型：</text><text class="val">{{booking.tableTypeOptions[booking.tableTypeIndex || 0].name}} ›</text>
+    </picker>
+    <view class="sheet-row" wx:if="{{booking.type === 'table'}}">
+      <text class="lbl">价格：</text>
+      <text class="val highlight">{{booking.priceLabel}}</text>
+    </view>
+    <picker class="sheet-row pick" mode="selector" range="{{dateOptions}}" value="{{dateIndex}}" bindchange="onDateChange">
+      <text class="lbl">日期：</text><text class="val">{{dateOptions[dateIndex]}} ›</text>
+    </picker>
+    <picker class="sheet-row pick" mode="selector" range="{{timeOptions}}" value="{{timeIndex}}" bindchange="onTimeChange">
+      <text class="lbl">时间：</text><text class="val">{{timeOptions[timeIndex]}} ›</text>
+    </picker>
+    <view class="sheet-actions">
+      <view class="btn ghost" bindtap="closeBooking">取消</view>
+      <view class="btn primary" bindtap="confirmBooking">确认{{booking.type === 'table' ? '预约' : '预约'}}</view>
+    </view>
+  </view>
+</view>
+
+<!-- 二次确认弹窗（新增）：约教练 / 约球桌 下单前最后确认 -->
+<view wx:if="{{confirmBox}}" class="mask" bindtap="closeConfirm">
+  <view class="confirm-sheet" catchtap="noop">
+    <view class="confirm-title">是否预约此{{confirmBox.type === 'coach' ? '教练' : '球桌'}}？</view>
+    <view class="confirm-row"><text class="lbl">名称：</text><text class="val">{{confirmBox.targetName}}</text></view>
+    <view class="confirm-row"><text class="lbl">时间：</text><text class="val">{{confirmBox.datetime}}</text></view>
+    <view class="confirm-row"><text class="lbl">桌型：</text><text class="val" wx:if="{{confirmBox.tableType}}">{{confirmBox.tableType}}</text><text class="val" wx:else>—</text></view>
+    <view class="confirm-row highlight"><text class="lbl">价格：</text><text class="val">{{confirmBox.priceLabel}}</text></view>
+    <view class="confirm-actions">
+      <view class="btn ghost" bindtap="closeConfirm">否</view>
+      <view class="btn primary" bindtap="doConfirmBooking">是</view>
+    </view>
+  </view>
+</view>
+
+<!-- 更多筛选弹层（按子页给不同维度） -->
+<view wx:if="{{filterSheet}}" class="filter-mask" catchtap="closeFilter">
+  <view class="filter-sheet" catchtap="noop">
+    <view class="filter-title">筛选</view>
+
+    <block wx:if="{{filterSheet.tab === 'friend'}}">
+      <view class="fs-label">约球类型</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.gameType === item ? 'sel' : ''}}" wx:for="{{optGameTypes}}" wx:key="*this" data-dim="gameType" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optGameTypes.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">期望对手段位</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.targetLevel === item ? 'sel' : ''}}" wx:for="{{optTargetLevels}}" wx:key="*this" data-dim="targetLevel" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optTargetLevels.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">性别</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.gender === item ? 'sel' : ''}}" wx:for="{{optGenders}}" wx:key="*this" data-dim="gender" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optGenders.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">排序</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.sort === 'new' ? 'sel' : ''}}" data-dim="sort" data-val="new" bindtap="pickFilter">最新发布</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'level' ? 'sel' : ''}}" data-dim="sort" data-val="level" bindtap="pickFilter">段位匹配</view>
+      </view>
+    </block>
+
+    <block wx:elif="{{filterSheet.tab === 'coach'}}">
+      <view class="fs-label">排序</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.sort === 'new' ? 'sel' : ''}}" data-dim="sort" data-val="new" bindtap="pickFilter">综合</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'priceAsc' ? 'sel' : ''}}" data-dim="sort" data-val="priceAsc" bindtap="pickFilter">价格低→高</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'priceDesc' ? 'sel' : ''}}" data-dim="sort" data-val="priceDesc" bindtap="pickFilter">价格高→低</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'exp' ? 'sel' : ''}}" data-dim="sort" data-val="exp" bindtap="pickFilter">教龄优先</view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view class="fs-label">桌型</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.tableType === item ? 'sel' : ''}}" wx:for="{{optTableTypes}}" wx:key="*this" data-dim="tableType" data-val="{{item}}" bindtap="pickFilter">{{item}}</view>
+        <view wx:if="{{!optTableTypes.length}}" class="fs-empty">暂无可选</view>
+      </view>
+      <view class="fs-label">排序</view>
+      <view class="fs-chips">
+        <view class="fs-chip {{filterSheet.draft.sort === 'distance' ? 'sel' : ''}}" data-dim="sort" data-val="distance" bindtap="pickFilter">离我最近</view>
+        <view class="fs-chip {{filterSheet.draft.sort === 'priceAsc' ? 'sel' : ''}}" data-dim="sort" data-val="priceAsc" bindtap="pickFilter">价格低→高</view>
+      </view>
+    </block>
+
+    <view class="fs-actions">
+      <view class="fs-btn ghost" bindtap="resetFilter">重置</view>
+      <view class="fs-btn primary" bindtap="applyFilter">查看结果</view>
+    </view>
+  </view>
+</view>
+
+<paywall id="paywall"></paywall>

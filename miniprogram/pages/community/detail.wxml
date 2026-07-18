@@ -1,0 +1,79 @@
+<view wx:if="{{loading}}" class="loading">加载中...</view>
+
+<view wx:elif="{{!post}}" class="loading">动态不存在或已删除</view>
+
+<view wx:else class="page theme-{{theme}}">
+  <!-- 媒体区 -->
+  <view wx:if="{{post.type === 'video' && post.video}}" class="media">
+    <video class="video" src="{{post.video}}" poster="{{post.cover}}" controls></video>
+  </view>
+  <swiper
+    wx:elif="{{post.images.length}}"
+    class="media-swiper"
+    indicator-dots="{{post.images.length > 1}}"
+    indicator-active-color="#067EF9"
+    circular="{{false}}"
+  >
+    <swiper-item wx:for="{{post.images}}" wx:key="*this">
+      <image class="swiper-img" src="{{item}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage"></image>
+    </swiper-item>
+  </swiper>
+
+  <view class="content-card">
+    <view class="author-row">
+      <image wx:if="{{post.authorAvatar}}" class="a-avatar" src="{{post.authorAvatar}}" mode="aspectFill"></image>
+      <view wx:else class="a-avatar">{{post.authorName[0]}}</view>
+      <view class="a-info">
+        <view class="a-name">{{post.authorName}}</view>
+        <view class="a-time">{{post.timeText}}{{ post.region ? ' · ' + post.region : '' }}</view>
+      </view>
+      <view
+        wx:if="{{!isOwn}}"
+        class="follow-btn {{following ? 'following' : ''}}"
+        bindtap="onToggleFollow"
+      >{{ following ? '已关注' : '+ 关注' }}</view>
+    </view>
+
+    <view wx:if="{{post.title}}" class="title">{{post.title}}</view>
+    <view class="content">{{post.content}}</view>
+    <view wx:if="{{post.topics && post.topics.length}}" class="topic-row">
+      <view class="topic-chip" wx:for="{{post.topics}}" wx:key="*this">#{{item}}</view>
+    </view>
+    <view wx:if="{{post.location && post.location.name}}" class="location-row">
+      <text class="location-icon">⌖</text>
+      <text>{{post.location.name}}</text>
+    </view>
+  </view>
+
+  <!-- 评论区 -->
+  <view class="comments-card">
+    <view class="comments-title">评论 {{comments.length}}</view>
+    <view wx:if="{{comments.length === 0}}" class="muted no-comment">还没有评论，来说两句</view>
+    <view class="comment" wx:for="{{comments}}" wx:key="_id">
+      <image wx:if="{{item.authorAvatar}}" class="c-avatar" src="{{item.authorAvatar}}" mode="aspectFill"></image>
+      <view wx:else class="c-avatar">{{item.authorName[0]}}</view>
+      <view class="c-main">
+        <view class="c-name">{{item.authorName}}</view>
+        <view class="c-text">{{item.content}}</view>
+        <view class="c-time">{{item.timeText}}</view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 底部操作栏 -->
+<view wx:if="{{post}}" class="action-bar">
+  <input
+    class="comment-input"
+    placeholder="说点什么..."
+    value="{{commentText}}"
+    confirm-type="send"
+    bindinput="onCommentInput"
+    bindconfirm="submitComment"
+  />
+  <view class="like-btn {{liked ? 'liked' : ''}}" bindtap="onToggleLike">
+    <text class="heart">{{ liked ? '♥' : '♡' }}</text>
+    <text class="like-num">{{post.likeCount}}</text>
+  </view>
+  <button class="send-btn" disabled="{{submitting}}" bindtap="submitComment">发送</button>
+</view>

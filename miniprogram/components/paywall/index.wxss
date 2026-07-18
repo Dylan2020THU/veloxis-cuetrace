@@ -1,0 +1,331 @@
+/* 付费墙组件样式（与品牌色 #067EF9 统一） */
+
+.pw {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.pw-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  animation: pw-fade 0.2s ease-out;
+}
+
+.pw-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  border-top-left-radius: 24rpx;
+  border-top-right-radius: 24rpx;
+  /* 底部留白避开自定义底栏(110rpx)，否则 tab 页上 CTA 会被底栏遮住 */
+  padding: 0 32rpx calc(140rpx + env(safe-area-inset-bottom));
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 -8rpx 32rpx rgba(15, 23, 42, 0.12);
+  animation: pw-slide 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes pw-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pw-slide {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* 顶部 banner */
+.pw-hero {
+  position: relative;
+  margin: 0 -32rpx 24rpx;
+  padding: 48rpx 32rpx 56rpx;
+  background: linear-gradient(135deg, #067EF9 0%, #4DA3FF 100%);
+  color: #ffffff;
+  text-align: center;
+}
+/* 左上角返回（关闭付费墙、退回上一层） */
+.pw-back {
+  position: absolute;
+  left: 16rpx;
+  top: 20rpx;
+  display: flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 20rpx 0 12rpx;
+  font-size: 28rpx;
+  color: #ffffff;
+  z-index: 2;
+}
+.pw-back__ic {
+  font-size: 42rpx;
+  line-height: 1;
+  margin-right: 4rpx;
+  font-weight: 600;
+}
+.pw-back:active {
+  opacity: 0.7;
+}
+.pw-hero__title {
+  font-size: 40rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+.pw-hero__sub {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  opacity: 0.9;
+}
+.pw-hero__trial {
+  display: inline-block;
+  margin-top: 20rpx;
+  padding: 8rpx 24rpx;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 32rpx;
+  font-size: 24rpx;
+}
+.pw-hero__trial-num {
+  font-weight: 700;
+  font-size: 28rpx;
+  margin: 0 4rpx;
+}
+
+/* 角色 tab */
+.pw-tabs {
+  display: flex;
+  background: #F1F5F9;
+  border-radius: 16rpx;
+  padding: 6rpx;
+  margin: 32rpx 0 24rpx;
+}
+.pw-tabs__item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  color: #64748B;
+  border-radius: 12rpx;
+  transition: all 0.2s;
+}
+.pw-tabs__item.is-active {
+  background: #ffffff;
+  color: #067EF9;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.08);
+}
+
+.pw-mode {
+  display: flex;
+  margin: 28rpx 0 12rpx;
+  padding: 6rpx;
+  background: #F8FAFC;
+  border: 2rpx solid #E2E8F0;
+  border-radius: 16rpx;
+}
+.pw-mode__item {
+  flex: 1;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 28rpx;
+  color: #64748B;
+  border-radius: 12rpx;
+}
+.pw-mode__item.is-active {
+  background: #067EF9;
+  color: #ffffff;
+  font-weight: 600;
+}
+.pw-renewal-note {
+  margin-bottom: 12rpx;
+  padding: 14rpx 18rpx;
+  background: #ECFDF5;
+  border-radius: 12rpx;
+  color: #047857;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+/* 当前角色徽标（single 模式） */
+.pw-current {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin: 32rpx 0 24rpx;
+  padding: 16rpx 24rpx;
+  background: #EFF6FF;
+  border-radius: 12rpx;
+}
+.pw-current__label { font-size: 24rpx; color: #64748B; }
+.pw-current__value { font-size: 28rpx; color: #067EF9; font-weight: 600; }
+
+/* 套餐卡片 */
+.pw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.pw-card {
+  position: relative;
+  padding: 28rpx;
+  background: #F8FAFC;
+  border: 2rpx solid #E2E8F0;
+  border-radius: 20rpx;
+  transition: all 0.2s;
+}
+.pw-card.is-selected {
+  border-color: #067EF9;
+  background: #EFF6FF;
+}
+.pw-card.is-featured {
+  border-color: #F59E0B;
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+}
+.pw-card.is-featured.is-selected {
+  border-color: #067EF9;
+  background: #EFF6FF;
+}
+.pw-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12rpx;
+}
+.pw-card__name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #0F172A;
+}
+.pw-card__price {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+}
+.pw-card__price-num {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #067EF9;
+}
+.pw-card__price-unit {
+  font-size: 24rpx;
+  color: #64748B;
+}
+.pw-card__desc {
+  font-size: 26rpx;
+  color: #475569;
+  margin-bottom: 12rpx;
+}
+.pw-card__features {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.pw-card__feature {
+  font-size: 24rpx;
+  color: #64748B;
+  line-height: 1.6;
+}
+.pw-card__check {
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  background: #067EF9;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+.pw-card__tag {
+  position: absolute;
+  top: -2rpx;
+  right: 32rpx;
+  padding: 6rpx 16rpx;
+  background: linear-gradient(135deg, #F59E0B 0%, #FB923C 100%);
+  color: #ffffff;
+  font-size: 22rpx;
+  border-radius: 0 0 12rpx 12rpx;
+  font-weight: 600;
+}
+
+/* 被拦截说明 */
+.pw-blocked {
+  margin-top: 20rpx;
+  padding: 16rpx 24rpx;
+  background: #FEF3C7;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #92400E;
+  text-align: center;
+}
+
+/* 协议 */
+.pw-agree {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24rpx;
+  gap: 12rpx;
+}
+.pw-agree__box {
+  width: 32rpx;
+  height: 32rpx;
+  border: 2rpx solid #CBD5E1;
+  border-radius: 8rpx;
+  position: relative;
+  background: #ffffff;
+}
+.pw-agree__box.is-on {
+  background: #067EF9;
+  border-color: #067EF9;
+}
+.pw-agree__box.is-on::after {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 4rpx;
+  width: 10rpx;
+  height: 16rpx;
+  border: solid #ffffff;
+  border-width: 0 4rpx 4rpx 0;
+  transform: rotate(45deg);
+}
+.pw-agree__txt {
+  font-size: 24rpx;
+  color: #64748B;
+}
+.pw-agree__link {
+  font-size: 24rpx;
+  color: #067EF9;
+}
+
+/* CTA */
+.pw-cta {
+  margin-top: 24rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  background: linear-gradient(135deg, #067EF9 0%, #4DA3FF 100%);
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+  border-radius: 48rpx;
+  box-shadow: 0 6rpx 20rpx rgba(6, 126, 249, 0.3);
+}
+.pw-cta.is-disabled {
+  background: #CBD5E1;
+  box-shadow: none;
+}
+.pw-skip {
+  margin-top: 20rpx;
+  text-align: center;
+  font-size: 26rpx;
+  color: #64748B;
+  padding: 12rpx 0;
+}

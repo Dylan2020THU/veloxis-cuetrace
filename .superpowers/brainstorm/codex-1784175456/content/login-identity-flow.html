@@ -1,0 +1,51 @@
+<h2>手机号登录与微信绑定分离</h2>
+<p class="subtitle">手机号负责登录，微信绑定由用户主动触发；两条入口最终汇入同一个内部账号主体。</p>
+
+<div class="section">
+  <div class="label">情况 1 · 手机号入口</div>
+  <div style="display:grid;grid-template-columns:1fr auto 1.2fr auto 1fr;gap:12px;align-items:center;margin-top:10px">
+    <div class="mockup"><div class="mockup-body"><strong>手机号 + 验证码</strong><br><small>首次验证或已有账号登录</small></div></div>
+    <div style="font-size:24px">→</div>
+    <div class="mockup"><div class="mockup-body"><strong>内部账号</strong><br><small>新手机号：创建账号<br>已有手机号：恢复原账号</small></div></div>
+    <div style="font-size:24px">→</div>
+    <div class="mockup"><div class="mockup-body"><strong>独立登录会话</strong><br><small>不建立微信绑定</small></div></div>
+  </div>
+  <p style="margin-top:10px">账号以后设置密码后，可同时使用“手机号 + 密码”或“手机号 + 验证码”。只有在「账号与安全」主动操作，才写入微信绑定。</p>
+</div>
+
+<div class="section">
+  <div class="label">情况 2 · 微信入口</div>
+  <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1.2fr;gap:12px;align-items:center;margin-top:10px">
+    <div class="mockup"><div class="mockup-body"><strong>微信登录</strong><br><small>识别可信 OPENID</small></div></div>
+    <div style="font-size:24px">→</div>
+    <div class="mockup"><div class="mockup-body"><strong>强制绑定手机号</strong><br><small>短信验证码确认归属</small></div></div>
+    <div style="font-size:24px">→</div>
+    <div class="mockup"><div class="mockup-body"><strong>同一个内部账号</strong><br><small>手机号已存在：恢复原账号<br>手机号不存在：创建新账号</small></div></div>
+  </div>
+</div>
+
+<div class="mockup" style="border-color:#f59e0b">
+  <div class="mockup-header">必须同步调整的授权基础</div>
+  <div class="mockup-body">
+    <strong>OPENID 不再等同于“已登录账号”</strong>
+    <p>手机号登录既然不自动绑定微信，就需要服务端签发独立、可撤销的登录会话，并让受保护云函数通过该会话识别账号。否则用户下一次调用业务云函数时，系统无法知道他刚刚登录的是哪个账号。</p>
+  </div>
+</div>
+
+<h3>请确认这项架构选择</h3>
+<div class="options">
+  <div class="option" data-choice="independent-session" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>独立账号会话（推荐）</h3>
+      <p>手机号登录不绑定微信；由短期会话凭证维持登录状态，符合您定义的两种情况。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="openid-session" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>继续依赖 OPENID</h3>
+      <p>改动较小，但手机号登录后仍必须建立 OPENID 到账号的关系，本质上违背“不自动绑定微信”。</p>
+    </div>
+  </div>
+</div>

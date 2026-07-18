@@ -88,7 +88,8 @@ function summarizeOrders(orders) {
     }
     if (['complete', 'manual_review'].indexOf(order.orderStatus) === -1 || ['paid', 'partially_refunded', 'refunded'].indexOf(order.paymentStatus) === -1) return;
     platformPaidFen += retained;
-    shopNetTargetFen += retained - targetCostFen(retained);
+    shopNetTargetFen += retained - targetCostFen(retained)
+      + fen(order.retainedCouponSubsidyFen);
     totalCostFen += fen(order.totalCostFen);
     channelFeeFen += fen(order.channelFeeFen);
     platformNetFen += fen(order.platformNetFen);

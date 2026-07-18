@@ -1,0 +1,66 @@
+<view class="page theme-{{theme}}">
+  <view class="hero">
+    <view class="hero-title">训练杆迹总览</view>
+    <view class="hero-sub">未有知而不行者，知而不行是未知</view>
+    <view class="stats">
+      <view class="stat">
+        <view class="stat-num">{{totalDays}}</view>
+        <view class="stat-label">累计打卡天</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{totalHoursText}}</view>
+        <view class="stat-label">累计时长(h)</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{streak}}</view>
+        <view class="stat-label">连续打卡天</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">个人训练杆迹图</view>
+    <view class="muted year-tip">近一年 · 单日训练时长越长颜色越深</view>
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <heatmap wx:else stats="{{stats}}" theme="{{theme}}" bind:select="onSelectDay"></heatmap>
+  </view>
+
+  <view class="card">
+    <view class="detail-head">
+      <view class="section-title">{{selectedLabel || '当日'}}训练明细</view>
+      <view wx:if="{{selectedTotalText}}" class="detail-total">总时长 {{selectedTotalText}}</view>
+    </view>
+
+    <view wx:if="{{allDetailList.length > 0}}" class="detail-filters">
+      <view
+        wx:for="{{detailFilters}}"
+        wx:key="key"
+        class="detail-filter {{detailFilter === item.key ? 'active' : ''}}"
+        data-filter="{{item.key}}"
+        bindtap="switchDetailFilter"
+      >{{item.label}}</view>
+    </view>
+
+    <view wx:if="{{detailList.length === 0}}" class="empty">
+      <view class="empty-icon">○</view>
+      <view class="muted">你在休息，而你的对手在训练，凭什么赢的是你？</view>
+      <view class="muted">（今日未训练）</view>
+    </view>
+
+    <view wx:else class="detail-list">
+      <view class="detail-item" wx:for="{{detailList}}" wx:key="_id">
+        <view class="dot"></view>
+        <view class="detail-main">
+          <view class="hall">{{item.hallName || '未知台球厅'}}<text wx:if="{{item.kind === 'coach'}}" class="coach-tag">教学课时</text><text wx:elif="{{item.verified}}" class="verified-tag">已核验</text><text wx:else class="unverified-tag">未核验</text></view>
+          <view wx:if="{{item.kind === 'coach' && item.memberNickname}}" class="muted">学员 {{item.memberNickname}}</view>
+          <view class="muted">{{item.startTime}} 开始</view>
+        </view>
+        <view class="duration">{{item.durationText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="add-bar">
+    <button class="btn-primary add-btn" bindtap="goAdd">+ 补记今日训练</button>
+  </view>
+</view>

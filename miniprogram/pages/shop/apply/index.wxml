@@ -1,0 +1,72 @@
+<view class="page theme-{{theme}}">
+  <view wx:if="{{loading}}" class="loading">加载中…</view>
+
+  <!-- 待审核 -->
+  <block wx:elif="{{status==='pending'}}">
+    <view class="status-card">
+      <view class="status-icon status-icon--pending">⏳</view>
+      <view class="status-title">资质审核中</view>
+      <view class="status-desc">您的营业执照等资质已提交，平台将在 1–3 个工作日内完成核验。审核通过后即可使用店主功能。</view>
+      <button class="btn-ghost" bindtap="refresh">刷新审核状态</button>
+      <button wx:if="{{isAdmin}}" class="btn-ghost" bindtap="goReview">前往审核后台</button>
+      <button class="btn-text" bindtap="backToLogin">返回登录</button>
+    </view>
+  </block>
+
+  <!-- 未申请 / 已驳回 → 提交表单 -->
+  <block wx:else>
+    <view class="intro">
+      <view class="intro-title">店主资质核验</view>
+      <view class="intro-desc">为保障门店与会员权益，店主注册需核验「营业执照」等信息，提交后经平台审核通过方可使用。</view>
+    </view>
+
+    <view wx:if="{{status==='rejected'}}" class="reject-banner">
+      <view class="reject-banner-title">上次申请未通过</view>
+      <view class="reject-banner-reason">{{reason || '资料未通过核验，请修改后重新提交'}}</view>
+    </view>
+
+    <view class="form">
+      <view class="form-section-title">营业执照</view>
+      <view class="license-row" bindtap="chooseLicense">
+        <image wx:if="{{licenseFileID}}" class="license-img" src="{{licenseFileID}}" mode="aspectFill"></image>
+        <view wx:else class="license-empty">
+          <view class="license-plus">＋</view>
+          <view class="license-tip">上传营业执照照片</view>
+        </view>
+      </view>
+      <view wx:if="{{licenseFileID}}" class="license-rechoose">点击图片可重新上传</view>
+
+      <view class="form-section-title">店主联系方式</view>
+      <view class="form-row">
+        <text class="form-label">联系电话</text>
+        <input class="form-input" type="number" maxlength="11" placeholder="11位手机号（必填）" placeholder-class="ph"
+          data-field="ownerPhone" value="{{ownerPhone}}" bindinput="onInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">店主微信</text>
+        <input class="form-input" placeholder="选填" placeholder-class="ph"
+          data-field="ownerWechat" value="{{ownerWechat}}" bindinput="onInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">店主QQ</text>
+        <input class="form-input" type="number" placeholder="选填" placeholder-class="ph"
+          data-field="ownerQQ" value="{{ownerQQ}}" bindinput="onInput" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">店主邮箱</text>
+        <input class="form-input" placeholder="选填" placeholder-class="ph"
+          data-field="ownerEmail" value="{{ownerEmail}}" bindinput="onInput" />
+      </view>
+    </view>
+
+    <view class="form-note">信息越全，审核速度越快</view>
+
+    <view class="submit-wrap">
+      <button class="btn-primary {{submitting?'is-loading':''}}" bindtap="submit" disabled="{{submitting}}">
+        {{ submitting ? '提交中…' : '提交审核' }}
+      </button>
+      <button wx:if="{{isAdmin}}" class="btn-text" bindtap="goReview">（管理员）前往审核后台</button>
+      <button class="btn-text" bindtap="backToLogin">返回登录</button>
+    </view>
+  </block>
+</view>

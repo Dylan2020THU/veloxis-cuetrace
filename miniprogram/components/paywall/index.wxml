@@ -1,0 +1,138 @@
+<wxs module="fmt">
+var TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+module.exports = {
+  days: function (ms) {
+    if (!ms || ms <= 0) return 0;
+    return Math.ceil(ms / TRIAL_DAY_MS);
+  },
+  yuan: function (n) {
+    return '¥' + (n || 0);
+  },
+  // 把时间戳格式化为 YYYY-MM-DD（用于"到期日"展示）
+  ymd: function (ts) {
+    if (!ts) return '';
+    var d = getDate(ts);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+};
+</wxs>
+
+<view class="pw" wx:if="{{visible}}">
+  <view class="pw-mask" bindtap="onClose"></view>
+  <view class="pw-sheet">
+    <!-- 顶部：渐变 banner -->
+    <view class="pw-hero">
+      <view class="pw-back" bindtap="onClose">
+        <text class="pw-back__ic">‹</text>返回
+      </view>
+      <view class="pw-hero__title">开通会员 解锁更多</view>
+      <view class="pw-hero__sub">专业记录 · 智能分析 · 经营提效</view>
+      <!-- 试期内显示剩余天数 -->
+      <view class="pw-hero__trial" wx:if="{{trialRemaining > 0}}">
+        试用还剩 <text class="pw-hero__trial-num">{{fmt.days(trialRemaining)}}</text> 天
+      </view>
+    </view>
+
+    <!-- 角色 tab -->
+    <view class="pw-tabs" wx:if="{{mode === 'multi'}}">
+      <view class="pw-tabs__item {{activeTab==='member'?'is-active':''}}" data-tab="member" bindtap="onSwitchTab">球员</view>
+      <view class="pw-tabs__item {{activeTab==='coach'?'is-active':''}}" data-tab="coach" bindtap="onSwitchTab">教练</view>
+      <view class="pw-tabs__item {{activeTab==='shop'?'is-active':''}}" data-tab="shop" bindtap="onSwitchTab">店主</view>
+    </view>
+
+    <!-- 当前角色徽标 -->
+    <view class="pw-current" wx:else>
+      <text class="pw-current__label">当前身份</text>
+      <text class="pw-current__value">{{currentRoleLabel}}</text>
+    </view>
+
+    <!-- 套餐卡片 -->
+    <view class="pw-list">
+      <view
+        wx:for="{{plans}}"
+        wx:key="key"
+        class="pw-card {{selectedPlan===item.key?'is-selected':''}} {{item.featured?'is-featured':''}}"
+        data-plan="{{item.key}}"
+        bindtap="onSelectPlan"
+      >
+        <view class="pw-card__head">
+          <text class="pw-card__name">{{item.label}}</text>
+          <view class="pw-card__price">
+            <text class="pw-card__price-num">{{fmt.yuan(item.entryPrice)}}</text>
+            <text class="pw-card__price-unit">{{purchaseMode === 'recurring' ? '/月起' : '起'}}</text>
+          </view>
+        </view>
+        <view class="pw-card__desc">{{item.desc}}</view>
+        <view class="pw-card__features">
+          <view wx:for="{{item.features}}" wx:for-item="f" wx:key="*this" class="pw-card__feature">· {{f}}</view>
+        </view>
+        <view class="pw-card__check" wx:if="{{selectedPlan===item.key}}">✓</view>
+        <view class="pw-card__tag" wx:if="{{item.featured}}">推荐</view>
+      </view>
+    </view>
+
+    <!-- 购买方式：单次购买 / 连续订阅 -->
+    <view class="pw-mode">
+      <view
+        wx:for="{{purchaseModes}}"
+        wx:key="key"
+        class="pw-mode__item {{purchaseMode===item.key?'is-active':''}}"
+        data-mode="{{item.key}}"
+        bindtap="onSwitchPurchaseMode"
+      >{{item.label}}</view>
+    </view>
+    <view class="pw-renewal-note" wx:if="{{purchaseMode === 'recurring'}}">
+      自动续费，到期前按所选周期扣款，可随时取消。未完成微信支付签约前不会扣费。
+    </view>
+
+    <!-- 周期 tab：包月 / 包季 / 包年（复用 pw-tabs 样式） -->
+    <view class="pw-tabs" wx:if="{{currentPlan.periodOptions && currentPlan.periodOptions.length > 1}}">
+      <view
+        wx:for="{{currentPlan.periodOptions}}"
+        wx:key="period"
+        class="pw-tabs__item {{selectedPeriod===item.period?'is-active':''}}"
+        data-period="{{item.period}}"
+        bindtap="onSelectPeriod"
+        style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12rpx 0;line-height:1.3;"
+      >
+        <text style="font-size:26rpx;">{{item.label}}</text>
+        <text style="font-size:22rpx;margin-top:4rpx;opacity:0.85;">{{fmt.yuan(item.price)}}{{item.discount ? ' · ' + item.discount : ''}}</text>
+      </view>
+    </view>
+
+    <!-- 被拦截场景下的说明 -->
+    <view class="pw-blocked" wx:if="{{blockedFeatureLabel}}">
+      <text>该功能「{{blockedFeatureLabel}}」需升级后使用</text>
+    </view>
+
+    <!-- 已购会员到期提示（仅在已购 + 已过期 时显示） -->
+    <view class="pw-blocked" wx:if="{{sceneMode === 'expired' && ownedPlanLabel}}">
+      <text>您的会员已于 {{fmt.ymd(ownedPlanExpiresAt)}} 到期，续费可继续使用</text>
+    </view>
+
+    <!-- 协议 -->
+    <view class="pw-agree">
+      <view class="pw-agree__box {{agreed?'is-on':''}}" bindtap="onToggleAgree"></view>
+      <text class="pw-agree__txt">开通即同意</text>
+      <text class="pw-agree__link" catchtap="onOpenAgreement">《会员服务协议》</text>
+    </view>
+
+    <!-- CTA：根据 sceneMode 切换文案 -->
+    <view class="pw-cta {{(!agreed || sceneMode==='downgrade')?'is-disabled':''}}" bindtap="onConfirm">
+      <block wx:if="{{sceneMode === 'downgrade'}}">
+        当前套餐已包含该档
+      </block>
+      <block wx:elif="{{sceneMode === 'renew' || sceneMode === 'expired'}}">
+        {{purchaseMode === 'recurring' ? '开通自动续费' : '续费同档'}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
+      </block>
+      <block wx:elif="{{sceneMode === 'upgrade'}}">
+        {{purchaseMode === 'recurring' ? '自动续费' : '升级到'}} {{currentPlan.label}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
+      </block>
+      <block wx:else>
+        {{purchaseMode === 'recurring' ? '开通自动续费' : '立即开通'}} {{fmt.yuan(currentPlan.price)}} / {{currentPlan.periodLabel}}
+      </block>
+    </view>
+    <view class="pw-skip" bindtap="onClose">返回，继续使用免费版</view>
+  </view>
+</view>

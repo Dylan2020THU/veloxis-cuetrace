@@ -1,0 +1,62 @@
+<view class="page theme-{{theme}}">
+  <view class="seg">
+    <view class="seg-item {{period===item.key?'on':''}}" wx:for="{{periods}}" wx:key="key" data-key="{{item.key}}" bindtap="onPeriod">{{item.label}}</view>
+  </view>
+
+  <view class="summary card">
+    <view class="sum-main"><text class="cur">¥</text>{{totalPendingNet}}</view>
+    <view class="muted">待结算合计 · {{pendingCoachCount}} 位教练</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="loading">加载中…</view>
+  <view wx:elif="{{coaches.length === 0}}" class="empty card"><view class="muted">本周期暂无教练课时</view></view>
+
+  <view wx:else class="card list">
+    <view class="row" wx:for="{{coaches}}" wx:key="coachOpenid" data-openid="{{item.coachOpenid}}" bindtap="openDetail">
+      <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+      <view wx:else class="avatar">{{item.nickname[0]}}</view>
+      <view class="main">
+        <view class="name">{{item.nickname}}</view>
+        <view class="muted" wx:if="{{item.settledNet > 0}}">已结算 ¥{{item.settledNet}}</view>
+      </view>
+      <view class="amt">
+        <view class="amt-net {{item.pendingNet>0?'':'zero'}}">¥{{item.pendingNet}}</view>
+        <view class="amt-sub">待结算 {{item.pendingCount}} 节</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showDetail}}" class="mask" bindtap="closeDetail">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-title">{{detail.nickname}}</view>
+      <view class="sum3">
+        <view class="sum3-col"><view class="sum3-num">¥{{detail.summary.gross}}</view><view class="muted">课时费</view></view>
+        <view class="sum3-col"><view class="sum3-num minus">−¥{{detail.summary.commission}}</view><view class="muted">本期调整</view></view>
+        <view class="sum3-col"><view class="sum3-num net">¥{{detail.summary.net}}</view><view class="muted">应付净额</view></view>
+      </view>
+      <view class="tabs">
+        <view class="tab {{detailTab==='pending'?'on':''}}" data-tab="pending" bindtap="onDetailTab">待结算 {{detail.pending.length}}</view>
+        <view class="tab {{detailTab==='settled'?'on':''}}" data-tab="settled" bindtap="onDetailTab">已结算 {{detail.settled.length}}</view>
+      </view>
+      <scroll-view scroll-y="true" class="det-list">
+        <block wx:if="{{detailTab==='pending'}}">
+          <view class="det" wx:for="{{detail.pending}}" wx:key="_id">
+            <view class="det-main"><text>{{item.date}}</text><text class="muted"> · {{item.memberNickname || '会员'}} · {{item.durationMinutes}}分</text></view>
+            <text class="det-amt">¥{{item.amount}}</text>
+          </view>
+          <view wx:if="{{detail.pending.length===0}}" class="muted det-empty">无待结算课时</view>
+        </block>
+        <block wx:else>
+          <view class="det" wx:for="{{detail.settled}}" wx:key="_id">
+            <view class="det-main"><text>{{item.date}}</text><text class="muted"> · {{item.memberNickname || '会员'}} · {{item.durationMinutes}}分</text></view>
+            <text class="det-amt">¥{{item.amount}}</text>
+          </view>
+          <view wx:if="{{detail.settled.length===0}}" class="muted det-empty">无已结算课时</view>
+        </block>
+      </scroll-view>
+      <button class="btn-primary settle-btn" disabled="{{detail.pending.length===0 || settling}}" bindtap="doSettle">
+        {{ settling ? '结算中...' : (detail.pending.length ? '结算 ¥' + detail.summary.net : '无待结算') }}
+      </button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,148 @@
+.hm {
+  width: 100%;
+}
+
+.hm-tooltip {
+  font-size: 24rpx;
+  color: #8a9099;
+  background: #f4f6f8;
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  margin-bottom: 20rpx;
+  transition: all 0.2s ease;
+}
+
+.hm-tooltip.show {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.08);
+  font-weight: 500;
+}
+
+.hm-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.hm-body {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.hm-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.hm-left-spacer,
+.hm-weekdays {
+  width: 40rpx;
+  flex: 0 0 40rpx;
+}
+
+.hm-months-row {
+  height: 30rpx;
+}
+
+.hm-months {
+  position: relative;
+  height: 30rpx;
+}
+
+.hm-month {
+  position: absolute;
+  top: 0;
+  font-size: 18rpx;
+  color: #8a9099;
+  line-height: 30rpx;
+}
+
+.hm-weekdays {
+  display: flex;
+  flex-direction: column;
+}
+
+.wd {
+  height: 30rpx;
+  line-height: 30rpx;
+  font-size: 18rpx;
+  color: #8a9099;
+  text-align: right;
+  padding-right: 8rpx;
+}
+
+.hm-grid {
+  display: flex;
+  flex-direction: row;
+}
+
+.hm-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.hm-cell {
+  width: 24rpx;
+  height: 24rpx;
+  margin: 3rpx;
+  border-radius: 6rpx;
+  box-sizing: border-box;
+}
+
+.hm-cell.sel {
+  border: 2rpx solid #1f2329;
+}
+
+.hm-legend {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 20rpx;
+}
+
+.lg-text {
+  font-size: 20rpx;
+  color: #8a9099;
+  margin: 0 8rpx;
+}
+
+.lg-cell {
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 6rpx;
+  margin: 0 4rpx;
+}
+
+/* 教练双图例：金 / 蓝 两组 */
+.hm-legend2 {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 20rpx;
+}
+.lg-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 28rpx;
+}
+.lg-name {
+  font-size: 20rpx;
+  color: #8a9099;
+  margin-right: 8rpx;
+}
+
+/* 夜间模式：提示条 / 选中描边 适配深底（格子颜色由 JS 按主题取 ramp） */
+.theme-dark .hm-tooltip {
+  color: #aab1bb;
+  background: #2a2f37;
+}
+.theme-dark .hm-tooltip.show {
+  color: #4aa3ff;
+  background: rgba(74, 163, 255, 0.14);
+}
+.theme-dark .hm-cell.sel {
+  border-color: #e6e8eb;
+}

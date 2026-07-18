@@ -1,0 +1,9 @@
+{
+  "triggers": [
+    {
+      "name": "reconcileTableRefundsTimer",
+      "type": "timer",
+      "config": "0 */5 * * * * *"
+    }
+  ]
+}

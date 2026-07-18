@@ -1,0 +1,28 @@
+<view class="page theme-{{theme}}">
+  <map
+    class="map"
+    longitude="{{longitude}}"
+    latitude="{{latitude}}"
+    scale="{{scale}}"
+    markers="{{markers}}"
+    show-location="{{showLoc}}"
+    bindmarkertap="onMarkerTap"
+  ></map>
+
+  <view wx:if="{{!markers.length}}" class="map-empty">附近暂无开通到店打卡的合作门店</view>
+
+  <view wx:if="{{selected}}" class="sel-mask" bindtap="closeSel">
+    <view class="sel-card" catchtap="noop">
+      <view class="sel-name">{{selected.name}}</view>
+      <view class="sel-addr">{{selected.address}}</view>
+      <view class="sel-meta">
+        <text wx:if="{{selected.minPricePerHour > 0}}" class="sel-price">{{selected.minPricePerHour}}元/小时起</text>
+        <text wx:if="{{selected.distanceText}}" class="sel-dist">距您 {{selected.distanceText}}</text>
+      </view>
+      <view class="sel-btns">
+        <view class="sel-btn primary" bindtap="checkinSelected">到店打卡</view>
+        <view class="sel-btn ghost" bindtap="bookSelected">去预约</view>
+      </view>
+    </view>
+  </view>
+</view>

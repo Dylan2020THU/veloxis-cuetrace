@@ -1,0 +1,261 @@
+.store-bar {
+  padding: 16rpx 32rpx;
+  background: var(--card-bg);
+}
+.store-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elev);
+  border-radius: 12rpx;
+  padding: 18rpx 24rpx;
+  font-size: 30rpx;
+  color: var(--text);
+}
+.arrow-icon {
+  font-size: 22rpx;
+  color: var(--text-weak);
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 8rpx;
+}
+
+.count {
+  font-size: 28rpx;
+  color: var(--text-weak);
+}
+
+.add-link {
+  font-size: 28rpx;
+  color: #067ef9;
+  font-weight: 500;
+}
+
+.pending-section {
+  padding: 0 32rpx 8rpx;
+}
+
+.pending-title {
+  font-size: 28rpx;
+  color: var(--text);
+  font-weight: 600;
+  margin: 12rpx 0 16rpx;
+}
+
+.pending-card {
+  margin-bottom: 16rpx;
+}
+
+.pending-main {
+  display: flex;
+  align-items: center;
+}
+
+.pending-info {
+  flex: 1;
+}
+
+.pending-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.mini-btn {
+  min-width: 128rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  margin: 0;
+  padding: 0 24rpx;
+}
+
+.mini-btn.reject {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.mini-btn.approve {
+  color: #ffffff;
+  background: #067ef9;
+}
+
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: var(--text-weak);
+  margin-bottom: 12rpx;
+}
+
+.coach {
+  display: flex;
+  align-items: flex-start;
+}
+
+.c-avatar-wrap {
+  position: relative;
+  margin-right: 24rpx;
+  flex: 0 0 88rpx;
+}
+
+/* 在线绿点：头像框右下角（与教练端「我的学员」一致） */
+.online-dot {
+  position: absolute;
+  right: -2rpx;
+  bottom: -2rpx;
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 50%;
+  background: #21c45d;
+  border: 4rpx solid #ffffff;
+}
+
+.c-avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.c-avatar.small {
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 28rpx;
+  margin-right: 16rpx;
+  flex: 0 0 64rpx;
+}
+
+.c-avatar-img {
+  width: 88rpx;
+  height: 88rpx;
+}
+
+.c-main {
+  flex: 1;
+}
+
+.c-name {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.c-intro {
+  font-size: 26rpx;
+  color: var(--text-sub);
+  margin-top: 8rpx;
+}
+
+.c-del {
+  font-size: 26rpx;
+  color: #f5483b;
+  padding: 4rpx 8rpx;
+}
+
+.page {
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
+}
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+
+.sheet {
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 36rpx;
+  /* 已是 tab 页：抬到自定义底栏(110rpx+安全区)上方，确认按钮不被遮挡 */
+  margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
+}
+
+/* 弹层标题行：标题居中，右上角放「扫码添加」 */
+.sheet-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+.sheet-header .sheet-title {
+  margin-bottom: 0;
+}
+.sheet-scan {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.sheet-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 16rpx;
+}
+
+.sheet-tip {
+  margin-bottom: 24rpx;
+}
+
+.code-input {
+  background: var(--bg-elev);
+  border-radius: 12rpx;
+  padding: 22rpx 24rpx;
+  font-size: 30rpx;
+  margin-bottom: 24rpx;
+}
+
+.sheet-btn {
+  width: 100%;
+  height: 84rpx;
+}
+
+.cand {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.cand:last-child {
+  border-bottom: none;
+}
+
+.cand-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.cand-name {
+  font-size: 30rpx;
+  color: var(--text);
+}
+
+.cand-link {
+  font-size: 28rpx;
+  color: #067ef9;
+}

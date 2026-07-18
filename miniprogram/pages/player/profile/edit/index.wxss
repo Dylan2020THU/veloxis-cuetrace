@@ -1,0 +1,181 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 32rpx;
+  padding-bottom: 120rpx;
+}
+
+.form {
+  background: var(--card-bg);
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.form-section-title {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  padding: 24rpx 32rpx 0;
+  letter-spacing: 2rpx;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32rpx;
+  border-bottom: 1rpx solid var(--border);
+  min-height: 100rpx;
+  box-sizing: border-box;
+}
+
+.form-row:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  font-size: 30rpx;
+  color: var(--text);
+  font-weight: 500;
+  width: 160rpx;
+  flex-shrink: 0;
+  line-height: 100rpx;
+}
+
+.value-area {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
+  margin-left: 16rpx;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 30rpx;
+  color: var(--text);
+  text-align: right;
+  min-width: 0;
+}
+
+.form-value {
+  font-size: 30rpx;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300rpx;
+}
+
+.form-value.muted {
+  color: var(--text-weak);
+}
+
+.arrow {
+  color: var(--text-weak);
+  font-size: 36rpx;
+  flex-shrink: 0;
+  margin-left: 8rpx;
+}
+
+/* 头像行 */
+.avatar-row {
+  min-height: 130rpx;
+}
+
+.avatar-img {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.avatar-ph {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 40rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+/* 所在地定位按钮 */
+.location-area {
+  justify-content: flex-end;
+}
+
+.location-btns {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.loc-btn {
+  font-size: 24rpx;
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.1);
+  padding: 6rpx 16rpx;
+  border-radius: 24rpx;
+  margin-left: 12rpx;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.loc-picker {
+  display: inline;
+}
+
+/* picker 统一撑满行高 */
+picker {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+/* 籍贯省/市并排 */
+.hometown-pickers {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.picker-sep {
+  color: var(--text-weak);
+  font-size: 30rpx;
+  margin: 0 4rpx;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.muted-hometown {
+  color: var(--text-weak) !important;
+}
+
+.save-btn {
+  margin-top: 60rpx;
+  height: 96rpx;
+  font-size: 32rpx;
+}
+
+/* 字段可见性开关 */
+.field-switch {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  transform: scale(0.82);
+}
+
+/* 公开展示区块底部提示 */
+.public-hint {
+  padding: 16rpx 32rpx 24rpx;
+  font-size: 22rpx;
+  color: var(--text-weak);
+  line-height: 1.5;
+}

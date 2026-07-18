@@ -1,0 +1,60 @@
+<template name="postCard">
+  <view class="card" data-id="{{item._id}}" bindtap="openDetail">
+    <view wx:if="{{item.cover}}" class="cover-wrap">
+      <image class="cover" src="{{item.cover}}" mode="widthFix" lazy-load="true"></image>
+      <view wx:if="{{item.type === 'video'}}" class="play-badge">▶</view>
+    </view>
+    <view class="card-body">
+      <view wx:if="{{item.title}}" class="card-title">{{item.title}}</view>
+      <view wx:else class="card-content-2">{{item.content}}</view>
+      <view class="card-foot">
+        <view class="author">
+          <image wx:if="{{item.authorAvatar}}" class="a-avatar" src="{{item.authorAvatar}}" mode="aspectFill"></image>
+          <view wx:else class="a-avatar">{{item.authorName[0]}}</view>
+          <text class="a-name">{{item.authorName}}</text>
+        </view>
+        <view class="like">
+          <text class="heart">♥</text>
+          <text class="like-num">{{item.likeCount}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<view class="page theme-{{theme}}">
+  <!-- 顶部三 tab：关注 / 发现 / 地区(城市) -->
+  <view class="top-tabs">
+    <view class="tab {{tab === 'follow' ? 'active' : ''}}" data-tab="follow" bindtap="switchTab">关注</view>
+    <view class="tab {{tab === 'discover' ? 'active' : ''}}" data-tab="discover" bindtap="switchTab">发现</view>
+    <view class="tab region {{tab === 'region' ? 'active' : ''}}" bindtap="onRegionTab">
+      <text class="pin">📍</text>{{city}}
+    </view>
+  </view>
+
+  <view class="feed">
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+
+    <view wx:elif="{{empty}}" class="empty">
+      <view class="empty-icon">○</view>
+      <view wx:if="{{tab === 'follow'}}" class="muted">还没有关注的人，去发现页关注感兴趣的球友吧</view>
+      <view wx:elif="{{tab === 'region'}}" class="muted">{{city}} 还没有动态，来发布第一条</view>
+      <view wx:else class="muted">还没有动态，快来发布第一条吧</view>
+    </view>
+
+    <view wx:else class="waterfall">
+      <view class="col">
+        <block wx:for="{{colA}}" wx:key="_id">
+          <template is="postCard" data="{{item}}"></template>
+        </block>
+      </view>
+      <view class="col">
+        <block wx:for="{{colB}}" wx:key="_id">
+          <template is="postCard" data="{{item}}"></template>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <view class="fab" bindtap="goPost">＋</view>
+</view>

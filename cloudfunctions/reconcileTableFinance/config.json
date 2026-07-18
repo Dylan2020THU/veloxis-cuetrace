@@ -1,0 +1,9 @@
+{
+  "triggers": [
+    {
+      "name": "reconcileTableFinanceTimer",
+      "type": "timer",
+      "config": "0 15 10 * * * *"
+    }
+  ]
+}

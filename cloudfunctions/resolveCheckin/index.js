@@ -78,6 +78,9 @@ exports.main = async (event = {}) => {
   ) {
     return fail('INVALID_INPUT', 'requestId and action are invalid');
   }
+  if (event.action === 'confirm') {
+    return fail('PRODUCT_RETIRED', 'Owner check-in confirmation is retired');
+  }
   const { OPENID } = cloud.getWXContext();
   try {
     return await db.runTransaction(async (transaction) => {
@@ -126,7 +129,7 @@ exports.main = async (event = {}) => {
       ) {
         return fail('CHECKIN_SLOT_INVALID', 'Check-in slot is inconsistent');
       }
-      const status = event.action === 'confirm' ? 'confirmed' : 'rejected';
+      const status = 'rejected';
       const resolvedAt = Date.now();
       await requestRef.update({
         data: {

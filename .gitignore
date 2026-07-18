@@ -1,0 +1,14 @@
+.cursorindexingignore
+.specstory/
+.claude/
+deck/
+business files/
+.worktrees/
+
+# Local payment secrets
+.env
+*.pem
+*.p12
+*.key
+private-certificates/
+private-keys/

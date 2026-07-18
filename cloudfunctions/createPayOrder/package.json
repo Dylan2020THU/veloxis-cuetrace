@@ -1,0 +1,9 @@
+{
+  "name": "createPayOrder",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 基础支付(微信支付JSAPI) cloudPay 下单",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

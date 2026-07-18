@@ -1,0 +1,672 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 180rpx; /* 让出 tabBar 高度 + FAB 底部空间 */
+}
+
+/* 顶部栏 */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 24rpx 12rpx;
+  background: var(--card-bg);
+}
+.topbar-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+.mine-entry {
+  font-size: 26rpx;
+  color: #067ef9;
+}
+
+/* 顶部三板块 */
+.tabs {
+  display: flex;
+  background: var(--card-bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 26rpx 0;
+  font-size: 30rpx;
+  color: var(--text-sub);
+  position: relative;
+}
+.tab.active {
+  color: #067ef9;
+  font-weight: 600;
+}
+.tab-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+.tab-ic {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: var(--text-weak);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.tab.active .tab-ic {
+  background-color: #067ef9;
+}
+.tab .bar {
+  position: absolute;
+  bottom: 8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  border-radius: 3rpx;
+  background: #067ef9;
+}
+
+.loading {
+  text-align: center;
+  color: var(--text-weak);
+  padding: 60rpx 0;
+  font-size: 26rpx;
+}
+.empty {
+  text-align: center;
+  color: var(--text-weak);
+  padding: 100rpx 40rpx;
+  font-size: 26rpx;
+}
+
+.list {
+  padding: 20rpx 24rpx;
+}
+.card {
+  background: var(--card-bg);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+
+/* 头像 */
+.avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #067ef9;
+  color: #fff;
+  font-size: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+/* 人像图片头像 */
+image.avatar {
+  background: var(--bg-elev);
+}
+.avatar.big {
+  width: 96rpx;
+  height: 96rpx;
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+/* 约球友卡片 */
+.match-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.match-meta {
+  flex: 1;
+  margin-left: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.match-meta .name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+.tag {
+  font-size: 22rpx;
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.1);
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+}
+.tag.green {
+  color: #00b578;
+  background: rgba(0, 181, 120, 0.1);
+}
+/* 发布者段位：红色 */
+.tag.red {
+  color: #f5503e;
+  background: rgba(245, 80, 62, 0.1);
+}
+/* 期望段位：蓝色 */
+.tag.blue {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.1);
+}
+.join-num {
+  font-size: 22rpx;
+  color: var(--text-weak);
+}
+.row {
+  display: flex;
+  font-size: 26rpx;
+  margin-top: 8rpx;
+}
+.row .lbl {
+  color: var(--text-weak);
+  width: 90rpx;
+}
+.row .val {
+  color: var(--text);
+  flex: 1;
+}
+.note {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  color: var(--text-sub);
+  background: var(--bg-elev);
+  border-radius: 12rpx;
+  padding: 16rpx;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+.badge {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  background: var(--bg-elev);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+}
+.join-btn {
+  margin-top: 24rpx;
+  text-align: center;
+  background: #067ef9;
+  color: #fff;
+  font-size: 28rpx;
+  padding: 18rpx 0;
+  border-radius: 36rpx 0 36rpx 0;
+  box-sizing: border-box;
+}
+
+/* 约教练 / 约球桌卡片 */
+.card.coach,
+.card.table {
+  display: flex;
+  align-items: center;
+}
+.coach-info,
+.table-info {
+  flex: 1;
+  margin-left: 16rpx;
+}
+
+/* 约球桌门店头像框：圆角正方形 */
+.table-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+  background: var(--bg-elev);
+}
+.table-avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #067ef9;
+  color: #fff;
+  font-size: 40rpx;
+}
+.name-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.name-line .name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+.name-line .price {
+  font-size: 26rpx;
+  color: #f5503e;
+  font-weight: 600;
+}
+.sub {
+  font-size: 24rpx;
+  color: var(--text-sub);
+  margin-top: 8rpx;
+}
+.sub.light {
+  color: var(--text-weak);
+}
+.intro {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  margin-top: 6rpx;
+}
+.book-btn {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  background: #067ef9;
+  color: #fff;
+  font-size: 26rpx;
+  padding: 14rpx 32rpx;
+  border-radius: 36rpx 0 36rpx 0;
+}
+
+/* 悬浮发布 */
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 180rpx;
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: #067ef9;
+  color: #fff;
+  font-size: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 8rpx 24rpx rgba(6, 126, 249, 0.4);
+  z-index: 9999;
+}
+
+/* 预约弹窗 */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;             /* 改：居中显示，避开底部 TabBar */
+  justify-content: center;        /* 新增：水平居中 */
+  padding: 0 32rpx;               /* 新增：左右留白 */
+}
+.sheet {
+  width: 100%;
+  max-width: 640rpx;              /* 新增：最大宽度，防止太宽 */
+  max-height: 80vh;               /* 新增：最大高度，超出滚动 */
+  background: var(--card-bg);
+  border-radius: 24rpx;           /* 改：全圆角（之前顶部圆角是底部抽屉） */
+  padding: 32rpx 32rpx 40rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);  /* 新增：阴影 */
+  overflow-y: auto;               /* 新增：内容多时可滚 */
+}
+.sheet-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+.sheet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+  font-size: 28rpx;
+}
+.sheet-row .lbl {
+  color: var(--text-sub);
+  min-width: 140rpx;
+  flex-shrink: 0;
+}
+.sheet-row .val {
+  color: var(--text);
+  flex: 1;
+  text-align: right;
+}
+.sheet-row .val.highlight {
+  color: #f5503e;
+  font-weight: 600;
+  font-size: 30rpx;
+}
+.sheet-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
+.btn {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  border-radius: 36rpx 0 36rpx 0;
+  font-size: 30rpx;
+}
+.btn.ghost {
+  background: var(--bg-elev);
+  color: var(--text-sub);
+}
+.btn.primary {
+  background: #067ef9;
+  color: #fff;
+}
+
+/* 二次确认弹窗（新增） */
+.confirm-sheet {
+  width: 100%;
+  max-width: 600rpx;              /* 新增：最大宽度 */
+  background: var(--card-bg);
+  border-radius: 24rpx;           /* 改：全圆角（居中卡片） */
+  padding: 36rpx 32rpx 40rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
+}
+.confirm-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+  margin-bottom: 28rpx;
+}
+.confirm-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid var(--border);
+  font-size: 28rpx;
+}
+.confirm-row .lbl {
+  color: var(--text-sub);
+  min-width: 120rpx;
+  flex-shrink: 0;
+}
+.confirm-row .val {
+  color: var(--text);
+  flex: 1;
+  text-align: right;
+}
+.confirm-row.highlight .val {
+  color: #f5503e;
+  font-weight: 600;
+  font-size: 30rpx;
+}
+.confirm-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
+
+/* 约球桌：到店打卡 / 地图找店 顶部动作条 */
+.table-actions-bar {
+  display: flex;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+.ta-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 22rpx 0;
+  background: var(--card-bg);
+  color: #067ef9;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(6, 126, 249, 0.25);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.03);
+}
+.ta-ic {
+  width: 30rpx;
+  height: 30rpx;
+  background-color: #067ef9;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.ta-btn:active {
+  background: rgba(6, 126, 249, 0.06);
+}
+
+/* 距离行 */
+.sub-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8rpx;
+}
+.sub-line .sub {
+  margin-top: 0;
+}
+.dist {
+  font-size: 24rpx;
+  color: #067ef9;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+/* 约球桌卡片：到店打卡 / 预约 双按钮（纵向） */
+.table-btns {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.table-btns .book-btn {
+  margin-left: 0;
+  text-align: center;
+  min-width: 132rpx;
+}
+.book-btn.ghost {
+  background: var(--bg-elev);
+  color: var(--text-sub);
+}
+
+/* ===== 工具区：城市 + 搜索 + 筛选 chip ===== */
+.toolbar {
+  background: var(--card-bg);
+  padding: 12rpx 24rpx 16rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.city-btn {
+  flex-shrink: 0;
+}
+.city-inner {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  background: var(--bg-elev);
+  border-radius: 32rpx;
+  padding: 12rpx 20rpx;
+}
+.city-name {
+  font-size: 26rpx;
+  color: var(--text);
+  max-width: 140rpx;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.city-arrow {
+  font-size: 20rpx;
+  color: var(--text-weak);
+}
+.search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  background: var(--bg-elev);
+  border-radius: 32rpx;
+  padding: 0 20rpx;
+  height: 64rpx;
+}
+.search-ic {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  flex-shrink: 0;
+}
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--text);
+  height: 64rpx;
+}
+.search-input::placeholder {
+  color: var(--text-weak);
+}
+.search-clear {
+  font-size: 30rpx;
+  color: var(--text-weak);
+  padding: 0 6rpx;
+  flex-shrink: 0;
+}
+.chip-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 14rpx;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.chip {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: var(--text-sub);
+  background: var(--bg-elev);
+  border-radius: 28rpx;
+  padding: 10rpx 22rpx;
+  border: 1rpx solid transparent;
+}
+.chip.on {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.08);
+  border-color: rgba(6, 126, 249, 0.3);
+}
+.chip.more {
+  color: #067ef9;
+}
+
+/* ===== 更多筛选 底部弹层 ===== */
+.filter-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+}
+.filter-sheet {
+  width: 100%;
+  max-height: 78vh;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 32rpx 32rpx calc(28rpx + env(safe-area-inset-bottom));
+}
+.filter-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+.fs-label {
+  font-size: 26rpx;
+  color: var(--text-weak);
+  margin: 24rpx 0 14rpx;
+}
+.fs-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.fs-chip {
+  font-size: 26rpx;
+  color: var(--text-sub);
+  background: var(--bg-elev);
+  border-radius: 28rpx;
+  padding: 12rpx 26rpx;
+  border: 1rpx solid transparent;
+}
+.fs-chip.sel {
+  color: #fff;
+  background: #067ef9;
+  border-color: #067ef9;
+}
+.fs-empty {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  padding: 8rpx 0;
+}
+.fs-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 36rpx;
+}
+.fs-btn {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.fs-btn.ghost {
+  flex: 1;
+  background: var(--bg-elev);
+  color: var(--text-sub);
+}
+.fs-btn.primary {
+  flex: 2;
+  background: #067ef9;
+  color: #fff;
+}
+
+/* 暗色 */
+.theme-dark .toolbar {
+  background: #1f2329;
+  border-bottom-color: #2a2f37;
+}
+.theme-dark .city-inner,
+.theme-dark .search-box,
+.theme-dark .chip,
+.theme-dark .fs-chip {
+  background: #2a2f37;
+}
+.theme-dark .city-name,
+.theme-dark .search-input,
+.theme-dark .filter-title {
+  color: #f0f1f3;
+}
+.theme-dark .filter-sheet {
+  background: #1f2329;
+}
+.theme-dark .fs-btn.ghost {
+  background: #2a2f37;
+  color: #c4c9ce;
+}

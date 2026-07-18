@@ -1,0 +1,6 @@
+moduleCount=29 validSize=true
+finderTL=1111111/1011101
+finderTR=1111111/1011101
+finderBL=1111111/1011101
+timing_row6=1010
+allFindersValid=false

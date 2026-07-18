@@ -1,0 +1,54 @@
+<view class="page theme-{{theme}}">
+  <block wx:if="{{!authorized}}">
+    <view class="empty">无审核权限</view>
+  </block>
+
+  <block wx:else>
+    <!-- 状态切换 -->
+    <view class="tabs">
+      <view
+        wx:for="{{tabs}}"
+        wx:key="key"
+        class="tab {{tab===item.key?'active':''}}"
+        data-tab="{{item.key}}"
+        bindtap="switchTab"
+      >{{item.label}}</view>
+    </view>
+
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{list.length===0}}" class="empty">暂无{{ tab==='pending' ? '待审核' : (tab==='approved' ? '已通过' : '已驳回') }}申请</view>
+
+    <view wx:else class="list">
+      <view wx:for="{{list}}" wx:key="_id" class="card">
+        <view class="card-head">
+          <text class="shop-name">{{item.ownerPhone || '店主资质申请'}}</text>
+          <text class="badge badge--{{item.status}}">
+            {{ item.status==='pending' ? '待审核' : (item.status==='approved' ? '已通过' : '已驳回') }}
+          </text>
+        </view>
+
+        <image
+          wx:if="{{item.licenseFileID}}"
+          class="license"
+          src="{{item.licenseFileID}}"
+          mode="aspectFill"
+          data-url="{{item.licenseFileID}}"
+          bindtap="previewLicense"
+        ></image>
+
+        <view class="kv"><text class="k">联系电话</text><text class="v">{{item.ownerPhone || '—'}}</text></view>
+        <view class="kv"><text class="k">微信</text><text class="v">{{item.ownerWechat || '—'}}</text></view>
+        <view class="kv"><text class="k">QQ</text><text class="v">{{item.ownerQQ || '—'}}</text></view>
+        <view class="kv"><text class="k">邮箱</text><text class="v">{{item.ownerEmail || '—'}}</text></view>
+        <view wx:if="{{item.status==='rejected' && item.reason}}" class="kv">
+          <text class="k">驳回原因</text><text class="v v--reject">{{item.reason}}</text>
+        </view>
+
+        <view wx:if="{{item.status==='pending'}}" class="actions">
+          <button class="btn btn-reject" data-id="{{item._id}}" bindtap="reject">驳回</button>
+          <button class="btn btn-approve" data-id="{{item._id}}" bindtap="approve">通过</button>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

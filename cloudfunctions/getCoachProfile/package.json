@@ -1,0 +1,9 @@
+{
+  "name": "getCoachProfile",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 获取教练资料",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

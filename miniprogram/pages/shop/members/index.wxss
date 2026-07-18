@@ -1,0 +1,246 @@
+.page {
+  padding-bottom: calc(150rpx + env(safe-area-inset-bottom));
+}
+.store-bar {
+  padding: 16rpx 32rpx;
+  background: var(--card-bg);
+}
+.store-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-elev);
+  border-radius: 12rpx;
+  padding: 18rpx 24rpx;
+  font-size: 30rpx;
+  color: var(--text);
+}
+.arrow-icon {
+  font-size: 22rpx;
+  color: var(--text-weak);
+}
+/* 顶部操作栏：会员数 + 添加会员 */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx 0;
+}
+.count {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+.add-link {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.summary {
+  display: flex;
+}
+
+.sum-item {
+  flex: 1;
+  text-align: center;
+}
+
+.sum-num {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #067ef9;
+  line-height: 1.2;
+}
+
+.loading {
+  padding: 80rpx 0;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: var(--text-weak);
+  margin-bottom: 12rpx;
+}
+
+.table-head {
+  display: flex;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.th {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--text-weak);
+  text-align: center;
+}
+
+.th.name,
+.td.name {
+  flex: 1.4;
+  text-align: left;
+}
+
+.trow {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.trow:last-child {
+  border-bottom: none;
+}
+
+.td {
+  flex: 1;
+  font-size: 28rpx;
+  text-align: center;
+  color: var(--text);
+}
+
+.td.name {
+  display: flex;
+  align-items: center;
+}
+
+.m-avatar-wrap {
+  position: relative;
+  margin-right: 16rpx;
+}
+
+/* 在线绿点：头像框右下角（与教练端「我的学员」一致，适配 60rpx 小头像） */
+.online-dot {
+  position: absolute;
+  right: -2rpx;
+  bottom: -2rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #21c45d;
+  border: 3rpx solid #ffffff;
+}
+
+.m-avatar {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+image.m-avatar {
+  background: var(--bg-elev);
+}
+
+.m-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #067ef9;
+}
+
+.td.hours {
+  color: #067ef9;
+  font-weight: 600;
+}
+
+/* ===== 添加会员弹层 ===== */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+.sheet {
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 36rpx;
+  /* tab 页：抬到自定义底栏(110rpx+安全区)上方 */
+  margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.sheet-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+.sheet-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  text-align: center;
+}
+.sheet-scan {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--brand);
+}
+.sheet-tip {
+  margin-bottom: 24rpx;
+}
+.cand-tip {
+  margin-top: 24rpx;
+}
+.code-input {
+  background: var(--bg-elev);
+  border-radius: 12rpx;
+  padding: 22rpx 24rpx;
+  font-size: 30rpx;
+  margin-bottom: 24rpx;
+}
+.sheet-btn {
+  width: 100%;
+  height: 84rpx;
+}
+.cand-list {
+  max-height: 440rpx;
+}
+.cand {
+  display: flex;
+  align-items: center;
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.cand:last-child {
+  border-bottom: none;
+}
+.cand .m-avatar {
+  margin-right: 18rpx;
+}
+.cand-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.cand-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--text);
+}
+.cand-link {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--brand);
+}

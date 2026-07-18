@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="admin-header">
+    <text class="title">会员</text>
+  </view>
+
+  <view class="section">
+    <view class="section-title">数据总览</view>
+    <view class="overview-grid">
+      <view class="overview-item"><text class="overview-value">{{summary.totalMembers || 0}}</text><text class="overview-label">会员总数</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.newToday || 0}}</text><text class="overview-label">今日新增</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.newThisWeek || 0}}</text><text class="overview-label">本周新增</text></view>
+      <view class="overview-item"><text class="overview-value">{{summary.trainedMembers || 0}}</text><text class="overview-label">有训练记录</text></view>
+    </view>
+  </view>
+
+  <view class="section">
+    <input class="search" placeholder="搜索会员、账号、最近门店" value="{{keyword}}" bindinput="onKeyword" />
+    <view class="filter-row">
+      <view wx:for="{{trainingOptions}}" wx:key="value" class="chip {{training === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="chooseTraining">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">会员明细</view>
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <view wx:elif="{{error}}" class="error">{{error}}</view>
+    <view wx:elif="{{!filteredMembers.length}}" class="empty">暂无会员数据</view>
+    <view wx:else class="list">
+      <view wx:for="{{filteredMembers}}" wx:key="memberOpenid" class="row">
+        <view class="person-main">
+          <image class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+          <view>
+            <view class="row-title">{{item.memberName}}</view>
+            <view class="row-sub">账号：{{item.accountName || '暂无'}}</view>
+          </view>
+        </view>
+        <view class="row-sub">最近训练：{{item.lastTrainingAt || '暂无'}} {{item.lastStoreName}}</view>
+        <view class="row-meta">
+          <text class="tag ok">累计 {{item.totalTrainingHours || 0}}h</text>
+          <text class="tag">训练 {{item.trainingDays || 0}} 天</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="admin-bottom-nav">
+    <view class="admin-tab" data-url="/pages/admin/stores/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-store"></view><text class="admin-tab-text">门店</text></view>
+    <view class="admin-tab" data-url="/pages/admin/coaches/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-coach"></view><text class="admin-tab-text">教练</text></view>
+    <view class="admin-tab active" data-url="/pages/admin/members/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-member"></view><text class="admin-tab-text">会员</text></view>
+    <view class="admin-tab" data-url="/pages/admin/profile/index" bindtap="goAdminTab"><view class="admin-tab-icon icon-profile"></view><text class="admin-tab-text">我的</text></view>
+  </view>
+</view>

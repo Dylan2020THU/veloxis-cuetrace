@@ -1,0 +1,62 @@
+<view class="page theme-{{theme}}">
+  <view class="card snap">
+    <view class="snap-title">今日</view>
+    <view class="metrics">
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{today.revenue}}</view><view class="m-lbl">展示合计（元，兼容）</view></view>
+      <view class="metric"><view class="m-num">{{today.opens}}</view><view class="m-lbl">开台</view></view>
+      <view class="metric"><view class="m-num">{{today.activeMembers}}</view><view class="m-lbl">活跃会员</view></view>
+      <view class="metric"><view class="m-num">{{today.lessons}}</view><view class="m-lbl">课时</view></view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="snap-title">今日资金口径</view>
+    <view class="metrics">
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{todayFinance.platformPaidYuan}}</view><view class="m-lbl">平台支付实收</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{todayFinance.externalPaidYuan}}</view><view class="m-lbl">外部结账（无平台抽成）</view></view>
+      <view class="metric"><view class="m-num">{{todayFinance.platformCoverage}}</view><view class="m-lbl">平台支付覆盖率</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{todayFinance.legacyRevenueYuan}}</view><view class="m-lbl">历史记账（元）</view></view>
+    </view>
+  </view>
+
+  <view class="seg">
+    <view class="seg-item {{rangeDays===item.key?'on':''}}" wx:for="{{ranges}}" wx:key="key" data-key="{{item.key}}" bindtap="onRange">{{item.label}}</view>
+  </view>
+
+  <view class="card">
+    <view class="metrics">
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{range.revenue}}</view><view class="m-lbl">展示合计（元，兼容）</view></view>
+      <view class="metric"><view class="m-num">{{range.opens}}</view><view class="m-lbl">开台数</view></view>
+      <view class="metric"><view class="m-num">{{range.activeMembers}}</view><view class="m-lbl">活跃会员</view></view>
+      <view class="metric"><view class="m-num">{{range.lessons}}</view><view class="m-lbl">教练课时</view></view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="snap-title">区间资金拆分</view>
+    <view class="metrics">
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.shopNetTargetYuan}}</view><view class="m-lbl">球厅净收入目标（95%）</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.totalCostYuan}}</view><view class="m-lbl">综合交易成本</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.channelFeeYuan}}</view><view class="m-lbl">已确认通道费</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.platformNetYuan}}</view><view class="m-lbl">平台净收入</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.manualReviewYuan}}</view><view class="m-lbl">人工复核金额</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.platformPaidYuan}}</view><view class="m-lbl">平台支付实收</view></view>
+      <view class="metric"><view class="m-num"><text class="cur">¥</text>{{rangeFinance.externalPaidYuan}}</view><view class="m-lbl">外部结账</view></view>
+      <view class="metric"><view class="m-num">{{rangeFinance.platformCoverage}}</view><view class="m-lbl">平台支付覆盖率</view></view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="chart-head">
+      <text class="chart-title">营收趋势</text>
+      <text class="chart-tip">{{tip || '点柱看当天营收'}}</text>
+    </view>
+    <view wx:if="{{loading}}" class="loading">加载中…</view>
+    <view wx:elif="{{range.revenue===0}}" class="empty muted">暂无营收数据</view>
+    <view wx:else class="chart">
+      <view class="bar-wrap" wx:for="{{bars}}" wx:key="date" data-i="{{index}}" bindtap="onBar">
+        <view class="bar" style="height:{{item.h}}%"></view>
+      </view>
+    </view>
+  </view>
+</view>

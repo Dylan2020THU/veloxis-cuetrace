@@ -1,0 +1,87 @@
+<h2>社区动态可见范围：先定产品边界</h2>
+<p class="subtitle">当前项目已有“关注”关系，但没有双向好友体系。下面三个方向从轻到重，决定后续是否需要“添加好友”。</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f2f3f5;border-radius:22px;padding:18px;width:270px;margin:auto">
+        <div style="height:6px;width:58px;background:#bbb;border-radius:8px;margin:0 auto 18px"></div>
+        <div style="background:white;border-radius:18px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid #eee">
+            <div style="font-size:24px">🔓</div><div style="font-size:22px;font-weight:700">公开可见</div><div style="margin-left:auto;color:#ff2442;font-size:22px">✓</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid #eee">
+            <div style="font-size:24px">📍</div><div style="font-size:22px;font-weight:700">同城可见</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:18px">
+            <div style="font-size:24px">🔒</div><div style="font-size:22px;font-weight:700">仅自己可见</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 轻量筛选</h3>
+      <p>保留公开、同城、仅自己。最适合当前小程序阶段，不需要新增好友。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f2f3f5;border-radius:22px;padding:18px;width:270px;margin:auto">
+        <div style="height:6px;width:58px;background:#bbb;border-radius:8px;margin:0 auto 18px"></div>
+        <div style="background:white;border-radius:18px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid #eee">
+            <div style="font-size:22px">🔓</div><div style="font-size:20px;font-weight:700">公开可见</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid #eee">
+            <div style="font-size:22px">👤</div><div style="font-size:20px;font-weight:700">不给谁看</div><div style="margin-left:auto;color:#bbb">›</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid #eee">
+            <div style="font-size:22px">👥</div><div style="font-size:20px;font-weight:700">只给关注的人看</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:16px">
+            <div style="font-size:22px">🔒</div><div style="font-size:20px;font-weight:700">仅自己可见</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. 复用关注关系</h3>
+      <p>把“关注/互关”当成可见范围基础。能接近图中体验，但仍不做完整好友系统。</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f2f3f5;border-radius:22px;padding:18px;width:270px;margin:auto">
+        <div style="height:6px;width:58px;background:#bbb;border-radius:8px;margin:0 auto 18px"></div>
+        <div style="background:white;border-radius:18px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #eee">
+            <div style="font-size:20px">🔓</div><div style="font-size:18px;font-weight:700">公开可见</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #eee">
+            <div style="font-size:20px">🚫</div><div style="font-size:18px;font-weight:700">不给谁看</div><div style="margin-left:auto;color:#bbb">›</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #eee">
+            <div style="font-size:20px">✅</div><div style="font-size:18px;font-weight:700">只给谁看</div><div style="margin-left:auto;color:#bbb">›</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid #eee">
+            <div style="font-size:20px">⇄</div><div style="font-size:18px;font-weight:700">仅互关好友可见</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:14px">
+            <div style="font-size:20px">🔒</div><div style="font-size:18px;font-weight:700">仅自己可见</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 完整好友体系</h3>
+      <p>新增加好友、好友申请、黑名单/分组、指定名单。体验最完整，但体量明显变大。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>我的初步判断</h3>
+  <p>这个小程序当前核心是台球训练、球厅、教练和社区，不是熟人社交产品。建议先从 A 或 B 起步，避免为了一个发布筛选功能引入完整好友体系。</p>
+</div>

@@ -1,0 +1,267 @@
+.page {
+  padding-bottom: 180rpx;
+}
+
+.avatar-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.avatar-wrap {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 12rpx;
+}
+
+.avatar-img {
+  width: 160rpx;
+  height: 160rpx;
+}
+
+.avatar-ph {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: var(--bg-elev);
+  color: #067ef9;
+  font-size: 56rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ph-text {
+  font-size: 22rpx;
+  color: var(--text-weak);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.field.column {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.field:last-child {
+  border-bottom: none;
+}
+
+.field-label {
+  font-size: 30rpx;
+  color: var(--text);
+  flex: 0 0 160rpx;
+}
+
+.field-input {
+  flex: 1;
+  font-size: 30rpx;
+  text-align: right;
+}
+
+.field.column .field-input,
+.field-textarea {
+  text-align: left;
+  width: 100%;
+  margin-top: 16rpx;
+  height: 40rpx;
+  min-height: 40rpx;
+  line-height: 40rpx;
+  font-size: 28rpx;
+}
+
+.unit {
+  font-size: 26rpx;
+  color: var(--text-weak);
+  margin-left: 12rpx;
+}
+.field-pick {
+  flex: 1;
+  font-size: 30rpx;
+  text-align: right;
+  color: var(--text);
+}
+.field-pick.muted {
+  color: var(--text-weak);
+}
+.coach-id {
+  flex: 1;
+  font-size: 30rpx;
+  text-align: right;
+  color: #067ef9;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.binding-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -8rpx;
+  padding: 0 0 22rpx 160rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+  border-bottom: 1rpx solid var(--border);
+  gap: 16rpx;
+}
+
+.binding-status-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 42rpx;
+}
+
+.binding-status.status-pending {
+  color: #d97706;
+}
+
+.binding-status.status-approved {
+  color: #16a34a;
+}
+
+.binding-status.status-rejected {
+  color: #dc2626;
+}
+
+.binding-apply-btn {
+  margin: 0;
+  width: 132rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  border-radius: 22rpx;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 23rpx;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.binding-apply-btn[disabled] {
+  background: var(--bg-elev);
+  color: var(--text-weak);
+}
+
+.cert-tip {
+  margin: 8rpx 0 20rpx;
+}
+
+.cert-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.cert-item {
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  margin: 0 16rpx 16rpx 0;
+}
+
+.cert-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+}
+
+.cert-del {
+  position: absolute;
+  top: -12rpx;
+  right: -12rpx;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 36rpx;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 30rpx;
+}
+
+.cert-add {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 12rpx;
+  background: var(--bg-elev);
+  color: var(--text-weak);
+  font-size: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-list {
+  margin: 16rpx 0 24rpx;
+}
+
+.slot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.slot-text {
+  font-size: 28rpx;
+  color: var(--text);
+}
+
+.slot-del {
+  font-size: 26rpx;
+  color: #f5483b;
+}
+
+.slot-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.slot-pick {
+  background: var(--bg-elev);
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.to {
+  font-size: 26rpx;
+  color: var(--text-weak);
+  margin-right: 12rpx;
+}
+
+.slot-add {
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  border-radius: 36rpx 0 36rpx 0;
+  padding: 14rpx 28rpx;
+  font-size: 28rpx;
+}
+
+.submit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.submit-btn {
+  width: 100%;
+  height: 88rpx;
+}
+
+.theme-dark .submit-bar {
+  background: rgba(28, 30, 36, 0.92);
+}

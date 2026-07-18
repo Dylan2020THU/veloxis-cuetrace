@@ -1,0 +1,82 @@
+<view class="page theme-{{theme}}">
+  <view class="store-bar" wx:if="{{stores.length > 0}}">
+    <picker mode="selector" range="{{stores}}" range-key="name" value="{{storesIndex}}" bindchange="onStoreChange">
+      <view class="store-picker">
+        <text>{{currentStoreName || '选择门店'}}</text>
+        <text class="arrow-icon">▼</text>
+      </view>
+    </picker>
+  </view>
+
+  <view class="tip muted">设置本店球桌类型及每小时收费，球员预约时将从此列表中选择</view>
+
+  <!-- 当前桌型列表 -->
+  <view class="card">
+    <view class="section-title">当前桌型</view>
+    <view wx:if="{{tableTypes.length === 0}}" class="muted empty-tip">暂未设置任何桌型</view>
+    <view class="type-item" wx:for="{{tableTypes}}" wx:key="index">
+      <view class="type-left">
+        <image wx:if="{{item.image}}" class="type-img" src="{{item.image}}" mode="aspectFill" />
+        <view wx:else class="type-img placeholder" style="background:{{item.bgColor}}">{{item.name[0]}}</view>
+        <view class="type-info">
+          <text class="type-name">{{item.name}}</text>
+          <text class="type-price">{{item.pricePerHour}} 元/小时</text>
+        </view>
+      </view>
+      <view class="type-actions">
+        <text class="edit-btn" data-idx="{{index}}" bindtap="editType">编辑</text>
+        <text class="del-btn" data-idx="{{index}}" bindtap="removeType">删除</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 编辑 / 新增表单 -->
+  <view class="card form-card">
+    <view class="section-title">{{editingIdx >= 0 ? '编辑桌型' : '添加桌型'}}</view>
+
+    <view class="img-upload" bindtap="chooseImage">
+      <image wx:if="{{formImage}}" class="upload-img" src="{{formImage}}" mode="aspectFill" />
+      <view wx:else class="upload-placeholder">
+        <text class="upload-icon">+</text>
+        <text class="upload-tip">上传桌型图片</text>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="field-label">桌型名称</text>
+      <input class="field-input" placeholder="如：乔氏金腿" value="{{formName}}" bindinput="onNameInput" />
+    </view>
+    <view class="field">
+      <text class="field-label">收费标准</text>
+      <view class="price-row">
+        <input class="field-input price-input" type="number" placeholder="价格" value="{{formPrice}}" bindinput="onPriceInput" />
+        <text class="price-unit">元/小时</text>
+      </view>
+    </view>
+
+    <view class="field">
+      <text class="field-label">桌型卡片颜色</text>
+      <view class="color-palette">
+        <view
+          wx:for="{{colorPalette}}"
+          wx:key="index"
+          class="color-swatch {{formBgColor === item ? 'selected' : ''}}"
+          style="background:{{item}}"
+          data-color="{{item}}"
+          bindtap="chooseBgColor"
+        ></view>
+      </view>
+    </view>
+
+    <view class="form-btns">
+      <view wx:if="{{editingIdx >= 0}}" class="btn cancel-btn" bindtap="cancelEdit">取消编辑</view>
+      <view class="btn add-btn" bindtap="addOrUpdateType">{{editingIdx >= 0 ? '保存修改' : '添加桌型'}}</view>
+    </view>
+  </view>
+
+  <view class="save-wrap">
+    <button class="btn-primary" disabled="{{submitting}}" bindtap="save">
+      {{ submitting ? '保存中...' : '保存所有桌型' }}
+    </button>
+  </view>
+</view>

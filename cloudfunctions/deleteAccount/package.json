@@ -1,0 +1,9 @@
+{
+  "name": "deleteAccount",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 账号注销（删除本人数据）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

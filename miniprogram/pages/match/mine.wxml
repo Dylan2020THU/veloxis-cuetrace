@@ -1,0 +1,44 @@
+<view class="page theme-{{theme}}">
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+
+  <!-- 我的预约（教练 / 球桌） -->
+  <view class="section-title">预约（教练 / 球桌）</view>
+  <view wx:if="{{!loading && !bookings.length}}" class="empty">暂无预约</view>
+  <view wx:for="{{bookings}}" wx:key="_id" class="card">
+    <view class="card-head">
+      <text class="badge {{item.type}}">{{item.typeText}}</text>
+      <text class="target">{{item.targetName}}</text>
+      <text class="price">{{item.priceText}}</text>
+    </view>
+    <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
+    <view class="row" wx:if="{{item.hallName}}"><text class="lbl">球厅</text><text class="val">{{item.hallName}}</text></view>
+    <view class="cancel" data-id="{{item._id}}" bindtap="cancelBooking">取消预约</view>
+  </view>
+
+  <!-- 我报名的球局 -->
+  <view class="section-title">我报名的球局</view>
+  <view wx:if="{{!loading && !joins.length}}" class="empty">还没有报名任何球局</view>
+  <view wx:for="{{joins}}" wx:key="_id" class="card">
+    <view class="card-head">
+      <text class="badge friend">{{item.gameType}}</text>
+      <text class="target">{{item.hallName}}</text>
+      <text class="join">发起人 {{item.authorName}}</text>
+    </view>
+    <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
+    <view class="cancel" data-id="{{item._id}}" data-match="{{item.matchId}}" bindtap="cancelJoin">取消报名</view>
+  </view>
+
+  <!-- 我发布的约球邀约 -->
+  <view class="section-title">我发布的约球</view>
+  <view wx:if="{{!loading && !matches.length}}" class="empty">还没有发布过约球邀约</view>
+  <view wx:for="{{matches}}" wx:key="_id" class="card">
+    <view class="card-head">
+      <text class="badge friend">{{item.gameType}}</text>
+      <text class="target">{{item.hallName}}</text>
+      <text class="join">{{item.joinCount}} 人报名</text>
+    </view>
+    <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
+    <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
+    <view class="cancel" data-id="{{item._id}}" bindtap="cancelMatch">删除邀约</view>
+  </view>
+</view>

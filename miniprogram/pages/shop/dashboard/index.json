@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "店铺管理台",
+  "usingComponents": {
+    "paywall": "/components/paywall/index"
+  }
+}

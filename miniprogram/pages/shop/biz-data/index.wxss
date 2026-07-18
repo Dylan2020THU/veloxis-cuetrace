@@ -1,0 +1,18 @@
+.page { min-height: 100vh; padding-bottom: calc(60rpx + env(safe-area-inset-bottom)); }
+.snap { margin-top: 24rpx; }
+.snap-title { font-size: 26rpx; color: var(--text-weak); margin-bottom: 16rpx; }
+.metrics { display: flex; }
+.metric { flex: 1; text-align: center; }
+.m-num { font-family: "DIN Alternate","Bahnschrift",sans-serif; font-size: 44rpx; font-weight: 700; color: var(--brand); line-height: 1.1; }
+.cur { font-size: 26rpx; margin-right: 2rpx; }
+.m-lbl { font-size: 22rpx; color: var(--text-weak); margin-top: 6rpx; }
+.seg { display: flex; gap: 12rpx; padding: 0 24rpx; margin: 8rpx 0; }
+.seg-item { flex: 1; text-align: center; padding: 14rpx 0; font-size: 28rpx; color: var(--text-sub); background: var(--bg-elev); border-radius: 12rpx; }
+.seg-item.on { color: #fff; background: var(--brand); font-weight: 600; }
+.chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24rpx; }
+.chart-title { font-size: 30rpx; font-weight: 700; color: var(--text); }
+.chart-tip { font-size: 22rpx; color: var(--text-weak); }
+.loading, .empty { padding: 60rpx 0; text-align: center; font-size: 26rpx; color: var(--text-weak); }
+.chart { display: flex; align-items: flex-end; height: 240rpx; gap: 4rpx; }
+.bar-wrap { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.bar { width: 100%; min-height: 0; background: linear-gradient(to top, #067ef9, #4da3ff); border-radius: 6rpx 6rpx 0 0; transition: height .2s; }

@@ -1,0 +1,9 @@
+{
+  "name": "createTablePayOrder",
+  "version": "1.0.0",
+  "description": "Create a verified partner JSAPI payment for a table order",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

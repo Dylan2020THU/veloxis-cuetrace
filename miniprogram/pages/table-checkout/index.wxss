@@ -1,0 +1,226 @@
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32rpx 28rpx calc(48rpx + env(safe-area-inset-bottom));
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hero-card,
+.detail-card,
+.state-card,
+.paid-card {
+  border: 2rpx solid var(--border);
+  border-radius: 24rpx;
+  background: var(--card-bg);
+  box-shadow: 0 6rpx 24rpx rgba(21, 40, 72, 0.06);
+}
+
+.hero-card {
+  position: relative;
+  padding: 38rpx 32rpx;
+}
+
+.store-name {
+  padding-right: 180rpx;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+.table-name {
+  margin-top: 12rpx;
+  color: var(--text);
+  font-size: 46rpx;
+  font-weight: 800;
+}
+
+.status-pill {
+  position: absolute;
+  top: 32rpx;
+  right: 28rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 149, 0, 0.12);
+  color: #d76f00;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.status-pill.paid {
+  background: rgba(24, 182, 106, 0.12);
+  color: #138653;
+}
+
+.detail-card {
+  margin-top: 24rpx;
+  padding: 32rpx;
+}
+
+.section-title {
+  margin-bottom: 22rpx;
+  color: var(--text);
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.detail-row,
+.amount-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-row {
+  min-height: 58rpx;
+  font-size: 27rpx;
+}
+
+.detail-label {
+  color: var(--text-weak);
+}
+
+.detail-value {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.discount-row .detail-value {
+  color: #18a566;
+}
+
+.divider {
+  height: 2rpx;
+  margin: 18rpx 0;
+  background: var(--border);
+}
+
+.amount-row {
+  margin-top: 22rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid var(--border);
+}
+
+.amount-label {
+  color: var(--text);
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.amount-value {
+  color: #e54545;
+  font-size: 52rpx;
+  font-weight: 800;
+}
+
+.currency {
+  margin-right: 4rpx;
+  font-size: 28rpx;
+}
+
+.payment-hint {
+  margin-top: 22rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  background: rgba(6, 126, 249, 0.08);
+  color: #067ef9;
+  font-size: 25rpx;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.pay-button,
+.secondary-button {
+  border-radius: 48rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.pay-button {
+  height: 96rpx;
+  margin-top: 32rpx;
+  line-height: 96rpx;
+  background: #067ef9;
+  color: #fff;
+}
+
+.pay-button[disabled] {
+  background: #87bff7;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.state-card {
+  margin-top: 100rpx;
+  padding: 48rpx 32rpx;
+  text-align: center;
+}
+
+.state-title {
+  color: var(--text);
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.state-copy {
+  margin-top: 14rpx;
+  color: var(--text-weak);
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.error-card {
+  border-color: rgba(229, 69, 69, 0.25);
+}
+
+.secondary-button {
+  width: 260rpx;
+  margin-top: 32rpx;
+  background: var(--card-bg);
+  color: #067ef9;
+  border: 2rpx solid #067ef9;
+}
+
+.compact-card {
+  margin-top: 28rpx;
+  padding: 28rpx;
+}
+
+.paid-card {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  margin-top: 28rpx;
+  padding: 30rpx 32rpx;
+}
+
+.paid-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #18b66a;
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.paid-title {
+  color: var(--text);
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.paid-copy {
+  margin-top: 6rpx;
+  color: var(--text-weak);
+  font-size: 24rpx;
+}
+
+.safety-copy {
+  margin-top: 24rpx;
+  color: var(--text-weak);
+  font-size: 23rpx;
+  line-height: 1.5;
+  text-align: center;
+}

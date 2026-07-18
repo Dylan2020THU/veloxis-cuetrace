@@ -1,0 +1,9 @@
+{
+  "name": "tablePayNotifyV3",
+  "version": "1.0.0",
+  "description": "Verify and apply WeChat Pay table-payment notifications",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

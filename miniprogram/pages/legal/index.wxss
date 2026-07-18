@@ -1,0 +1,29 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 32rpx 40rpx calc(60rpx + env(safe-area-inset-bottom));
+}
+.doc-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+.doc-meta {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin: 12rpx 0 32rpx;
+}
+.sec {
+  margin-bottom: 28rpx;
+}
+.sec-h {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10rpx;
+}
+.sec-p {
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: var(--text-sub);
+}

@@ -1,0 +1,9 @@
+{
+  "name": "getMyMembers",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 教练已绑定会员列表",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

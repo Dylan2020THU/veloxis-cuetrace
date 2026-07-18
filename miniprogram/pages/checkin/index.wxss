@@ -1,0 +1,202 @@
+.page {
+  padding-bottom: 160rpx;
+}
+
+.hero {
+  background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
+  padding: 48rpx 40rpx 40rpx;
+  color: #fff;
+}
+
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 700;
+}
+
+.hero-sub {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 8rpx;
+}
+
+.stats {
+  display: flex;
+  margin-top: 36rpx;
+}
+
+.stat {
+  flex: 1;
+  text-align: center;
+}
+
+.stat-num {
+  font-size: 48rpx;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  opacity: 0.85;
+  margin-top: 6rpx;
+}
+
+.year-tip {
+  margin: 8rpx 0 28rpx;
+}
+
+.loading {
+  padding: 60rpx 0;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.detail-total {
+  font-size: 24rpx;
+  color: #067ef9;
+  font-weight: 500;
+}
+
+.detail-filters {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.detail-filter {
+  height: 52rpx;
+  line-height: 52rpx;
+  padding: 0 22rpx;
+  border-radius: 26rpx;
+  font-size: 24rpx;
+  color: var(--text-weak);
+  background: var(--bg-muted);
+}
+
+.detail-filter.active {
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.12);
+  font-weight: 600;
+}
+
+.empty {
+  padding: 50rpx 0;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 56rpx;
+  color: var(--text-weak);
+  margin-bottom: 12rpx;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #067ef9;
+  margin-right: 20rpx;
+  flex: 0 0 14rpx;
+}
+
+.detail-main {
+  flex: 1;
+}
+
+.hall {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.duration {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #067ef9;
+}
+
+.add-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.add-btn {
+  width: 100%;
+  height: 88rpx;
+}
+
+/* 已核验（到店打卡 → 结账实测）标识 */
+.verified-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: #00a870;
+  background: rgba(0, 168, 112, 0.12);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  vertical-align: middle;
+}
+
+.unverified-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: #646a73;
+  background: rgba(100, 106, 115, 0.12);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  vertical-align: middle;
+}
+
+/* 教练身份计时标签（金色，对应热力图金色格） */
+.coach-tag {
+  display: inline-block;
+  margin-left: 12rpx;
+  font-size: 20rpx;
+  color: #a9750f;
+  background: rgba(240, 165, 0, 0.16);
+  padding: 2rpx 12rpx;
+  border-radius: 16rpx;
+  vertical-align: middle;
+}
+.theme-dark .coach-tag {
+  color: #f2c14e;
+  background: rgba(240, 165, 0, 0.18);
+}
+
+/* 夜间模式：底部悬浮操作栏半透明面板 */
+.theme-dark .add-bar {
+  background: rgba(28, 30, 36, 0.92);
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.4);
+}

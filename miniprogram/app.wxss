@@ -1,0 +1,155 @@
+/* 强化杆迹 全局样式 */
+page {
+  --brand: #067EF9;
+  --brand-1: rgba(6, 126, 249, 0.35);
+  --brand-2: rgba(6, 126, 249, 0.65);
+  --brand-3: rgba(6, 126, 249, 1);
+  --empty: #ebedf0;
+  --bg: #f4f6f8;
+  --card-bg: #ffffff;
+  --bg-elev: #f7f8fa;
+  --border: #f0f1f3;
+  --text: #1f2329;
+  --text-sub: #6b7075;
+  --text-weak: #8a9099;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Helvetica, sans-serif;
+}
+
+/* 夜间模式：变量挂在页面根容器 .theme-dark 上，向所有子节点级联 */
+.theme-dark {
+  --empty: #2a2d35;
+  --bg: #0f1115;
+  --card-bg: #1c1e24;
+  --bg-elev: #23262e;
+  --border: #2a2d35;
+  --text: #e6e8eb;
+  --text-sub: #aab1bb;
+  --text-weak: #8a9099;
+  color: var(--text);
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin: 24rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+/* ============ 夜间模式全局覆盖（提升优先级以盖过各页内联硬编码色） ============ */
+.theme-dark.page {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.theme-dark .card,
+.theme-dark .entry,
+.theme-dark .form,
+.theme-dark .sheet,
+.theme-dark .summary-card {
+  background: var(--card-bg);
+}
+.theme-dark .tabs,
+.theme-dark .topbar,
+.theme-dark .top-tabs,
+.theme-dark .seg,
+.theme-dark .filter-bar {
+  background: var(--card-bg);
+}
+.theme-dark .note,
+.theme-dark .note-box,
+.theme-dark .tag {
+  background: var(--bg-elev);
+}
+/* 主要文字提亮 */
+.theme-dark .card-title,
+.theme-dark .card-content-2,
+.theme-dark .section-title,
+.theme-dark .entry-title,
+.theme-dark .title,
+.theme-dark .name,
+.theme-dark .target,
+.theme-dark .sheet-title,
+.theme-dark .val,
+.theme-dark .stat-num,
+.theme-dark .summary-num,
+.theme-dark .topbar-title {
+  color: var(--text);
+}
+/* 次级文字 */
+.theme-dark .sub,
+.theme-dark .lbl,
+.theme-dark .muted,
+.theme-dark .empty,
+.theme-dark .loading,
+.theme-dark .summary,
+.theme-dark .a-name,
+.theme-dark .tab {
+  color: var(--text-weak);
+}
+.theme-dark .tab.active {
+  color: var(--text);
+}
+/* 分隔线 / 边框 */
+.theme-dark .row,
+.theme-dark .sheet-row,
+.theme-dark .entry,
+.theme-dark .list-row,
+.theme-dark .cell {
+  border-color: var(--border);
+}
+.theme-dark .cancel,
+.theme-dark .ghost-btn,
+.theme-dark .ghost {
+  border-color: var(--border);
+  color: var(--text-sub);
+  background: transparent;
+}
+/* 输入控件 */
+.theme-dark input,
+.theme-dark textarea,
+.theme-dark .note-input,
+.theme-dark .picker-val {
+  color: var(--text);
+  background: var(--bg-elev);
+}
+.theme-dark .placeholder {
+  color: var(--text-weak);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--text-weak);
+  font-size: 24rpx;
+}
+
+/* 原生 button 文字垂直居中兜底：消除默认 2.55em 大行高导致的文字偏下 */
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 36rpx 0 36rpx 0;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.btn-primary[disabled] {
+  background: #b7d6ff;
+  color: #fff;
+}

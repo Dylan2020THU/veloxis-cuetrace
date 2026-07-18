@@ -1,0 +1,167 @@
+<view class="page {{theme==='dark'?'theme-dark':''}}">
+  <view class="login-wrap">
+    <view class="brand">
+      <image class="brand-logo" src="/images/login/logo-cuetrace.png" mode="aspectFit"></image>
+      <view class="brand-name">强化杆迹</view>
+      <view class="brand-slogan">没有任何一杆是白打的</view>
+      <view class="brand-sub">{{ step === 1 ? (cloudReady ? '请选择身份，使用微信一键登录' : '请选择登录身份') : (mode === 'register' ? '注册「' + roleLabel + '」账号' : '使用「' + roleLabel + '」身份登录') }}</view>
+    </view>
+
+    <!-- 第一步：身份选择（球员 / 教练 / 店主，全宽 AI 海报卡） -->
+    <block wx:if="{{step === 1}}">
+      <view class="roles">
+        <view
+          wx:for="{{roles}}"
+          wx:key="key"
+          class="role-poster {{role===item.key?'active':''}}"
+          data-role="{{item.key}}"
+          bindtap="selectRole"
+        >
+          <image class="role-img" src="{{item.img}}" mode="aspectFill" lazy-load="true"></image>
+          <view class="role-mask"></view>
+          <view class="role-info">
+            <view class="role-label">{{item.label}}</view>
+            <view class="role-desc">{{item.desc}}</view>
+          </view>
+          <view class="role-check">
+            <view class="role-check-dot"></view>
+          </view>
+        </view>
+      </view>
+
+      <button class="btn-primary next-btn" bindtap="goNext">{{ cloudReady ? '微信登录' : '确认角色' }}</button>
+    </block>
+
+    <!-- 第二步：账号登录 -->
+    <block wx:else>
+      <view class="step2-head">
+        <view class="back" bindtap="goPrev">‹ 返回</view>
+        <view class="cur-role">当前身份：{{roleLabel}}</view>
+      </view>
+
+      <view class="login-card">
+      <block wx:if="{{mode==='login'}}">
+      <!-- 登录方式切换 -->
+      <view class="seg">
+        <view
+          class="seg-item {{loginType==='password'?'active':''}}"
+          data-type="password"
+          bindtap="switchType"
+        >账号密码登录</view>
+        <view
+          class="seg-item {{loginType==='sms'?'active':''}}"
+          data-type="sms"
+          bindtap="switchType"
+        >手机验证码登录</view>
+      </view>
+
+      <!-- 账号密码登录 -->
+      <block wx:if="{{loginType==='password'}}">
+        <view class="field">
+          <input
+            class="input"
+            placeholder="请输入账号"
+            placeholder-class="placeholder"
+            data-field="account"
+            value="{{account}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请输入密码"
+            placeholder-class="placeholder"
+            data-field="password"
+            value="{{password}}"
+            bindinput="onInput"
+          />
+        </view>
+      </block>
+
+      <!-- 手机验证码登录 -->
+      <block wx:else>
+        <view class="field">
+          <input
+            class="input"
+            type="number"
+            maxlength="11"
+            placeholder="请输入手机号"
+            placeholder-class="placeholder"
+            data-field="phone"
+            value="{{phone}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field field-code">
+          <input
+            class="input"
+            type="number"
+            maxlength="6"
+            placeholder="请输入验证码"
+            placeholder-class="placeholder"
+            data-field="code"
+            value="{{code}}"
+            bindinput="onInput"
+          />
+          <view class="code-btn {{counting?'disabled':''}}" bindtap="sendCode">
+            {{counting ? countdown + 's' : '获取验证码'}}
+          </view>
+        </view>
+      </block>
+
+      <button class="btn-primary login-btn" bindtap="submit">登录</button>
+
+      <view class="alt-line">
+        <text class="alt-text">还没有账号？</text>
+        <text class="alt-link" bindtap="goRegister">注册账号</text>
+      </view>
+      </block>
+
+      <!-- 注册态 -->
+      <block wx:else>
+        <view class="field">
+          <input
+            class="input"
+            placeholder="请输入账号"
+            placeholder-class="placeholder"
+            data-field="regAccount"
+            value="{{regAccount}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请设置密码（至少 6 位）"
+            placeholder-class="placeholder"
+            data-field="regPassword"
+            value="{{regPassword}}"
+            bindinput="onInput"
+          />
+        </view>
+        <view class="field">
+          <input
+            class="input"
+            password
+            placeholder="请再次输入密码"
+            placeholder-class="placeholder"
+            data-field="regConfirm"
+            value="{{regConfirm}}"
+            bindinput="onInput"
+          />
+        </view>
+
+        <button class="btn-primary login-btn" bindtap="register">注册</button>
+
+        <view class="alt-line">
+          <text class="alt-text">已有账号？</text>
+          <text class="alt-link" bindtap="backToLogin">返回登录</text>
+        </view>
+      </block>
+      </view>
+    </block>
+  </view>
+</view>

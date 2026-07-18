@@ -1,0 +1,9 @@
+{
+  "name": "reconcileTablePayments",
+  "version": "1.0.0",
+  "description": "Reconcile stale table payments with signed WeChat Pay queries",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

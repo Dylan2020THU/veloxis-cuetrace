@@ -1,0 +1,22 @@
+<view class="page theme-{{theme}}">
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+
+  <view class="summary" wx:if="{{!loading}}">共 {{bookings.length}} 条预约</view>
+
+  <view wx:if="{{!loading && !bookings.length}}" class="empty">还没有学员预约你～</view>
+
+  <view wx:for="{{bookings}}" wx:key="_id" class="card">
+    <view class="card-head">
+      <image wx:if="{{item.bookerAvatar}}" class="avatar" src="{{item.bookerAvatar}}" mode="aspectFill"></image>
+      <view wx:else class="avatar">{{item.bookerName[0]}}</view>
+      <view class="who">
+        <text class="name">{{item.bookerName}}</text>
+        <text class="sub">预约了你的教学</text>
+      </view>
+      <text class="price">{{item.priceText}}</text>
+    </view>
+    <view class="row"><text class="lbl">时间</text><text class="val">{{item.datetime}}</text></view>
+    <view class="row" wx:if="{{item.hallName}}"><text class="lbl">球厅</text><text class="val">{{item.hallName}}</text></view>
+    <view class="note" wx:if="{{item.note}}">{{item.note}}</view>
+  </view>
+</view>

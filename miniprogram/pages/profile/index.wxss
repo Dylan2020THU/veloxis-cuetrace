@@ -1,0 +1,391 @@
+/* 底部留白：避免最后一张卡片被固定底栏遮挡 */
+.page {
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+/* 1. 身份头部 */
+.profile-head {
+  position: relative;
+  background: linear-gradient(135deg, #067ef9 0%, #2b97ff 100%);
+  color: #fff;
+  padding: 60rpx 40rpx 56rpx;
+  text-align: center;
+}
+.head-gear {
+  position: absolute;
+  top: 20rpx;
+  right: 24rpx;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gear-ic {
+  width: 44rpx;
+  height: 44rpx;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 44rpx 44rpx;
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIzIi8+PHBhdGggZD0iTTE5LjQgMTVhMS42NSAxLjY1IDAgMCAwIC4zMyAxLjgybC4wNi4wNmEyIDIgMCAxIDEtMi44MyAyLjgzbC0uMDYtLjA2YTEuNjUgMS42NSAwIDAgMC0xLjgyLS4zMyAxLjY1IDEuNjUgMCAwIDAtMSAxLjUxVjIxYTIgMiAwIDAgMS00IDB2LS4wOUExLjY1IDEuNjUgMCAwIDAgOSAxOS40YTEuNjUgMS42NSAwIDAgMC0xLjgyLjMzbC0uMDYuMDZhMiAyIDAgMSAxLTIuODMtMi44M2wuMDYtLjA2YTEuNjUgMS42NSAwIDAgMCAuMzMtMS44MiAxLjY1IDEuNjUgMCAwIDAtMS41MS0xSDNhMiAyIDAgMCAxIDAtNGguMDlBMS42NSAxLjY1IDAgMCAwIDQuNiA5YTEuNjUgMS42NSAwIDAgMC0uMzMtMS44MmwtLjA2LS4wNmEyIDIgMCAxIDEgMi44My0yLjgzbC4wNi4wNmExLjY1IDEuNjUgMCAwIDAgMS44Mi4zM0g5YTEuNjUgMS42NSAwIDAgMCAxLTEuNTFWM2EyIDIgMCAwIDEgNCAwdi4wOWExLjY1IDEuNjUgMCAwIDAgMSAxLjUxIDEuNjUgMS42NSAwIDAgMCAxLjgyLS4zM2wuMDYtLjA2YTIgMiAwIDEgMSAyLjgzIDIuODNsLS4wNi4wNmExLjY1IDEuNjUgMCAwIDAtLjMzIDEuODJWOWExLjY1IDEuNjUgMCAwIDAgMS41MSAxSDIxYTIgMiAwIDAgMSAwIDRoLS4wOWExLjY1IDEuNjUgMCAwIDAtMS41MSAxeiIvPjwvc3ZnPg==");
+}
+.head-avatar-wrap {
+  position: relative;
+  width: 132rpx;
+  height: 132rpx;
+  margin: 0 auto 16rpx;
+}
+
+.head-avatar {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+  margin: 0;
+  display: block;
+  border: 4rpx solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.25);
+  box-sizing: border-box;
+}
+.head-avatar--ph {
+  line-height: 124rpx;
+  font-size: 56rpx;
+  font-weight: 700;
+}
+.head-avatar-edit {
+  position: absolute;
+  right: -2rpx;
+  bottom: -2rpx;
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  background: #fff;
+  border: 3rpx solid rgba(255, 255, 255, 0.76);
+  box-shadow: 0 4rpx 14rpx rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.head-avatar-edit-ic {
+  width: 24rpx;
+  height: 24rpx;
+  background-color: #067ef9;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 22rpx 22rpx;
+  mask-size: 22rpx 22rpx;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z'/%3E%3C/svg%3E");
+}
+.head-name {
+  font-size: 38rpx;
+  font-weight: 700;
+}
+.head-role {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 6rpx;
+}
+/* 账号编码胶囊：编码本体可点复制，右侧「二维码」可点打开我的二维码 */
+.head-code {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 16rpx;
+  padding: 8rpx 22rpx;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 28rpx;
+}
+.head-code-text {
+  font-size: 22rpx;
+  color: #fff;
+  letter-spacing: 1rpx;
+  font-family: "DIN Alternate", "Bahnschrift", -apple-system, "Helvetica Neue", sans-serif;
+}
+.head-code-div {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 16rpx;
+}
+.head-code-qr {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 卡片小标题 */
+.card-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 24rpx;
+}
+
+/* 2. 训练统计 */
+.rank-stats {
+  display: flex;
+}
+.rank-stat {
+  flex: 1;
+  text-align: center;
+}
+.rank-stat__num {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--brand);
+}
+.rank-stat__label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 6rpx;
+}
+
+/* 3 & 4. 四宫格 */
+.grid4 {
+  display: flex;
+}
+.grid4-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 0;
+}
+.grid4-num {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: var(--text);
+}
+.grid4-label {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  margin-top: 8rpx;
+}
+
+/* 快捷功能：线性图标 */
+.quick-ic {
+  width: 48rpx;
+  height: 48rpx;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 44rpx 44rpx;
+}
+.quick-ic--train {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwNjdFRjkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cG9seWxpbmUgcG9pbnRzPSIzIDE3IDkgMTEgMTMgMTUgMjEgNyIvPjxwb2x5bGluZSBwb2ludHM9IjE1IDcgMjEgNyAyMSAxMyIvPjwvc3ZnPg==");
+}
+.quick-ic--community {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwNjdFRjkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMjEgMTEuNWE4LjUgOC41IDAgMCAxLTguNSA4LjUgOC41IDguNSAwIDAgMS0zLjgtLjlMMyAyMWwxLjktNS43YTguNSA4LjUgMCAwIDEtLjktMy44QTguNSA4LjUgMCAwIDEgMTIuNSAzYTguNSA4LjUgMCAwIDEgOC41IDguNXoiLz48L3N2Zz4=");
+}
+.quick-ic--ball {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwNjdFRjkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMy41Ii8+PC9zdmc+");
+}
+.quick-ic--edit {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwNjdFRjkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTIgMjBoOSIvPjxwYXRoIGQ9Ik0xNi41IDMuNWEyLjEyIDIuMTIgMCAwIDEgMyAzTDcgMTlsLTQgMSAxLTQgMTIuNS0xMi41eiIvPjwvc3ZnPg==");
+}
+
+/* 列表项 */
+.entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+.entry:last-child {
+  border-bottom: none;
+}
+.entry-title {
+  font-size: 30rpx;
+  color: var(--text);
+}
+.arrow {
+  color: var(--text-weak);
+  font-size: 36rpx;
+}
+
+/* ============ 店主商家中心（图2 布局） ============ */
+/* 经营数据卡：与下方卡片保持一致的间距（不再上移贴合蓝色头部） */
+.shop-hero {
+  margin-top: 24rpx;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+.card-head .card-title {
+  margin-bottom: 0;
+}
+.card-more {
+  font-size: 24rpx;
+  color: var(--text-weak);
+}
+.tag-soon {
+  font-size: 20rpx;
+  color: #a9750f;
+  background: rgba(201, 162, 75, 0.18);
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  margin-left: 12rpx;
+}
+
+/* 经营数据四指标 */
+.metrics {
+  display: flex;
+}
+.metric {
+  flex: 1;
+  text-align: center;
+}
+/* 高级数字体栈：iOS=DIN Alternate，Windows devtools=Bahnschrift(DIN 风)，优雅回退 */
+.metric-num {
+  font-family: "DIN Alternate", "Bahnschrift", "Bebas Neue", -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 50rpx;
+  font-weight: 700;
+  color: var(--brand);
+  letter-spacing: 0.5rpx;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+/* 货币符号：缩小变轻，大数字唱主角 */
+.cur {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-right: 2rpx;
+  letter-spacing: 0;
+}
+.metric-label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 6rpx;
+}
+
+/* 资金 · 结算 */
+.fund {
+  display: flex;
+  align-items: center;
+}
+.fund-col {
+  flex: 1;
+}
+.fund-num {
+  font-family: "DIN Alternate", "Bahnschrift", "Bebas Neue", -apple-system, "Helvetica Neue", sans-serif;
+  font-size: 52rpx;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.5rpx;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.fund-label {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 4rpx;
+}
+.fund-btns {
+  display: flex;
+  gap: 14rpx;
+}
+.fund-btn {
+  font-size: 24rpx;
+  color: var(--text-sub);
+  border: 1rpx solid var(--border);
+  border-radius: 30rpx;
+  padding: 8rpx 22rpx;
+}
+.fund-btn--primary {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+/* 经营工具九宫格 */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+}
+.tool {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 0;
+}
+.tool-ic-wrap {
+  position: relative;
+  width: 52rpx;
+  height: 52rpx;
+}
+.tool-ic {
+  width: 52rpx;
+  height: 52rpx;
+  background-color: var(--brand);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: 48rpx 48rpx;
+  mask-size: 48rpx 48rpx;
+}
+.tool-dot {
+  position: absolute;
+  top: -2rpx;
+  right: -2rpx;
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: #ef9f27;
+}
+.tool-label {
+  font-size: 22rpx;
+  color: var(--text);
+  margin-top: 12rpx;
+}
+
+/* 店主版订阅（琥珀卡 + 续费） */
+.sub-card {
+  margin: 24rpx;
+  border-radius: 16rpx;
+  padding: 26rpx 32rpx;
+  background: rgba(201, 162, 75, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sub-main {
+  flex: 1;
+}
+.sub-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #a9750f;
+}
+.sub-sub {
+  font-size: 22rpx;
+  color: #b08a3a;
+  margin-top: 6rpx;
+}
+.sub-btn {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #fff;
+  background: #c9a24b;
+  border-radius: 12rpx;
+  padding: 12rpx 30rpx;
+  margin-left: 20rpx;
+}
+
+/* 深色模式：琥珀字提亮，保证在深底上可读（对比度 ≥4.5:1） */
+.theme-dark .tag-soon {
+  color: #e8c87a;
+}
+.theme-dark .sub-title {
+  color: #ecd089;
+}
+.theme-dark .sub-sub {
+  color: #d4af6a;
+}

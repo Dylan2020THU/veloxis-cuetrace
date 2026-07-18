@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "会员名单",
+  "usingComponents": {
+    "paywall": "/components/paywall/index"
+  }
+}

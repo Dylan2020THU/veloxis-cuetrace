@@ -1,0 +1,76 @@
+.page {
+  min-height: 100vh;
+  padding: 48rpx 40rpx calc(60rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.qr-card {
+  background: var(--card-bg);
+  border-radius: 28rpx;
+  padding: 56rpx 40rpx 48rpx;
+  box-shadow: 0 6rpx 28rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qr-user {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.qr-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: var(--bg-elev);
+}
+.qr-avatar--ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52rpx;
+  font-weight: 700;
+  color: var(--brand);
+}
+.qr-name {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 18rpx;
+}
+.qr-role {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  margin-top: 8rpx;
+}
+
+.qr-box {
+  width: 440rpx;
+  height: 440rpx;
+  margin: 44rpx 0 36rpx;
+  padding: 20rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+.qr-canvas {
+  width: 400rpx;
+  height: 400rpx;
+}
+
+.qr-code {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 1rpx;
+  font-family: "DIN Alternate", "Bahnschrift", -apple-system, "Helvetica Neue", sans-serif;
+}
+.qr-tip {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  text-align: center;
+  margin-top: 20rpx;
+  line-height: 1.6;
+}

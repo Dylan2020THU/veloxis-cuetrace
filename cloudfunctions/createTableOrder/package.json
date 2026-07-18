@@ -1,0 +1,9 @@
+{
+  "name": "createTableOrder",
+  "version": "1.0.0",
+  "description": "强化杆迹 - 结账写入一笔球桌计费订单（shop_orders）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

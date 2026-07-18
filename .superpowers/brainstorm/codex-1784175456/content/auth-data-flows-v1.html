@@ -1,0 +1,76 @@
+<h2>第二段：四条认证数据流</h2>
+<p class="subtitle">所有流程最终都只返回 accountId、服务端角色和独立会话；客户端不能自行声明账号或角色。</p>
+
+<div class="section">
+  <div class="label">1 · 手机号验证码登录（首次即注册）</div>
+  <div style="display:grid;grid-template-columns:repeat(7,auto);gap:9px;align-items:center;margin-top:10px">
+    <div class="mock-nav">发送登录验证码</div><span>→</span>
+    <div class="mock-nav">验证并消费验证码</div><span>→</span>
+    <div class="mock-nav">查 phone_bindings</div><span>→</span>
+    <div class="mock-nav">已有：恢复账号<br>没有：事务创建账号、手机号关系、member 用户</div>
+  </div>
+  <div style="text-align:right;margin-top:8px"><strong>→ 签发设备会话 → 选择身份</strong></div>
+  <p>整个流程不读取或写入微信绑定；当前 OPENID 只可用于短信风控辅助。</p>
+</div>
+
+<div class="section">
+  <div class="label">2 · 密码登录</div>
+  <div style="display:grid;grid-template-columns:1fr auto 1fr auto 1.2fr auto 1fr;gap:9px;align-items:center;margin-top:10px">
+    <div class="mock-nav">输入手机号或账号名</div><span>→</span>
+    <div class="mock-nav">唯一凭证关系解析 accountId</div><span>→</span>
+    <div class="mock-nav">scrypt 校验账号密码</div><span>→</span>
+    <div class="mock-nav">签发设备会话</div>
+  </div>
+  <p>手机号账号尚未设置密码时，不尝试创建新账号，提示“请使用验证码登录或先设置密码”。</p>
+</div>
+
+<div class="section">
+  <div class="label">3 · 微信登录入口</div>
+  <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:10px">
+    <div class="mock-nav">服务端读取可信 OPENID</div><span>→</span>
+    <div class="mock-nav"><strong>已有微信绑定</strong><br>恢复账号并直接签发会话</div>
+  </div>
+  <div style="text-align:center;font-size:24px;margin:8px 0">或</div>
+  <div style="display:grid;grid-template-columns:repeat(7,auto);gap:9px;align-items:center">
+    <div class="mock-nav">微信未绑定</div><span>→</span>
+    <div class="mock-nav">进入手机号验证页</div><span>→</span>
+    <div class="mock-nav">验证码成功，生成一次性手机号证明</div><span>→</span>
+    <div class="mock-nav" style="border-color:#f59e0b"><strong>弹窗询问是否绑定当前微信</strong></div>
+  </div>
+  <div class="split" style="margin-top:12px">
+    <div class="mockup">
+      <div class="mockup-header">暂不绑定</div>
+      <div class="mockup-body">消费手机号证明 → 恢复或创建手机号账号 → 签发会话；微信关系零写入。</div>
+    </div>
+    <div class="mockup" style="border-color:#10b981">
+      <div class="mockup-header">确认绑定</div>
+      <div class="mockup-body">消费手机号证明 → 恢复或创建账号 → 事务确认双方均未绑定 → 建立微信关系 → 签发会话。</div>
+    </div>
+  </div>
+  <p>一次性手机号证明短期有效且只能消费一次，避免验证码通过后被重复用于创建会话或绑定。</p>
+</div>
+
+<div class="section">
+  <div class="label">4 · 账号与安全页主动绑定</div>
+  <div class="split" style="margin-top:10px">
+    <div class="mockup">
+      <div class="mockup-header">绑定手机号</div>
+      <div class="mockup-body">有效会话 → 发送“绑定用途”验证码 → 校验账号尚无手机号且号码未被占用 → 事务写入 phone_bindings 与账号反向引用。</div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">绑定微信</div>
+      <div class="mockup-body">有效会话 → 弹窗明确确认 → 服务端读取当前 OPENID → 校验双方均未绑定 → 事务写入 wechat_bindings 与账号反向引用。</div>
+    </div>
+  </div>
+  <p>首版只支持首次绑定；已有关系不允许覆盖、换绑或解绑。</p>
+</div>
+
+<h3>这一段流程是否通过？</h3>
+<div class="options">
+  <div class="option" data-choice="flows-approved" onclick="toggleSelect(this)">
+    <div class="letter">✓</div><div class="content"><h3>通过</h3><p>按此顺序继续设计会话、安全与错误处理。</p></div>
+  </div>
+  <div class="option" data-choice="flows-revise" onclick="toggleSelect(this)">
+    <div class="letter">↻</div><div class="content"><h3>需要调整</h3><p>在终端说明希望修改的步骤。</p></div>
+  </div>
+</div>

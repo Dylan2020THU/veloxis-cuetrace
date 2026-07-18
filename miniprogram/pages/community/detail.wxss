@@ -1,0 +1,261 @@
+.loading {
+  padding: 120rpx 0;
+  text-align: center;
+  color: var(--text-weak);
+  font-size: 26rpx;
+}
+
+.page {
+  padding-bottom: 160rpx;
+}
+
+.media {
+  width: 100%;
+  background: #000;
+}
+
+.video {
+  width: 100%;
+  height: 480rpx;
+}
+
+.media-swiper {
+  width: 100%;
+  height: 750rpx;
+  background: #000;
+}
+
+.swiper-img {
+  width: 100%;
+  height: 750rpx;
+}
+
+.content-card {
+  background: var(--card-bg);
+  padding: 28rpx 32rpx;
+}
+
+.author-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.a-avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(6, 126, 249, 0.12);
+  color: #067ef9;
+  font-size: 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 18rpx;
+}
+image.a-avatar,
+image.c-avatar {
+  background: var(--border);
+}
+
+.a-info {
+  flex: 1;
+}
+
+.a-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.a-time {
+  font-size: 22rpx;
+  color: var(--text-weak);
+  margin-top: 4rpx;
+}
+
+.follow-btn {
+  font-size: 26rpx;
+  color: #fff;
+  background: #067ef9;
+  padding: 10rpx 28rpx;
+  border-radius: 36rpx 0 36rpx 0;
+  line-height: 1;
+}
+
+.follow-btn.following {
+  background: var(--bg-elev);
+  color: var(--text-weak);
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 16rpx;
+}
+
+.content {
+  font-size: 30rpx;
+  color: var(--text);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 22rpx;
+}
+
+.topic-chip {
+  height: 56rpx;
+  padding: 0 22rpx;
+  border-radius: 28rpx;
+  display: flex;
+  align-items: center;
+  color: #067ef9;
+  background: rgba(6, 126, 249, 0.1);
+  font-size: 26rpx;
+}
+
+.location-row {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 60rpx;
+  margin-top: 22rpx;
+  padding: 0 22rpx;
+  border-radius: 30rpx;
+  color: var(--text);
+  background: var(--bg-elev);
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.location-icon {
+  margin-right: 8rpx;
+  color: var(--text-weak);
+}
+
+.comments-card {
+  background: var(--card-bg);
+  margin-top: 20rpx;
+  padding: 28rpx 32rpx;
+}
+
+.comments-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 20rpx;
+}
+
+.no-comment {
+  padding: 30rpx 0;
+  text-align: center;
+}
+
+.comment {
+  display: flex;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.comment:last-child {
+  border-bottom: none;
+}
+
+.c-avatar {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elev);
+  color: var(--text-weak);
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 18rpx;
+  flex: 0 0 60rpx;
+}
+
+.c-main {
+  flex: 1;
+}
+
+.c-name {
+  font-size: 26rpx;
+  color: var(--text-weak);
+}
+
+.c-text {
+  font-size: 30rpx;
+  color: var(--text);
+  margin: 6rpx 0;
+  line-height: 1.5;
+}
+
+.c-time {
+  font-size: 22rpx;
+  color: var(--text-weak);
+}
+
+.action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: var(--card-bg);
+  box-shadow: 0 -2rpx 16rpx rgba(0, 0, 0, 0.05);
+}
+
+.comment-input {
+  flex: 1;
+  height: 72rpx;
+  background: var(--bg-elev);
+  border-radius: 36rpx;
+  padding: 0 28rpx;
+  font-size: 28rpx;
+}
+
+.like-btn {
+  display: flex;
+  align-items: center;
+  margin: 0 20rpx;
+}
+
+.like-btn .heart {
+  font-size: 44rpx;
+  color: var(--text-weak);
+}
+
+.like-btn.liked .heart {
+  color: #ff5a79;
+}
+
+.like-num {
+  font-size: 24rpx;
+  color: var(--text-weak);
+  margin-left: 6rpx;
+}
+
+.send-btn {
+  background: #067ef9;
+  color: #fff;
+  font-size: 28rpx;
+  height: 72rpx;
+  padding: 0 32rpx;
+  border-radius: 36rpx 0 36rpx 0;
+}
+
+.send-btn[disabled] {
+  background: #b7d6ff;
+}

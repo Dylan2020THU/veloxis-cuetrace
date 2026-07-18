@@ -1,0 +1,82 @@
+<h2>第一段：认证架构与数据边界</h2>
+<p class="subtitle">核心原则：账号是唯一主体；手机号、账号名、微信只是可选凭证；登录会话才代表当前设备已登录。</p>
+
+<div class="mockup">
+  <div class="mockup-header">登录与授权主链路</div>
+  <div class="mockup-body">
+    <div style="display:grid;grid-template-columns:1fr auto 1.2fr auto 1.15fr;gap:14px;align-items:center">
+      <div style="display:grid;gap:8px">
+        <div class="mock-nav">手机号 + 验证码</div>
+        <div class="mock-nav">手机号/账号 + 密码</div>
+        <div class="mock-nav">已绑定微信</div>
+      </div>
+      <div style="font-size:28px">→</div>
+      <div class="mockup" style="border-color:#3b82f6">
+        <div class="mockup-header">accountAuth</div>
+        <div class="mockup-body"><strong>验证凭证</strong><br><small>解析到唯一 accountId</small></div>
+      </div>
+      <div style="font-size:28px">→</div>
+      <div class="mockup" style="border-color:#10b981">
+        <div class="mockup-header">auth_sessions</div>
+        <div class="mockup-body"><strong>签发随机会话令牌</strong><br><small>服务端仅保存令牌哈希</small></div>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:28px;margin:12px 0">↓</div>
+    <div class="mockup" style="border-color:#8b5cf6">
+      <div class="mockup-header">所有受保护业务云函数</div>
+      <div class="mockup-body" style="text-align:center"><strong>requireSession → accountId → users.roles</strong><br><small>不再用 OPENID 直接推断当前登录账号</small></div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">数据关系</div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px">
+    <div class="mockup" style="grid-row:span 2;border-color:#2563eb">
+      <div class="mockup-header">accounts · 账号主体</div>
+      <div class="mockup-body">
+        <strong>不可变随机 accountId</strong>
+        <p>状态、可选密码哈希、会话撤销版本。账号名和手机号变化都不会改变主体 ID。</p>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">account_names · 0 或 1</div>
+      <div class="mockup-body">唯一规范化账号名 → accountId</div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">phone_bindings · 0 或 1</div>
+      <div class="mockup-body">唯一手机号 HMAC → accountId；不以明文手机号作为文档 ID</div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">wechat_bindings · 0 或 1</div>
+      <div class="mockup-body">可信 OPENID 哈希 → accountId；只有明确同意才写入</div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">users · 严格 1 对 1</div>
+      <div class="mockup-body">accountId → 资料、member/coach/shop 角色</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="label">临时安全数据</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+    <div class="mockup"><div class="mockup-header">sms_codes</div><div class="mockup-body">按手机号 HMAC 与用途保存短期挑战；不再依赖 OPENID 才能验证。</div></div>
+    <div class="mockup"><div class="mockup-header">auth_sessions · 1 对多</div><div class="mockup-body">每台设备独立会话，可单独撤销；密码变更或“退出全部设备”统一撤销。</div></div>
+  </div>
+</div>
+
+<div class="mockup" style="border-color:#f59e0b">
+  <div class="mockup-header">OPENID 的新职责</div>
+  <div class="mockup-body">仅用于“微信登录”“用户主动绑定微信”和短信风控辅助；它不再是手机号/账号密码登录后的业务账号主键。</div>
+</div>
+
+<h3>这一段设计是否通过？</h3>
+<div class="options">
+  <div class="option" data-choice="architecture-approved" onclick="toggleSelect(this)">
+    <div class="letter">✓</div><div class="content"><h3>通过</h3><p>按此架构继续设计详细登录流程。</p></div>
+  </div>
+  <div class="option" data-choice="architecture-revise" onclick="toggleSelect(this)">
+    <div class="letter">↻</div><div class="content"><h3>需要调整</h3><p>在终端说明希望修改的关系或职责。</p></div>
+  </div>
+</div>
